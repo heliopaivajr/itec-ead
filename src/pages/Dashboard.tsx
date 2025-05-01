@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { 
   Book, User, Users, MessageSquare, Tv, CalendarDays, 
   FileText, CreditCard, HelpCircle, Bell, Settings
@@ -17,19 +17,71 @@ import {
   SidebarInset
 } from '@/components/ui/sidebar';
 import { Button } from '@/components/ui/button';
+import { useNavigate } from 'react-router-dom';
 
-// Dashboard content placeholder
+// Dashboard content with user information
 const DashboardContent = () => {
+  const [user, setUser] = useState<{ email: string, role: string } | null>(null);
+
+  useEffect(() => {
+    // Get user information from localStorage
+    const storedUser = localStorage.getItem('user');
+    if (storedUser) {
+      try {
+        setUser(JSON.parse(storedUser));
+      } catch (e) {
+        // Invalid user data
+      }
+    }
+  }, []);
+
   return (
     <div className="p-6">
       <h1 className="text-2xl font-merriweather font-bold mb-6 text-itec-bloodRed">Dashboard</h1>
-      <p>Bem-vindo à plataforma EAD do Instituto de Teologia Cristã.</p>
+      
+      {user && (
+        <div className="mb-6 p-4 border border-gray-800 rounded-lg bg-black/50">
+          <h2 className="text-xl font-semibold flex items-center">
+            <User className="mr-2 text-itec-bloodRed" />
+            Bem-vindo, <span className="ml-1 text-itec-bloodRed">{user.email}</span>
+          </h2>
+          <p className="mt-2">Tipo de conta: <span className="capitalize font-medium">{user.role}</span></p>
+        </div>
+      )}
+      
+      <p className="mt-4">Bem-vindo à plataforma EAD do Instituto de Teologia Cristã.</p>
       <p className="mt-4">Utilize o menu lateral para navegar pelos recursos disponíveis.</p>
+      
+      <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="border border-gray-800 rounded-lg p-4 bg-black/30 hover:bg-black/50 transition-all futuristic-card">
+          <h3 className="text-lg font-semibold flex items-center text-itec-bloodRed">
+            <Book className="mr-2" /> Cursos em Andamento
+          </h3>
+          <p className="mt-2 text-gray-300">Você não possui cursos em andamento.</p>
+        </div>
+        
+        <div className="border border-gray-800 rounded-lg p-4 bg-black/30 hover:bg-black/50 transition-all futuristic-card">
+          <h3 className="text-lg font-semibold flex items-center text-itec-bloodRed">
+            <CalendarDays className="mr-2" /> Próximos Eventos
+          </h3>
+          <p className="mt-2 text-gray-300">Não há eventos agendados.</p>
+        </div>
+      </div>
     </div>
   );
 };
 
 const Dashboard = () => {
+  const navigate = useNavigate();
+  
+  useEffect(() => {
+    // Check if user is authenticated
+    const user = localStorage.getItem('user');
+    if (!user) {
+      navigate('/login');
+    }
+  }, [navigate]);
+
   return (
     <SidebarProvider defaultOpen={true}>
       <div className="min-h-screen flex w-full bg-gray-900 text-gray-100">

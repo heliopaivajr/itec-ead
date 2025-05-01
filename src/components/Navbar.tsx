@@ -1,14 +1,41 @@
 
-import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { Menu, X, ChevronDown, User } from 'lucide-react';
+import { Menu, X, ChevronDown, User, LogOut } from 'lucide-react';
 import { useThemeMode } from '@/hooks/use-theme-mode';
+import { useToast } from '@/components/ui/use-toast';
 
 const Navbar = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { theme } = useThemeMode();
   const isDark = theme === 'dark';
+  const navigate = useNavigate();
+  const { toast } = useToast();
+  const [user, setUser] = useState<{ email: string, role: string } | null>(null);
+
+  useEffect(() => {
+    // Check if user is logged in
+    const storedUser = localStorage.getItem('user');
+    if (storedUser) {
+      try {
+        setUser(JSON.parse(storedUser));
+      } catch (e) {
+        localStorage.removeItem('user');
+      }
+    }
+  }, []);
+
+  const handleLogout = () => {
+    localStorage.removeItem('user');
+    setUser(null);
+    toast({
+      title: "Logout realizado",
+      description: "Você saiu do sistema com sucesso.",
+      duration: 3000,
+    });
+    navigate('/');
+  };
 
   return (
     <nav className={`${isDark ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-200'} shadow-sm border-b sticky top-0 z-50`}>
@@ -45,12 +72,34 @@ const Navbar = () => {
 
           {/* Login/Register Buttons */}
           <div className="hidden md:flex items-center space-x-3">
-            <Link to="/login" className={`flex items-center ${isDark ? 'text-gray-300 hover:text-itec-bloodRed' : 'text-itec-blue hover:text-opacity-80'} transition-colors`}>
-              <User className="mr-1 h-4 w-4" /> Entrar
-            </Link>
-            <Button className={isDark ? "bg-itec-bloodRed hover:bg-itec-bloodRed/80 text-white" : "btn-primary"} asChild>
-              <Link to="/dashboard">Dashboard</Link>
-            </Button>
+            {user ? (
+              <>
+                <span className={`flex items-center ${isDark ? 'text-gray-300' : 'text-itec-blue'}`}>
+                  <User className="mr-1 h-4 w-4 text-itec-bloodRed" /> 
+                  {user.email}
+                </span>
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={handleLogout}
+                  className={isDark ? "border-gray-700 text-gray-300 hover:text-itec-bloodRed" : ""}
+                >
+                  <LogOut className="mr-1 h-4 w-4" /> Sair
+                </Button>
+                <Button className={isDark ? "bg-itec-bloodRed hover:bg-itec-bloodRed/80 text-white" : "btn-primary"} asChild>
+                  <Link to="/dashboard">Dashboard</Link>
+                </Button>
+              </>
+            ) : (
+              <>
+                <Link to="/login" className={`flex items-center ${isDark ? 'text-gray-300 hover:text-itec-bloodRed' : 'text-itec-blue hover:text-opacity-80'} transition-colors`}>
+                  <User className="mr-1 h-4 w-4" /> Entrar
+                </Link>
+                <Button className={isDark ? "bg-itec-bloodRed hover:bg-itec-bloodRed/80 text-white" : "btn-primary"} asChild>
+                  <Link to="/login">Acessar EAD</Link>
+                </Button>
+              </>
+            )}
           </div>
 
           {/* Mobile Menu Button */}
@@ -72,12 +121,29 @@ const Navbar = () => {
               <Link to="/comunidade" className={`${isDark ? 'text-gray-300 hover:text-itec-bloodRed' : 'text-itec-darkGray hover:text-itec-blue'} transition-colors`}>Comunidade</Link>
               <Link to="/blog" className={`${isDark ? 'text-gray-300 hover:text-itec-bloodRed' : 'text-itec-darkGray hover:text-itec-blue'} transition-colors`}>Blog</Link>
               <div className="flex items-center space-x-3 mt-3 pt-3 border-t border-gray-700">
-                <Link to="/login" className="flex-1">
-                  <Button variant="outline" className={`w-full ${isDark ? 'border-gray-600 text-gray-300' : ''}`}>Entrar</Button>
-                </Link>
-                <Link to="/dashboard" className="flex-1">
-                  <Button className={`w-full ${isDark ? 'bg-itec-bloodRed hover:bg-itec-bloodRed/80 text-white' : 'btn-primary'}`}>Dashboard</Button>
-                </Link>
+                {user ? (
+                  <>
+                    <Button 
+                      variant="outline" 
+                      className={`${isDark ? 'border-gray-600 text-gray-300' : ''} w-full`}
+                      onClick={handleLogout}
+                    >
+                      <LogOut className="mr-1 h-4 w-4" /> Sair
+                    </Button>
+                    <Link to="/dashboard" className="flex-1">
+                      <Button className={`w-full ${isDark ? 'bg-itec-bloodRed hover:bg-itec-bloodRed/80 text-white' : 'btn-primary'}`}>Dashboard</Button>
+                    </Link>
+                  </>
+                ) : (
+                  <>
+                    <Link to="/login" className="flex-1">
+                      <Button variant="outline" className={`w-full ${isDark ? 'border-gray-600 text-gray-300' : ''}`}>Entrar</Button>
+                    </Link>
+                    <Link to="/login" className="flex-1">
+                      <Button className={`w-full ${isDark ? 'bg-itec-bloodRed hover:bg-itec-bloodRed/80 text-white' : 'btn-primary'}`}>Acessar EAD</Button>
+                    </Link>
+                  </>
+                )}
               </div>
             </div>
           </div>

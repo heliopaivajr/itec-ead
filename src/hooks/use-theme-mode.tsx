@@ -12,7 +12,7 @@ interface ThemeContextType {
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  // Always start with dark theme for the futuristic look
+  // Always start with dark theme for the futuristic blood-red look
   const [theme, setTheme] = useState<ThemeMode>('dark');
 
   useEffect(() => {
