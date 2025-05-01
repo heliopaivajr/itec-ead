@@ -68,7 +68,8 @@ export default {
 					gold: '#C19A6B',
 					purple: '#9B87F5',
 					lightGray: '#F6F8FA',
-					darkGray: '#333333'
+					darkGray: '#1A1F2C',
+					bloodRed: '#ea384c'
 				}
 			},
 			borderRadius: {
@@ -96,12 +97,23 @@ export default {
 				'pulse-slow': {
 					'0%, 100%': { opacity: '1' },
 					'50%': { opacity: '0.85' }
+				},
+				'glow': {
+					'0%, 100%': { 
+						boxShadow: '0 0 5px rgba(193, 154, 107, 0.5)',
+						borderColor: 'rgba(193, 154, 107, 0.6)' 
+					},
+					'50%': { 
+						boxShadow: '0 0 20px rgba(193, 154, 107, 0.8)',
+						borderColor: 'rgba(193, 154, 107, 1)' 
+					}
 				}
 			},
 			animation: {
 				'accordion-down': 'accordion-down 0.2s ease-out',
 				'accordion-up': 'accordion-up 0.2s ease-out',
-				'pulse-slow': 'pulse-slow 3s infinite ease-in-out'
+				'pulse-slow': 'pulse-slow 3s infinite ease-in-out',
+				'glow': 'glow 2s infinite ease-in-out'
 			},
 			fontFamily: {
 				merriweather: ['Merriweather', 'serif'],

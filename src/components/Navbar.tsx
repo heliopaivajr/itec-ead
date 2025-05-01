@@ -41,7 +41,9 @@ const Navbar = () => {
             <Link to="/login" className="flex items-center text-itec-blue hover:text-opacity-80 transition-colors">
               <User className="mr-1 h-4 w-4" /> Entrar
             </Link>
-            <Button className="btn-primary">Matricule-se</Button>
+            <Button className="btn-primary" asChild>
+              <Link to="/dashboard">Dashboard</Link>
+            </Button>
           </div>
 
           {/* Mobile Menu Button */}
@@ -66,8 +68,8 @@ const Navbar = () => {
                 <Link to="/login" className="flex-1">
                   <Button variant="outline" className="w-full">Entrar</Button>
                 </Link>
-                <Link to="/registro" className="flex-1">
-                  <Button className="btn-primary w-full">Matricule-se</Button>
+                <Link to="/dashboard" className="flex-1">
+                  <Button className="btn-primary w-full">Dashboard</Button>
                 </Link>
               </div>
             </div>
