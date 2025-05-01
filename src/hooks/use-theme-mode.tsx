@@ -12,13 +12,18 @@ interface ThemeContextType {
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  const [theme, setTheme] = useState<ThemeMode>(() => {
+  // Always start with dark theme for the futuristic look
+  const [theme, setTheme] = useState<ThemeMode>('dark');
+
+  useEffect(() => {
+    // Check if we have a saved theme preference
     if (typeof window !== 'undefined') {
       const savedTheme = localStorage.getItem('theme') as ThemeMode;
-      return savedTheme || 'dark'; // Default to dark theme for futuristic look
+      // Even if there's a saved preference, we'll default to dark theme
+      // for the futuristic blood-red look the user wants
+      setTheme(savedTheme || 'dark');
     }
-    return 'dark'; // Default to dark theme
-  });
+  }, []);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {

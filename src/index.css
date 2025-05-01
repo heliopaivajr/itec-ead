@@ -127,4 +127,43 @@
   .glass-card {
     @apply bg-opacity-20 backdrop-blur-lg border border-white/10 shadow-lg rounded-xl;
   }
+
+  .futuristic-border {
+    @apply relative after:content-[''] after:absolute after:-inset-0.5 after:bg-gradient-to-r after:from-itec-bloodRed/50 after:via-itec-bloodRed after:to-itec-bloodRed/50 after:animate-pulse-slow after:-z-10 after:rounded-md;
+  }
+
+  .tech-grid {
+    background-size: 50px 50px;
+    background-image: 
+      linear-gradient(to right, rgba(234, 56, 76, 0.1) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(234, 56, 76, 0.1) 1px, transparent 1px);
+  }
+
+  .glow-text {
+    text-shadow: 0 0 10px rgba(234, 56, 76, 0.8);
+  }
+}
+
+/* Futuristic card hover effect */
+.futuristic-card {
+  transition: all 0.3s ease;
+}
+
+.futuristic-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 10px 25px -5px rgba(234, 56, 76, 0.4);
+}
+
+/* Pulse animation for glowing elements */
+@keyframes neon-pulse {
+  0%, 100% {
+    box-shadow: 0 0 5px 2px rgba(234, 56, 76, 0.6);
+  }
+  50% {
+    box-shadow: 0 0 15px 5px rgba(234, 56, 76, 0.8);
+  }
+}
+
+.neon-pulse {
+  animation: neon-pulse 2s infinite;
 }

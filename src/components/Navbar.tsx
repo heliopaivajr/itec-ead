@@ -16,9 +16,11 @@ const Navbar = () => {
         <div className="flex items-center justify-between">
           {/* Logo */}
           <Link to="/" className="flex items-center space-x-2">
-            <div className={`h-10 w-10 rounded-full ${isDark ? 'bg-black border border-itec-bloodRed' : 'bg-itec-blue'} flex items-center justify-center`}>
-              <span className={`${isDark ? 'text-itec-bloodRed' : 'text-white'} font-merriweather font-bold text-xl`}>I</span>
-            </div>
+            <img 
+              src="/lovable-uploads/00c3510e-28c5-45a4-9b59-cfd3d101068d.png" 
+              alt="ITEC Logo" 
+              className="h-10 w-auto"
+            />
             <span className={`font-merriweather font-bold ${isDark ? 'text-white' : 'text-itec-blue'} text-xl hidden sm:block`}>
               ITEC {isDark && <span className="text-itec-bloodRed">EAD</span>}
             </span>
