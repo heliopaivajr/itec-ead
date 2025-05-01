@@ -15,9 +15,9 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   const [theme, setTheme] = useState<ThemeMode>(() => {
     if (typeof window !== 'undefined') {
       const savedTheme = localStorage.getItem('theme') as ThemeMode;
-      return savedTheme || 'light';
+      return savedTheme || 'dark'; // Default to dark theme for futuristic look
     }
-    return 'light';
+    return 'dark'; // Default to dark theme
   });
 
   useEffect(() => {

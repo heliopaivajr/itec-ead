@@ -22,7 +22,7 @@ import { Button } from '@/components/ui/button';
 const DashboardContent = () => {
   return (
     <div className="p-6">
-      <h1 className="text-2xl font-merriweather font-bold mb-6">Dashboard</h1>
+      <h1 className="text-2xl font-merriweather font-bold mb-6 text-itec-bloodRed">Dashboard</h1>
       <p>Bem-vindo à plataforma EAD do Instituto de Teologia Cristã.</p>
       <p className="mt-4">Utilize o menu lateral para navegar pelos recursos disponíveis.</p>
     </div>
@@ -32,16 +32,16 @@ const DashboardContent = () => {
 const Dashboard = () => {
   return (
     <SidebarProvider defaultOpen={true}>
-      <div className="min-h-screen flex w-full">
+      <div className="min-h-screen flex w-full bg-gray-900 text-gray-100">
         <AppSidebar />
         <SidebarInset>
-          <div className="flex-1 overflow-auto">
-            <header className="border-b border-gray-200 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+          <div className="flex-1 overflow-auto bg-gray-900">
+            <header className="border-b border-gray-800 bg-gray-800/95 backdrop-blur supports-[backdrop-filter]:bg-gray-800/60">
               <div className="h-14 flex items-center px-4 gap-4">
                 <SidebarTrigger />
                 <div className="flex-1" />
-                <Button variant="outline" size="sm">
-                  <Bell className="h-4 w-4 mr-2" />
+                <Button variant="outline" size="sm" className="bg-transparent border-gray-700 hover:bg-gray-700">
+                  <Bell className="h-4 w-4 mr-2 text-itec-bloodRed" />
                   Notificações
                 </Button>
               </div>
@@ -74,55 +74,55 @@ const AppSidebar = () => {
     <Sidebar 
       variant="sidebar" 
       collapsible="icon" 
-      className="border-r border-gray-800 bg-itec-darkGray"
+      className="border-r border-gray-800 bg-black"
     >
       <SidebarHeader className="p-2 border-b border-gray-800">
         <div className="flex items-center justify-center">
-          <div className="h-12 w-12 rounded-full bg-itec-blue flex items-center justify-center border border-itec-gold">
-            <span className="text-white font-merriweather font-bold text-xl">I</span>
+          <div className="h-12 w-12 rounded-full bg-black flex items-center justify-center border border-itec-bloodRed animate-glow">
+            <span className="text-itec-bloodRed font-merriweather font-bold text-xl">I</span>
           </div>
           <span className="ml-3 font-merriweather font-bold text-white text-xl hidden sm:block">
-            ITEC EAD
+            ITEC <span className="text-itec-bloodRed">EAD</span>
           </span>
         </div>
         <div className="flex justify-center mt-2">
           <Button 
             variant="ghost" 
             size="sm" 
-            className="text-itec-gold hover:text-itec-gold/80 hover:bg-gray-800"
+            className="text-itec-bloodRed hover:text-itec-bloodRed/80 hover:bg-gray-900"
           >
             Palavra do Dia
           </Button>
         </div>
       </SidebarHeader>
-      <SidebarContent className="p-2">
+      <SidebarContent className="p-2 bg-gray-900">
         <SidebarMenu>
           {menuItems.map((item) => (
             <SidebarMenuItem key={item.label}>
               <SidebarMenuButton 
                 tooltip={item.tooltip} 
-                className="text-gray-300 hover:bg-gray-800 hover:text-itec-gold data-[active=true]:bg-gray-800 data-[active=true]:text-itec-gold group"
+                className="text-gray-300 hover:bg-gray-800 hover:text-itec-bloodRed data-[active=true]:bg-gray-800 data-[active=true]:text-itec-bloodRed group"
               >
-                <item.icon className="group-hover:text-itec-gold transition-colors" />
+                <item.icon className="group-hover:text-itec-bloodRed transition-colors" />
                 <span>{item.label}</span>
               </SidebarMenuButton>
             </SidebarMenuItem>
           ))}
         </SidebarMenu>
       </SidebarContent>
-      <SidebarFooter className="p-2 border-t border-gray-800">
+      <SidebarFooter className="p-2 border-t border-gray-800 bg-black">
         <div className="flex justify-center">
           <Button 
             variant="outline" 
             size="sm" 
-            className="border-itec-gold text-itec-gold hover:bg-gray-800 hover:text-itec-gold"
+            className="border-itec-bloodRed text-itec-bloodRed hover:bg-gray-900 hover:text-itec-bloodRed"
           >
             Modo Foco de Estudos
           </Button>
         </div>
-        <div className="mt-2 p-2 rounded bg-gray-800 text-sm text-center text-gray-300">
+        <div className="mt-2 p-2 rounded bg-gray-900 text-sm text-center text-gray-300">
           <p className="italic">"A sabedoria é a coisa principal; adquire pois a sabedoria."</p>
-          <p className="text-xs mt-1 text-itec-gold">Provérbios 4:7</p>
+          <p className="text-xs mt-1 text-itec-bloodRed">Provérbios 4:7</p>
         </div>
       </SidebarFooter>
     </Sidebar>
