@@ -13,7 +13,7 @@ const Footer = () => {
               <div className="h-10 w-10 rounded-full bg-white flex items-center justify-center">
                 <span className="text-itec-blue font-merriweather font-bold text-xl">I</span>
               </div>
-              <span className="font-merriweather font-bold text-white text-xl">ITEC EAD</span>
+              <span className="font-merriweather font-bold text-white text-xl">ITEC</span>
             </div>
             <p className="text-sm text-gray-300">
               Instituto de Teologia Cristã - Formando líderes através de uma educação teológica de excelência desde 1990.
@@ -42,8 +42,8 @@ const Footer = () => {
             <h3 className="font-merriweather font-semibold text-lg mb-4">Links Rápidos</h3>
             <ul className="space-y-2">
               <li><Link to="/cursos" className="hover:text-itec-gold transition-colors">Cursos</Link></li>
+              <li><Link to="/professores" className="hover:text-itec-gold transition-colors">Professores</Link></li>
               <li><Link to="/sobre" className="hover:text-itec-gold transition-colors">Nossa Missão</Link></li>
-              <li><Link to="/docentes" className="hover:text-itec-gold transition-colors">Corpo Docente</Link></li>
               <li><Link to="/contato" className="hover:text-itec-gold transition-colors">Contato</Link></li>
               <li><Link to="/comunidade" className="hover:text-itec-gold transition-colors">Comunidade</Link></li>
               <li><Link to="/blog" className="hover:text-itec-gold transition-colors">Blog</Link></li>
