@@ -8,6 +8,7 @@ import { ThemeProvider } from "./hooks/use-theme-mode";
 import Index from "./pages/Index";
 import Dashboard from "./pages/Dashboard";
 import Login from "./pages/Login";
+import Professores from "./pages/Professores";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -33,6 +34,7 @@ const App = () => (
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/login" element={<Login />} />
+            <Route path="/professores" element={<Professores />} />
             <Route 
               path="/dashboard" 
               element={

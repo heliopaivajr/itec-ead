@@ -49,13 +49,14 @@ const Navbar = () => {
               className="h-10 w-auto"
             />
             <span className={`font-merriweather font-bold ${isDark ? 'text-white' : 'text-itec-blue'} text-xl hidden sm:block`}>
-              ITEC {isDark && <span className="text-itec-bloodRed">EAD</span>}
+              ITEC
             </span>
           </Link>
 
           {/* Desktop Navigation */}
           <div className="hidden md:flex items-center space-x-6">
             <Link to="/cursos" className={`${isDark ? 'text-gray-300 hover:text-itec-bloodRed' : 'text-itec-darkGray hover:text-itec-blue'} transition-colors`}>Cursos</Link>
+            <Link to="/professores" className={`${isDark ? 'text-gray-300 hover:text-itec-bloodRed' : 'text-itec-darkGray hover:text-itec-blue'} transition-colors`}>Professores</Link>
             <div className="relative group">
               <button className={`flex items-center ${isDark ? 'text-gray-300 hover:text-itec-bloodRed' : 'text-itec-darkGray hover:text-itec-blue'} transition-colors`}>
                 Sobre <ChevronDown className="ml-1 h-4 w-4" />
@@ -96,7 +97,7 @@ const Navbar = () => {
                   <User className="mr-1 h-4 w-4" /> Entrar
                 </Link>
                 <Button className={isDark ? "bg-itec-bloodRed hover:bg-itec-bloodRed/80 text-white" : "btn-primary"} asChild>
-                  <Link to="/login">Acessar EAD</Link>
+                  <Link to="/login">Área do Aluno</Link>
                 </Button>
               </>
             )}
@@ -140,7 +141,7 @@ const Navbar = () => {
                       <Button variant="outline" className={`w-full ${isDark ? 'border-gray-600 text-gray-300' : ''}`}>Entrar</Button>
                     </Link>
                     <Link to="/login" className="flex-1">
-                      <Button className={`w-full ${isDark ? 'bg-itec-bloodRed hover:bg-itec-bloodRed/80 text-white' : 'btn-primary'}`}>Acessar EAD</Button>
+                      <Button className={`w-full ${isDark ? 'bg-itec-bloodRed hover:bg-itec-bloodRed/80 text-white' : 'btn-primary'}`}>Área do Aluno</Button>
                     </Link>
                   </>
                 )}

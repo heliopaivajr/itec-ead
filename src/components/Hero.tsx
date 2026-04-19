@@ -37,7 +37,7 @@ const Hero = () => {
               <span className="text-white">Formação Teológica de</span> <span className="text-itec-bloodRed">Excelência</span> <span className="text-white">para sua Vocação Cristã</span>
             </h1>
             <p className="text-lg opacity-90">
-              O ITEC EAD oferece uma jornada completa de aprendizado teológico, unindo tradição, inovação e formação espiritual autêntica.
+              O ITEC oferece um curso livre de teologia, unindo tradição, inovação e formação espiritual autêntica para sua jornada ministerial.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 pt-4">
               <Button asChild className="bg-itec-bloodRed hover:bg-itec-bloodRed/90 text-white border-2 border-transparent hover:border-itec-bloodRed hover:bg-transparent transition-all duration-300">
