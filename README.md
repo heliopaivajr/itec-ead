@@ -1,6 +1,6 @@
 # Plataforma ITEC EAD
 
-![ITEC Logo](https://via.placeholder.com/150x50.png?text=ITEC+EAD) <!-- Atualizar o caminho real da logo -->
+![ITEC Logo](./public/logo_itec.png)
 
 O **Instituto Teológico de Educação Cristã (ITEC)** é uma plataforma educacional moderna que oferece formação teológica qualificada através de ensino híbrido (presencial e EAD). Este repositório guarda o código-fonte da nova plataforma 100% digital do instituto.
 
