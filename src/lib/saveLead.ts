@@ -1,3 +1,5 @@
+import { supabase } from '@/lib/supabase';
+
 export interface LeadData {
   nome: string;
   telefone: string;
@@ -9,7 +11,16 @@ export interface LeadData {
 export async function saveLead(data: LeadData): Promise<void> {
   const record = { ...data, criado_em: new Date().toISOString() };
 
-  // Fallback: localStorage (até Supabase ser configurado no Módulo B)
+  // Tenta salvar no Supabase primeiro
+  try {
+    const { error } = await supabase.from('leads_cursos').insert([record]);
+    if (!error) return;
+    console.warn('Supabase lead save failed, using localStorage fallback:', error.message);
+  } catch {
+    // Supabase indisponível — fallback silencioso
+  }
+
+  // Fallback: localStorage
   try {
     const existing = JSON.parse(localStorage.getItem('itec_leads') || '[]');
     existing.push(record);

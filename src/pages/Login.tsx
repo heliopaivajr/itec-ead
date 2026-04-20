@@ -1,16 +1,17 @@
-
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
 import { useToast } from "@/components/ui/use-toast";
-import { Lock, User } from 'lucide-react';
+import { Lock, User, GraduationCap, BookOpen, ShieldAlert } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
+import { supabase } from '@/lib/supabase';
 
 const formSchema = z.object({
   email: z.string().min(1, "E-mail é obrigatório").email("E-mail inválido"),
@@ -19,8 +20,11 @@ const formSchema = z.object({
 
 type FormValues = z.infer<typeof formSchema>;
 
+type RoleTab = 'aluno' | 'professor' | 'admin';
+
 const Login = () => {
   const [loading, setLoading] = useState(false);
+  const [activeTab, setActiveTab] = useState<RoleTab>('aluno');
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -35,135 +39,145 @@ const Login = () => {
   const onSubmit = async (data: FormValues) => {
     setLoading(true);
     try {
-      // For now, we'll use mock credentials for demonstration
-      // In a real app, this would be connected to a backend/Supabase
-      if (data.email === 'professor@itec.com' || data.email === 'aluno@itec.com') {
-        if (data.password === 'password123') {
-          // Store login state
-          localStorage.setItem('user', JSON.stringify({ email: data.email, role: data.email.includes('professor') ? 'professor' : 'aluno' }));
-          
-          toast({
-            title: "Login bem-sucedido",
-            description: "Bem-vindo ao Sistema ITEC EAD.",
-            duration: 3000,
-          });
-          
-          navigate('/dashboard');
-        } else {
-          toast({
-            variant: "destructive",
-            title: "Falha no login",
-            description: "Senha incorreta.",
-            duration: 3000,
-          });
-        }
-      } else {
+      // 1. Tenta fazer o login com Supabase Auth
+      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+        email: data.email,
+        password: data.password,
+      });
+
+      if (authError) {
+        throw new Error(authError.message === 'Invalid login credentials' 
+          ? 'E-mail ou senha incorretos.' 
+          : 'Falha na autenticação.');
+      }
+
+      if (authData.user) {
+        // 2. Busca o perfil do usuário para confirmar a 'role'
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('role, full_name')
+          .eq('id', authData.user.id)
+          .single();
+
+        const userRole = profile?.role || 'aluno'; // fallback
+
+        // Aqui salvamos o cache da session da nossa aplicação legada (opcional, mas bom pra manter compatibilidade)
+        localStorage.setItem('user', JSON.stringify({ 
+          id: authData.user.id,
+          email: authData.user.email, 
+          role: userRole,
+          name: profile?.full_name 
+        }));
+        
         toast({
-          variant: "destructive",
-          title: "Falha no login",
-          description: "Usuário não encontrado.",
+          title: "Login bem-sucedido",
+          description: `Bem-vindo ao Sistema, ${profile?.full_name || 'Usuário'}.`,
           duration: 3000,
         });
+
+        // Opcional: Se a pessoa acessou a aba errada, você pode avisar.
+        if (userRole !== activeTab) {
+          toast({
+            title: "Redirecionamento automático",
+            description: `Sua conta é de ${userRole}, ajustando seu painel...`,
+            duration: 4000,
+          });
+        }
+        
+        // Redireciona para o dashboard correto com base na role
+        navigate('/dashboard');
       }
-    } catch (error) {
+
+    } catch (error: any) {
       toast({
         variant: "destructive",
         title: "Erro no login",
-        description: "Ocorreu um erro durante o login.",
+        description: error.message || "Ocorreu um erro inesperado.",
         duration: 3000,
       });
+      // Logout in case of hanging session state
+      await supabase.auth.signOut();
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-gray-900 text-white">
+    <div className="min-h-screen flex flex-col bg-background text-foreground">
       <Navbar />
       <main className="flex-grow flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
         <div className="max-w-md w-full space-y-8">
           <div className="text-center">
-            <h2 className="mt-6 text-3xl font-bold text-itec-bloodRed">ITEC EAD</h2>
-            <p className="mt-2 text-sm">Entre com suas credenciais para acessar o sistema</p>
+            <h2 className="mt-6 text-3xl font-bold text-primary">ITEC Plataforma</h2>
+            <p className="mt-2 text-sm text-muted-foreground">Escolha o painel e entre com suas credenciais</p>
           </div>
-          
-          <div className="mt-8 bg-black p-6 rounded-lg border border-gray-800 shadow-lg relative futuristic-card">
-            <div className="absolute inset-0 bg-gradient-to-r from-itec-bloodRed/5 to-transparent opacity-50 rounded-lg"></div>
+
+          <div className="mt-8 bg-card p-6 rounded-xl border border-border shadow-lg relative futuristic-card">
+            <div className="absolute inset-0 bg-gradient-to-r from-primary/5 to-transparent opacity-50 rounded-xl pointer-events-none" />
+
+            <div className="relative z-10 mb-6">
+              <Tabs defaultValue="aluno" onValueChange={(v) => setActiveTab(v as RoleTab)} className="w-full">
+                <TabsList className="grid w-full grid-cols-3 bg-muted">
+                  <TabsTrigger value="aluno" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+                    <GraduationCap className="w-4 h-4 mr-2" /> Aluno
+                  </TabsTrigger>
+                  <TabsTrigger value="professor" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+                    <BookOpen className="w-4 h-4 mr-2" /> Prof
+                  </TabsTrigger>
+                  <TabsTrigger value="admin" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+                    <ShieldAlert className="w-4 h-4 mr-2" /> Admin
+                  </TabsTrigger>
+                </TabsList>
+              </Tabs>
+            </div>
+
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 relative z-10">
-                <FormField
-                  control={form.control}
-                  name="email"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="flex items-center text-gray-300">
-                        <User className="mr-2 h-4 w-4 text-itec-bloodRed" />
-                        E-mail
-                      </FormLabel>
-                      <FormControl>
-                        <Input
-                          placeholder="seu.email@exemplo.com"
-                          {...field}
-                          className="bg-gray-900 border-gray-700"
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                <FormField control={form.control} name="email" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="flex items-center text-foreground">
+                      <User className="mr-2 h-4 w-4 text-primary" /> E-mail
+                    </FormLabel>
+                    <FormControl>
+                      <Input placeholder="seu.email@exemplo.com" autoComplete="off" {...field}
+                        className="bg-background border-border focus:border-primary focus:ring-1 focus:ring-primary" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )} />
 
-                <FormField
-                  control={form.control}
-                  name="password"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="flex items-center text-gray-300">
-                        <Lock className="mr-2 h-4 w-4 text-itec-bloodRed" />
-                        Senha
-                      </FormLabel>
-                      <FormControl>
-                        <Input
-                          placeholder="******"
-                          type="password"
-                          {...field}
-                          className="bg-gray-900 border-gray-700"
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                <FormField control={form.control} name="password" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="flex items-center text-foreground">
+                      <Lock className="mr-2 h-4 w-4 text-primary" /> Senha
+                    </FormLabel>
+                    <FormControl>
+                      <Input placeholder="******" type="password" {...field}
+                        className="bg-background border-border focus:border-primary focus:ring-1 focus:ring-primary" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )} />
 
-                <div>
-                  <Button
-                    type="submit"
-                    disabled={loading}
-                    className="w-full bg-itec-bloodRed hover:bg-itec-bloodRed/80 text-white"
-                  >
-                    {loading ? "Processando..." : "Entrar"}
-                  </Button>
-                </div>
+                <Button type="submit" disabled={loading}
+                  className="w-full bg-primary hover:bg-primary/80 text-primary-foreground font-medium">
+                  {loading ? "Autenticando..." : `Entrar como ${activeTab.charAt(0).toUpperCase() + activeTab.slice(1)}`}
+                </Button>
               </form>
             </Form>
-            
+
             <div className="mt-6 text-center text-sm relative z-10">
-              <Link to="#" className="text-itec-bloodRed hover:text-itec-bloodRed/80">
+              <Link to="/esqueci-senha" className="text-muted-foreground hover:text-primary transition-colors">
                 Esqueceu sua senha?
               </Link>
             </div>
-            
-            <div className="mt-4 text-center text-xs text-gray-400 relative z-10">
-              <p>Credenciais de teste:</p>
-              <p>professor@itec.com / password123</p>
-              <p>aluno@itec.com / password123</p>
-            </div>
           </div>
-          
-          <div className="text-center text-sm">
-            <p>
-              Não tem uma conta?{" "}
-              <Link to="#" className="font-medium text-itec-bloodRed hover:text-itec-bloodRed/80">
-                Contate a administração
+
+          <div className="text-center text-sm mt-6">
+            <p className="text-muted-foreground mb-2">
+              Ainda não tem conta?{" "}
+              <Link to="/cadastro" className="font-medium text-primary hover:text-primary/80">
+                Cadastre-se como aluno
               </Link>
             </p>
           </div>
