@@ -1,0 +1,169 @@
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 210 33% 98%;
+    --foreground: 222 47% 11%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
+
+    --primary: 219 56% 23%;
+    --primary-foreground: 210 40% 98%;
+
+    --secondary: 35 40% 59%;
+    --secondary-foreground: 222.2 47.4% 11.2%;
+
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+
+    --accent: 255 64% 75%;
+    --accent-foreground: 222.2 47.4% 11.2%;
+
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 222.2 84% 4.9%;
+
+    --radius: 0.5rem;
+
+    --sidebar-background: 0 0% 98%;
+    --sidebar-foreground: 240 5.3% 26.1%;
+    --sidebar-primary: 240 5.9% 10%;
+    --sidebar-primary-foreground: 0 0% 98%;
+    --sidebar-accent: 240 4.8% 95.9%;
+    --sidebar-accent-foreground: 240 5.9% 10%;
+    --sidebar-border: 220 13% 91%;
+    --sidebar-ring: 217.2 91.2% 59.8%;
+  }
+
+  .dark {
+    --background: 222 25% 10%;
+    --foreground: 210 40% 98%;
+
+    --card: 222 20% 7%;
+    --card-foreground: 210 40% 98%;
+
+    --popover: 222 30% 7%;
+    --popover-foreground: 210 40% 98%;
+
+    --primary: 354 76% 56%;
+    --primary-foreground: 210 40% 98%;
+
+    --secondary: 36 30% 44%;
+    --secondary-foreground: 210 40% 98%;
+
+    --muted: 223 25% 20%;
+    --muted-foreground: 215 20.2% 75%;
+
+    --accent: 223 25% 27%;
+    --accent-foreground: 210 40% 98%;
+
+    --destructive: 0 84% 65%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 240 14% 22%;
+    --input: 240 14% 22%;
+    --ring: 354 76% 56%;
+    
+    --sidebar-background: 222 22% 10%;
+    --sidebar-foreground: 210 40% 98%;
+    --sidebar-primary: 354 76% 56%;
+    --sidebar-primary-foreground: 210 40% 98%;
+    --sidebar-accent: 220 23% 23%;
+    --sidebar-accent-foreground: 210 40% 98%;
+    --sidebar-border: 220 23% 23%;
+    --sidebar-ring: 354 76% 56%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground font-opensans;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-merriweather;
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply bg-itec-bloodRed text-white hover:bg-opacity-90 transition-colors px-6 py-3 rounded-md font-semibold;
+  }
+
+  .btn-secondary {
+    @apply bg-itec-gold text-itec-darkGray hover:bg-opacity-90 transition-colors px-6 py-3 rounded-md font-semibold;
+  }
+
+  .container-custom {
+    @apply max-w-7xl mx-auto px-4 sm:px-6 lg:px-8;
+  }
+
+  .gradient-text {
+    @apply bg-gradient-to-r from-itec-bloodRed via-itec-purple to-itec-gold bg-clip-text text-transparent;
+  }
+
+  .sidebar-card {
+    @apply bg-gray-800 rounded-lg border border-gray-700 p-4 shadow-lg hover:shadow-xl transition-shadow duration-300;
+  }
+
+  .sidebar-icon {
+    @apply text-itec-bloodRed hover:animate-glow transition-all duration-300;
+  }
+
+  .glass-card {
+    @apply bg-opacity-20 backdrop-blur-lg border border-white/10 shadow-lg rounded-xl;
+  }
+
+  .futuristic-border {
+    @apply relative after:content-[''] after:absolute after:-inset-0.5 after:bg-gradient-to-r after:from-itec-bloodRed/50 after:via-itec-bloodRed after:to-itec-bloodRed/50 after:animate-pulse-slow after:-z-10 after:rounded-md;
+  }
+
+  .tech-grid {
+    background-size: 50px 50px;
+    background-image: 
+      linear-gradient(to right, rgba(234, 56, 76, 0.1) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(234, 56, 76, 0.1) 1px, transparent 1px);
+  }
+
+  .glow-text {
+    text-shadow: 0 0 10px rgba(234, 56, 76, 0.8);
+  }
+}
+
+/* Futuristic card hover effect */
+.futuristic-card {
+  transition: all 0.3s ease;
+}
+
+.futuristic-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 10px 25px -5px rgba(234, 56, 76, 0.4);
+}
+
+/* Pulse animation for glowing elements */
+@keyframes neon-pulse {
+  0%, 100% {
+    box-shadow: 0 0 5px 2px rgba(234, 56, 76, 0.6);
+  }
+  50% {
+    box-shadow: 0 0 15px 5px rgba(234, 56, 76, 0.8);
+  }
+}
+
+.neon-pulse {
+  animation: neon-pulse 2s infinite;
+}
