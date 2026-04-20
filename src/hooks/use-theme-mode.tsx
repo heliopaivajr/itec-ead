@@ -1,45 +1,40 @@
-
 import React, { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
 
-type ThemeMode = 'light' | 'dark';
+export type ThemeMode = 'dark' | 'light' | 'sepia';
 
 interface ThemeContextType {
   theme: ThemeMode;
-  toggleTheme: () => void;
   setTheme: (theme: ThemeMode) => void;
+  toggleTheme: () => void;
 }
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  // Always start with dark theme for the futuristic blood-red look
-  const [theme, setTheme] = useState<ThemeMode>('dark');
+  const [theme, setThemeState] = useState<ThemeMode>('dark');
 
   useEffect(() => {
-    // Check if we have a saved theme preference
-    if (typeof window !== 'undefined') {
-      const savedTheme = localStorage.getItem('theme') as ThemeMode;
-      // Even if there's a saved preference, we'll default to dark theme
-      // for the futuristic blood-red look the user wants
-      setTheme(savedTheme || 'dark');
+    const saved = localStorage.getItem('itec-theme') as ThemeMode | null;
+    if (saved === 'light' || saved === 'sepia') {
+      setThemeState(saved);
     }
   }, []);
 
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const root = window.document.documentElement;
-      root.classList.remove('light', 'dark');
-      root.classList.add(theme);
-      localStorage.setItem('theme', theme);
-    }
+    const root = document.documentElement;
+    root.classList.remove('dark', 'light', 'sepia');
+    root.classList.add(theme);
+    localStorage.setItem('itec-theme', theme);
   }, [theme]);
 
+  const setTheme = (t: ThemeMode) => setThemeState(t);
+
   const toggleTheme = () => {
-    setTheme(theme === 'light' ? 'dark' : 'light');
+    setThemeState(prev => prev === 'dark' ? 'light' : prev === 'light' ? 'sepia' : 'dark');
   };
 
   return (
-    <ThemeContext.Provider value={{ theme, toggleTheme, setTheme }}>
+    <ThemeContext.Provider value={{ theme, setTheme, toggleTheme }}>
       {children}
     </ThemeContext.Provider>
   );
@@ -47,8 +42,6 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
 
 export function useThemeMode() {
   const context = useContext(ThemeContext);
-  if (context === undefined) {
-    throw new Error('useThemeMode must be used within a ThemeProvider');
-  }
+  if (!context) throw new Error('useThemeMode must be used within a ThemeProvider');
   return context;
 }
