@@ -1,73 +1,90 @@
-# Welcome to your Lovable project
+# Plataforma ITEC EAD
 
-## Project info
+![ITEC Logo](https://via.placeholder.com/150x50.png?text=ITEC+EAD) <!-- Atualizar o caminho real da logo -->
 
-**URL**: https://lovable.dev/projects/aa6b3115-03cc-4c9c-ab95-0e5ddca3cbc9
+O **Instituto Teológico de Educação Cristã (ITEC)** é uma plataforma educacional moderna que oferece formação teológica qualificada através de ensino híbrido (presencial e EAD). Este repositório guarda o código-fonte da nova plataforma 100% digital do instituto.
 
-## How can I edit this code?
+## 🚀 Status do Projeto
 
-There are several ways of editing your application.
+Atualmente, estamos finalizando as "Sprints 1 e 2" focadas no layout base, usabilidade (cores e temas) e na arquitetura segura de Banco de Dados.
 
-**Use Lovable**
+### O que já foi implementado:
+- ✅ **Layout Base e Tematização:** Implementação de sistema claro/escuro com design de alta conversão.
+- ✅ **Grade Curricular:** Páginas voltadas para visitantes explorarem os cursos (Teologia Livre, SETEB e Ministerial para Mulheres) e baixarem grades curriculares por PDFs gerados nativamente no navegador.
+- ✅ **Captação de Leads:** Modal forçado inteligente antes do descarregamento da grade curricular para prospectar novos alunos.
+- ✅ **Autenticação Real (Supabase):**
+  - Integração do `@supabase/supabase-js`
+  - Telas de **Login com Abas** separando Aluno, Professor e Admin.
+  - Tela de Cadastro aberta para alunos novatos (`/cadastro`).
+  - Fluxo seguro de **Esqueci a Senha** (`/esqueci-senha`).
+- ✅ **Gestão de Perfil & Roles:** Uso intensivo de *Triggers* no PostgreSQL e *Row Level Security (RLS)* para definir permissões de administrador, instrutor ou estudante protegendo o acesso ao painel do Dashboard.
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/aa6b3115-03cc-4c9c-ab95-0e5ddca3cbc9) and start prompting.
+---
 
-Changes made via Lovable will be committed automatically to this repo.
+## 🛠️ Tecnologias Utilizadas (Tech Stack)
 
-**Use your preferred IDE**
+Este projeto foi construído sobre uma arquitetura moderna para garantir performance e escalabilidade:
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+- **Frontend:** [React](https://reactjs.org/) + [Vite](https://vitejs.dev/) + [TypeScript](https://www.typescriptlang.org/)
+- **Estilização:** [Tailwind CSS](https://tailwindcss.com/) + Shadcn UI (Componentes Radix)
+- **Autenticação & Backend-as-a-Service:** [Supabase](https://supabase.com/)
+- **Roteamento:** React Router DOM
+- **Validações:** Zod + React Hook Form
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+---
 
-Follow these steps:
+## 💻 Como Rodar este Projeto Localmente
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+Para iniciar o desenvolvimento em sua máquina, siga os passos estritos abaixo para habilitar o banco de dados e as funções nativas.
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+### 1. Pré-Requisitos
+Você precisará ter instalado em sua máquina:
+- [Node.js](https://nodejs.org/) (Versão LTS >= 18)
+- Um projeto limpo já criado no [Supabase](https://supabase.com)
 
-# Step 3: Install the necessary dependencies.
-npm i
+### 2. Passo a Passo
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
+```bash
+# Clone este repositório
+git clone <url-do-repositorio>
+
+# Acesse a pasta do projeto
+cd itec-ead
+
+# Instale todas as dependências
+npm install
 ```
 
-**Edit a file directly in GitHub**
+#### 2.1 Configuração do Supabase (Apenas primeira vez)
+Para o painel de Login funcionar, você deve popular as variáveis de ambiente seguindo o nosso modelo.
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+1. Renomeie o (ou crie um novo) arquivo `.env` na raiz da pasta `itec-ead`:
+```env
+VITE_SUPABASE_URL="Sua URL do Projeto Supabase"
+VITE_SUPABASE_ANON_KEY="Sua Publishable / Anon Key do Supabase"
+```
 
-**Use GitHub Codespaces**
+2. Execute o **Script de Banco de Dados**:
+Abra o arquivo `supabase_setup.sql` que se encontra na raiz do projeto e **rode este comando dentro do SQL Editor do seu Supabase Dashboard**. Isso irá criar a tabela `profiles`, as políticas de segurança RLS, e as triggers responsáveis pelos cadastros.
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+#### 2.2 Rodando o Servidor de Desenvolvimento
+Com o `.env` configurado, basta subir o front-end:
 
-## What technologies are used for this project?
+```bash
+npm run dev
+```
+O servidor ficará disponível em `http://localhost:8080/` (ou em porta designada pelo Vite).
 
-This project is built with:
+---
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+## 🔐 Controle de Permissões (Roles)
 
-## How can I deploy this project?
+Nosso sistema se divide em 3 papéis principais por motivos de segurança.
 
-Simply open [Lovable](https://lovable.dev/projects/aa6b3115-03cc-4c9c-ab95-0e5ddca3cbc9) and click on Share -> Publish.
+- **Admin:** Necessita ser configurado manualmente no editor de tabelas do Supabase. Possui visualização sobre professores, cursos e dados empresariais gerais.
+- **Professor:** Poderá ser atrelado manualmente via dashboard ou painel web. Responsável pelos materiais de aula.
+- **Aluno:** Nível base. Uma conta que se cadastrar através da aba pública `/cadastro` do nosso site sempre receberá esse papel padrão.
 
-## Can I connect a custom domain to my Lovable project?
+---
 
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
+> Desenvolvido com carinho para o **ITEC - Instituto de Teologia Cristã**.
