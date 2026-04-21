@@ -22,13 +22,23 @@ export function useProfile() {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session?.user) { setLoading(false); return; }
 
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from('profiles')
         .select('*')
         .eq('id', session.user.id)
         .single();
 
-      setProfile(data ? { ...data, email: session.user.email } : null);
+      if (data) {
+        setProfile({ ...data, email: session.user.email });
+      } else {
+        // Fallback if profile doesn't exist (e.g. trigger failed or RLS blocked)
+        setProfile({
+          id: session.user.id,
+          full_name: session.user.user_metadata?.full_name || session.user.email?.split('@')[0] || 'Usuário',
+          role: (session.user.user_metadata?.role as UserRole) || 'aluno',
+          email: session.user.email
+        });
+      }
       setLoading(false);
     }
     load();
