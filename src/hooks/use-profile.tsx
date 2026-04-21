@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 
+export type UserRole = 'aluno' | 'professor' | 'secretaria' | 'admin' | 'superadmin';
+
 export interface Profile {
   id: string;
   full_name: string;
-  role: 'aluno' | 'professor' | 'admin';
+  role: UserRole;
   telefone?: string;
   foto_url?: string;
   bio?: string;

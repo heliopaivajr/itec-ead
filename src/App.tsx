@@ -6,9 +6,9 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { ThemeProvider } from "./hooks/use-theme-mode";
 import {
-  Book, Tv, Users, CalendarDays, FileText,
+  Tv, Users, CalendarDays, FileText,
   CreditCard, HelpCircle, ClipboardList, BookOpen,
-  Bell
+  Bell, ShieldAlert
 } from 'lucide-react';
 
 import Index           from "./pages/Index";
@@ -27,6 +27,7 @@ import Leads           from "./pages/dashboard/Leads";
 import Usuarios        from "./pages/dashboard/Usuarios";
 import MeusCursos      from "./pages/dashboard/MeusCursos";
 import Matriculas      from "./pages/dashboard/Matriculas";
+import CursosAdmin     from "./pages/dashboard/CursosAdmin";
 import ComingSoon      from "./pages/dashboard/ComingSoon";
 
 import { supabase } from '@/lib/supabase';
@@ -92,12 +93,14 @@ const App = () => (
               <Route path="avaliacoes"  element={<ComingSoon title="Avaliações" icon={ClipboardList} description="Criação e gestão de provas e trabalhos em desenvolvimento." />} />
               <Route path="agenda"      element={<ComingSoon title="Agenda" icon={CalendarDays} description="Calendário de aulas e compromissos acadêmicos em desenvolvimento." />} />
 
-              {/* Admin */}
+              {/* Admin / Secretaria */}
               <Route path="usuarios"      element={<Usuarios />} />
               <Route path="leads"         element={<Leads />} />
               <Route path="matriculas"    element={<Matriculas />} />
-              <Route path="cursos-admin"  element={<ComingSoon title="Cursos" icon={Book} description="CRUD de cursos e gerenciamento de grade curricular em desenvolvimento." />} />
+              <Route path="cursos-admin"  element={<CursosAdmin />} />
+              <Route path="financeiro"    element={<ComingSoon title="Financeiro" icon={CreditCard} description="Gestão financeira, mensalidades e relatórios em desenvolvimento." />} />
               <Route path="notificacoes"  element={<ComingSoon title="Notificações" icon={Bell} description="Envio de comunicados e avisos para alunos e professores em desenvolvimento." />} />
+              <Route path="seguranca"     element={<ComingSoon title="Segurança & LGPD" icon={ShieldAlert} description="Logs de acesso, controle de permissões e conformidade LGPD em desenvolvimento." />} />
 
               {/* All roles */}
               <Route path="perfil" element={<Perfil />} />

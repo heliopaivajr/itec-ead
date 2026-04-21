@@ -3,7 +3,7 @@ import {
   Book, User, Users, Tv, CalendarDays,
   FileText, CreditCard, HelpCircle, Bell,
   Settings, ShieldAlert, BookOpen, LayoutDashboard,
-  LogOut, GraduationCap, ClipboardList, UserCheck
+  LogOut, ClipboardList, UserCheck, Building2, Shield
 } from 'lucide-react';
 import {
   SidebarProvider, Sidebar, SidebarHeader, SidebarContent, SidebarFooter,
@@ -13,51 +13,84 @@ import {
 import { Button } from '@/components/ui/button';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useProfile } from '@/hooks/use-profile';
-import type { Profile } from '@/hooks/use-profile';
+import type { Profile, UserRole } from '@/hooks/use-profile';
 import { supabase } from '@/lib/supabase';
 import { ThemeSwitcher } from '@/components/ThemeSwitcher';
 
 // ─── Context type exported for sub-pages ─────────────────────
 export type DashboardContext = { profile: Profile };
 
-// ─── Menu items per role ──────────────────────────────────────
-
-const menuByRole = {
-  aluno: [
-    { icon: LayoutDashboard, label: 'Dashboard',      href: '/dashboard',              tooltip: 'Visão geral',             end: true },
-    { icon: Book,             label: 'Meus Cursos',   href: '/dashboard/cursos',        tooltip: 'Cursos matriculados' },
-    { icon: Tv,               label: 'Ao Vivo',       href: '/dashboard/ao-vivo',       tooltip: 'Transmissões ao vivo' },
-    { icon: Users,            label: 'Comunidade',    href: '/dashboard/comunidade',    tooltip: 'Fóruns e grupos' },
-    { icon: CalendarDays,     label: 'Eventos',       href: '/dashboard/eventos',       tooltip: 'Calendário acadêmico' },
-    { icon: FileText,         label: 'Documentos',    href: '/dashboard/documentos',    tooltip: 'Certificados e histórico' },
-    { icon: CreditCard,       label: 'Pagamentos',    href: '/dashboard/pagamentos',    tooltip: 'Boletos e financeiro' },
-    { icon: HelpCircle,       label: 'Suporte',       href: '/dashboard/suporte',       tooltip: 'Central de ajuda' },
-    { icon: Settings,         label: 'Configurações', href: '/dashboard/perfil',        tooltip: 'Perfil e preferências' },
-  ],
-  professor: [
-    { icon: LayoutDashboard, label: 'Dashboard',        href: '/dashboard',                tooltip: 'Visão geral',         end: true },
-    { icon: Users,            label: 'Minhas Turmas',   href: '/dashboard/turmas',          tooltip: 'Turmas e alunos' },
-    { icon: BookOpen,         label: 'Materiais',       href: '/dashboard/materiais',       tooltip: 'Apostilas e slides' },
-    { icon: ClipboardList,    label: 'Avaliações',      href: '/dashboard/avaliacoes',      tooltip: 'Provas e trabalhos' },
-    { icon: CalendarDays,     label: 'Agenda',          href: '/dashboard/agenda',          tooltip: 'Calendário de aulas' },
-    { icon: Bell,             label: 'Notificações',    href: '/dashboard/notificacoes',    tooltip: 'Avisos e mensagens' },
-    { icon: Settings,         label: 'Configurações',   href: '/dashboard/perfil',          tooltip: 'Perfil e preferências' },
-  ],
-  admin: [
-    { icon: LayoutDashboard, label: 'Dashboard',      href: '/dashboard',                tooltip: 'Painel geral',               end: true },
-    { icon: Users,            label: 'Usuários',       href: '/dashboard/usuarios',        tooltip: 'Alunos e professores' },
-    { icon: Book,             label: 'Cursos',         href: '/dashboard/cursos-admin',    tooltip: 'Gerenciar cursos' },
-    { icon: UserCheck,        label: 'Matrículas',     href: '/dashboard/matriculas',      tooltip: 'Aprovar matrículas' },
-    { icon: ClipboardList,    label: 'Leads',          href: '/dashboard/leads',           tooltip: 'Interessados cadastrados' },
-    { icon: FileText,         label: 'Documentos',     href: '/dashboard/documentos',      tooltip: 'Certificados e histórico' },
-    { icon: Bell,             label: 'Notificações',   href: '/dashboard/notificacoes',    tooltip: 'Enviar comunicados' },
-    { icon: ShieldAlert,      label: 'Configurações',  href: '/dashboard/perfil',          tooltip: 'Config. da plataforma' },
-  ],
-};
+// ─── Role helpers ─────────────────────────────────────────────
+// treat legacy 'admin' as 'superadmin'
+export function isSuperAdmin(role: UserRole) { return role === 'superadmin' || role === 'admin'; }
+export function isSecretaria(role: UserRole) { return role === 'secretaria'; }
+export function isProfessor(role: UserRole)  { return role === 'professor'; }
+export function isAluno(role: UserRole)       { return role === 'aluno'; }
 
 const roleLabel: Record<string, string> = {
-  aluno: 'Aluno', professor: 'Professor', admin: 'Administrador',
+  aluno:      'Aluno',
+  professor:  'Professor',
+  secretaria: 'Administração',
+  admin:      'SuperAdmin',
+  superadmin: 'SuperAdmin',
 };
+
+const roleColor: Record<string, string> = {
+  aluno:      'text-blue-400',
+  professor:  'text-green-400',
+  secretaria: 'text-teal-400',
+  admin:      'text-primary',
+  superadmin: 'text-primary',
+};
+
+// ─── Menu items per role ──────────────────────────────────────
+
+const menuByRole: Record<string, { icon: React.ElementType; label: string; href: string; tooltip: string; end?: boolean }[]> = {
+  aluno: [
+    { icon: LayoutDashboard, label: 'Dashboard',      href: '/dashboard',           tooltip: 'Visão geral',              end: true },
+    { icon: Book,            label: 'Meus Cursos',    href: '/dashboard/cursos',     tooltip: 'Cursos matriculados' },
+    { icon: Tv,              label: 'Ao Vivo',        href: '/dashboard/ao-vivo',    tooltip: 'Transmissões ao vivo' },
+    { icon: Users,           label: 'Comunidade',     href: '/dashboard/comunidade', tooltip: 'Fóruns e grupos' },
+    { icon: CalendarDays,    label: 'Eventos',        href: '/dashboard/eventos',    tooltip: 'Calendário acadêmico' },
+    { icon: FileText,        label: 'Documentos',     href: '/dashboard/documentos', tooltip: 'Certificados e histórico' },
+    { icon: CreditCard,      label: 'Pagamentos',     href: '/dashboard/pagamentos', tooltip: 'Boletos e financeiro' },
+    { icon: HelpCircle,      label: 'Suporte',        href: '/dashboard/suporte',    tooltip: 'Central de ajuda' },
+    { icon: Settings,        label: 'Configurações',  href: '/dashboard/perfil',     tooltip: 'Perfil e preferências' },
+  ],
+  professor: [
+    { icon: LayoutDashboard, label: 'Dashboard',      href: '/dashboard',                tooltip: 'Visão geral',           end: true },
+    { icon: Users,           label: 'Minhas Turmas',  href: '/dashboard/turmas',          tooltip: 'Turmas e alunos' },
+    { icon: BookOpen,        label: 'Materiais',      href: '/dashboard/materiais',       tooltip: 'Apostilas e slides' },
+    { icon: ClipboardList,   label: 'Avaliações',     href: '/dashboard/avaliacoes',      tooltip: 'Provas e trabalhos' },
+    { icon: CalendarDays,    label: 'Agenda',         href: '/dashboard/agenda',          tooltip: 'Calendário de aulas' },
+    { icon: Bell,            label: 'Notificações',   href: '/dashboard/notificacoes',    tooltip: 'Avisos e mensagens' },
+    { icon: Settings,        label: 'Configurações',  href: '/dashboard/perfil',          tooltip: 'Perfil e preferências' },
+  ],
+  secretaria: [
+    { icon: LayoutDashboard, label: 'Dashboard',      href: '/dashboard',                tooltip: 'Painel geral',           end: true },
+    { icon: Users,           label: 'Usuários',       href: '/dashboard/usuarios',        tooltip: 'Ver alunos e professores' },
+    { icon: UserCheck,       label: 'Matrículas',     href: '/dashboard/matriculas',      tooltip: 'Aprovar matrículas' },
+    { icon: ClipboardList,   label: 'Leads',          href: '/dashboard/leads',           tooltip: 'Interessados cadastrados' },
+    { icon: CreditCard,      label: 'Financeiro',     href: '/dashboard/financeiro',      tooltip: 'Mensalidades e pagamentos' },
+    { icon: FileText,        label: 'Documentos',     href: '/dashboard/documentos',      tooltip: 'Certificados e histórico' },
+    { icon: Bell,            label: 'Notificações',   href: '/dashboard/notificacoes',    tooltip: 'Enviar comunicados' },
+    { icon: Settings,        label: 'Configurações',  href: '/dashboard/perfil',          tooltip: 'Perfil' },
+  ],
+  superadmin: [
+    { icon: LayoutDashboard, label: 'Dashboard',      href: '/dashboard',                tooltip: 'Painel geral',           end: true },
+    { icon: Users,           label: 'Usuários',       href: '/dashboard/usuarios',        tooltip: 'Todos os usuários' },
+    { icon: Book,            label: 'Cursos',         href: '/dashboard/cursos-admin',    tooltip: 'Gerenciar cursos' },
+    { icon: UserCheck,       label: 'Matrículas',     href: '/dashboard/matriculas',      tooltip: 'Aprovar matrículas' },
+    { icon: ClipboardList,   label: 'Leads',          href: '/dashboard/leads',           tooltip: 'Interessados cadastrados' },
+    { icon: CreditCard,      label: 'Financeiro',     href: '/dashboard/financeiro',      tooltip: 'Gestão financeira' },
+    { icon: FileText,        label: 'Documentos',     href: '/dashboard/documentos',      tooltip: 'Certificados e histórico' },
+    { icon: Bell,            label: 'Notificações',   href: '/dashboard/notificacoes',    tooltip: 'Enviar comunicados' },
+    { icon: ShieldAlert,     label: 'Segurança',      href: '/dashboard/seguranca',       tooltip: 'Logs e permissões' },
+    { icon: Settings,        label: 'Configurações',  href: '/dashboard/perfil',          tooltip: 'Config. da plataforma' },
+  ],
+};
+// legacy alias
+menuByRole.admin = menuByRole.superadmin;
 
 // ─── Dashboard Layout ─────────────────────────────────────────
 
@@ -84,7 +117,7 @@ const Dashboard = () => {
     </div>
   );
 
-  const role = profile.role as keyof typeof menuByRole;
+  const role = profile.role;
   const menuItems = menuByRole[role] ?? menuByRole.aluno;
 
   return (
@@ -100,7 +133,7 @@ const Dashboard = () => {
               </div>
               <div className="hidden sm:block overflow-hidden">
                 <p className="font-merriweather font-bold text-sidebar-foreground text-sm leading-tight">ITEC EAD</p>
-                <p className="text-xs text-primary truncate">{roleLabel[role]}</p>
+                <p className={`text-xs truncate font-medium ${roleColor[role] ?? 'text-primary'}`}>{roleLabel[role] ?? role}</p>
               </div>
             </div>
           </SidebarHeader>
@@ -134,7 +167,7 @@ const Dashboard = () => {
           <SidebarFooter className="p-3 border-t border-border bg-sidebar space-y-2">
             <div className="flex items-center gap-2 p-2 rounded-lg bg-sidebar-accent">
               <div className="h-8 w-8 rounded-full bg-primary/20 flex items-center justify-center shrink-0">
-                <User className="h-4 w-4 text-primary" />
+                {isSuperAdmin(role) ? <Shield className="h-4 w-4 text-primary" /> : <User className="h-4 w-4 text-primary" />}
               </div>
               <div className="overflow-hidden hidden sm:block">
                 <p className="text-xs font-medium text-sidebar-foreground truncate">{profile.full_name}</p>
@@ -162,7 +195,6 @@ const Dashboard = () => {
               </div>
             </header>
 
-            {/* Sub-pages rendered here */}
             <Outlet context={{ profile } satisfies DashboardContext} />
           </div>
         </SidebarInset>
