@@ -113,7 +113,7 @@ function AdminView({ name }: { name: string }) {
             { icon: Users,         label: 'Gerenciar Usuários',  desc: 'Ver e editar roles',              href: '/dashboard/usuarios' },
             { icon: ClipboardList, label: 'Leads de Cursos',     desc: 'Interessados cadastrados',        href: '/dashboard/leads' },
             { icon: Book,          label: 'Matrículas',          desc: 'Aprovar e gerenciar matrículas',  href: '/dashboard/matriculas' },
-            { icon: Bell,          label: 'Notificações',        desc: 'Comunicados para alunos',         href: '/dashboard/notificacoes' },
+            { icon: Bell,          label: 'Avisos',              desc: 'Comunicados para alunos',         href: '/dashboard/avisos' },
           ].map(item => (
             <a key={item.label} href={item.href}
               className="flex items-center gap-3 p-2.5 rounded-lg hover:bg-muted/50 transition-colors group">
@@ -213,7 +213,7 @@ function ProfessorView({ name }: { name: string }) {
           { icon: ClipboardList, label: 'Avaliações',        desc: 'Crie e gerencie provas e trabalhos.',        href: '/dashboard/avaliacoes' },
           { icon: CalendarDays,  label: 'Agenda',            desc: 'Calendário de aulas e compromissos.',        href: '/dashboard/agenda' },
           { icon: ClipboardCheck,label: 'Frequência',        desc: 'Lance a frequência das suas turmas.',       href: '/dashboard/turmas' },
-          { icon: Bell,          label: 'Avisos',            desc: 'Crie comunicados para seus alunos.',        href: '/dashboard/notificacoes' },
+          { icon: Bell,          label: 'Avisos',            desc: 'Crie comunicados para seus alunos.',        href: '/dashboard/avisos' },
         ].map(item => (
           <a key={item.label} href={item.href}
             className="bg-card border border-border rounded-xl p-5 hover:border-primary/40 transition-all block">
@@ -250,8 +250,8 @@ function AlunoView({ name }: { name: string }) {
           { icon: CalendarDays,  label: 'Eventos',      desc: 'Calendário acadêmico e próximas aulas.',    href: '/dashboard/eventos' },
           { icon: FileText,      label: 'Documentos',   desc: 'Certificados e histórico acadêmico.',       href: '/dashboard/documentos' },
           { icon: ClipboardCheck,label: 'Frequência',   desc: 'Seu histórico de presença por disciplina.', href: '/dashboard/ao-vivo' },
-          { icon: Bell,          label: 'Avisos',       desc: 'Comunicados da secretaria e professores.',  href: '/dashboard/comunidade' },
-          { icon: BookOpen,      label: 'Materiais',    desc: 'Apostilas e materiais de aula.',            href: '/dashboard/ao-vivo' },
+          { icon: Bell,          label: 'Avisos',       desc: 'Comunicados da secretaria e professores.',  href: '/dashboard/avisos' },
+          { icon: BookOpen,      label: 'Materiais',    desc: 'Apostilas e materiais de aula.',            href: '/dashboard/materiais' },
         ].map(item => (
           <a key={item.label} href={item.href}
             className="bg-card border border-border rounded-xl p-5 hover:border-primary/40 transition-all block">
