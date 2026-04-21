@@ -1,6 +1,8 @@
 -- ============================================================
 -- ITEC EAD — Sprint 3: Mural de Avisos
 -- Execute este script no SQL Editor do Supabase
+-- NOTA: curso_id é UUID simples por ora — a FK para cursos
+--       será adicionada no Sprint 4 quando essa tabela existir.
 -- ============================================================
 
 -- 1. Tabela principal de avisos
@@ -11,7 +13,7 @@ CREATE TABLE IF NOT EXISTS avisos (
   autor_id      UUID        REFERENCES profiles(id) ON DELETE SET NULL,
   role_destino  TEXT        NOT NULL DEFAULT 'todos',
   -- 'todos' | 'alunos' | 'professores' | 'admin'
-  curso_id      UUID        REFERENCES cursos(id) ON DELETE SET NULL,
+  curso_id      UUID,       -- FK adicionada no Sprint 4 (tabela cursos ainda não existe)
   fixado        BOOLEAN     NOT NULL DEFAULT false,
   criado_em     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   expira_em     TIMESTAMPTZ
