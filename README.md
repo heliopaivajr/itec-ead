@@ -87,4 +87,117 @@ Nosso sistema se divide em 3 papéis principais por motivos de segurança.
 
 ---
 
+---
+
+## 📋 Roadmap de Sprints
+
+### Sprint 1–2 ✅ (Concluídas)
+- Layout base, tematização, autenticação, roles, leads, perfil
+
+---
+
+### Sprint 3 — Área Interna: Dashboard por Role
+
+O coração da plataforma é a **área interna pós-login**, dividida em três experiências distintas por papel.
+
+#### 🎓 Painel do Aluno
+| Rota | Página | Status |
+|---|---|---|
+| `/dashboard` | Visão geral: cursos em andamento, eventos, avisos | 🟡 Parcial |
+| `/dashboard/cursos` | Meus Cursos — progresso, módulos, materiais | 🟡 Parcial |
+| `/dashboard/ao-vivo` | Transmissões ao vivo (aulas em tempo real) | 🔴 Pendente |
+| `/dashboard/comunidade` | Fóruns, grupos de estudo, chat | 🔴 Pendente |
+| `/dashboard/eventos` | Calendário acadêmico e compromissos | 🔴 Pendente |
+| `/dashboard/documentos` | Certificados, histórico escolar, comprovantes | 🔴 Pendente |
+| `/dashboard/pagamentos` | Mensalidades, boletos, histórico financeiro | 🔴 Pendente |
+| `/dashboard/suporte` | Central de ajuda, tickets de suporte | 🔴 Pendente |
+| `/dashboard/perfil` | Foto, bio, dados pessoais, senha | ✅ Feito |
+
+#### 👨‍🏫 Painel do Professor
+| Rota | Página | Status |
+|---|---|---|
+| `/dashboard` | Visão geral: turmas, próximas aulas, avaliações | 🟡 Parcial |
+| `/dashboard/turmas` | Minhas Turmas — lista de alunos, frequência | 🔴 Pendente |
+| `/dashboard/materiais` | Upload e gestão de apostilas, slides, vídeos | 🔴 Pendente |
+| `/dashboard/avaliacoes` | Criar provas, trabalhos, lançar notas | 🔴 Pendente |
+| `/dashboard/agenda` | Calendário de aulas e compromissos | 🔴 Pendente |
+| `/dashboard/notificacoes` | Enviar avisos para turmas | 🔴 Pendente |
+| `/dashboard/perfil` | Dados pessoais, especialização, bio | ✅ Feito |
+
+#### 🛡️ Painel do Admin
+| Rota | Página | Status |
+|---|---|---|
+| `/dashboard` | KPIs: total alunos, professores, receita, leads | 🟡 Parcial |
+| `/dashboard/usuarios` | Gerenciar alunos, professores, admins + roles | ✅ Feito |
+| `/dashboard/leads` | Leads capturados, exportar CSV | ✅ Feito |
+| `/dashboard/matriculas` | Aprovar/reprovar matrículas, status por aluno | 🔴 Pendente |
+| `/dashboard/cursos-admin` | CRUD de cursos, módulos e conteúdo | 🔴 Pendente |
+| `/dashboard/notificacoes` | Comunicados para toda a plataforma | 🔴 Pendente |
+| `/dashboard/documentos` | Emissão de certificados, históricos | 🔴 Pendente |
+| `/dashboard/financeiro` | Receitas, despesas, mensalidades, relatórios | 🔴 Pendente |
+| `/dashboard/perfil` | Configurações gerais da plataforma | ✅ Feito |
+
+---
+
+### Sprint 4 — Módulos Acadêmicos Avançados
+
+Inspirados no template EduDash (EDUC), os seguintes módulos serão construídos nativamente para o ITEC:
+
+#### Gestão Acadêmica
+- **Frequência** — Controle de presença por aula/módulo (aluno e professor)
+- **Notas e Resultados** — Lançamento e visualização de notas por disciplina
+- **Horários** — Grade de horários semanal (aluno e professor)
+- **Calendário Acadêmico** — Eventos, feriados, datas de provas
+
+#### Comunicação
+- **Mural de Avisos** — Avisos institucionais visíveis por role
+- **Mensagens Internas** — Troca de mensagens entre usuário e admin/professor
+- **Notificações Push** — Alertas de novas aulas, notas, avisos
+
+#### Financeiro (Admin)
+- **Mensalidades** — Controle de pagamentos por aluno
+- **Descontos/Bolsas** — Tipos e percentuais de desconto
+- **Relatório Financeiro** — Receitas x Despesas por período
+
+#### Certificados
+- **Emissão** — Gerar certificado em PDF para alunos concluintes
+- **Histórico** — Listar todos os certificados emitidos
+
+---
+
+### Sprint 5 — Qualidade e Produção
+- Testes automatizados (Vitest + Testing Library)
+- PWA (manifesto + service worker)
+- Notificações por email (Supabase Edge Functions + Resend)
+- Otimizações de performance (code splitting, lazy loading)
+
+---
+
+## 🗄️ Estrutura de Banco de Dados (Supabase PostgreSQL)
+
+### Tabelas Atuais
+| Tabela | Descrição |
+|---|---|
+| `profiles` | Dados de perfil do usuário (role, nome, phone, bio) |
+| `leads_cursos` | Leads capturados antes do download da grade |
+| `matriculas` | Matrículas dos alunos nos cursos |
+
+### Tabelas Planejadas (Sprints 3–5)
+| Tabela | Descrição |
+|---|---|
+| `cursos` | Catálogo de cursos com módulos e informações |
+| `modulos` | Módulos/disciplinas de cada curso |
+| `aulas` | Aulas dentro de cada módulo |
+| `progresso_aluno` | Progresso por aluno/módulo |
+| `frequencia` | Registros de presença por aula |
+| `notas` | Notas lançadas por professor/disciplina |
+| `materiais` | Arquivos de apostilas, slides, vídeos |
+| `avisos` | Mural de avisos por role/turma |
+| `mensagens` | Mensagens internas entre usuários |
+| `certificados` | Certificados emitidos com hash de validação |
+| `pagamentos` | Mensalidades e status de pagamento |
+| `descontos` | Tipos e percentuais de desconto por aluno |
+
+---
+
 > Desenvolvido com carinho para o **ITEC - Instituto de Teologia Cristã**.

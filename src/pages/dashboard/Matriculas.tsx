@@ -1,0 +1,256 @@
+import React, { useEffect, useState } from 'react';
+import { Check, X, Eye, Loader2, User, Book } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { StatusBadge } from '@/components/dashboard/StatusBadge';
+import { supabase } from '@/lib/supabase';
+import { useToast } from '@/hooks/use-toast';
+
+interface Matricula {
+  id: string;
+  aluno_id: string;
+  curso_id: string;
+  status: string;
+  observacao?: string;
+  created_at: string;
+  profile?: { full_name: string; email?: string };
+}
+
+const COURSE_LABELS: Record<string, string> = {
+  'teologia-livre': 'Teologia Livre',
+  'seteb': 'SETEB',
+  'ministerial-mulheres': 'Ministerial p/ Mulheres',
+};
+
+const TABS = [
+  { key: 'pendente',  label: 'Pendentes' },
+  { key: 'ativo',     label: 'Ativas' },
+  { key: 'trancado',  label: 'Trancadas' },
+  { key: 'concluido', label: 'Concluídas' },
+];
+
+export default function Matriculas() {
+  const { toast } = useToast();
+  const [matriculas, setMatriculas] = useState<Matricula[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState('pendente');
+  const [search, setSearch] = useState('');
+  const [processing, setProcessing] = useState<string | null>(null);
+  const [detalhes, setDetalhes] = useState<Matricula | null>(null);
+  const [obsText, setObsText] = useState('');
+
+  const load = async () => {
+    setLoading(true);
+    const { data } = await supabase
+      .from('matriculas')
+      .select('*, profile:profiles(full_name, email)')
+      .order('created_at', { ascending: false });
+    setMatriculas(data ?? []);
+    setLoading(false);
+  };
+
+  useEffect(() => { load(); }, []);
+
+  const updateStatus = async (id: string, novoStatus: string) => {
+    setProcessing(id);
+    const { error } = await supabase
+      .from('matriculas')
+      .update({ status: novoStatus, observacao: obsText || null })
+      .eq('id', id);
+
+    if (error) {
+      toast({ title: 'Erro', description: error.message, variant: 'destructive' });
+    } else {
+      toast({ title: `Matrícula ${novoStatus === 'ativo' ? 'aprovada' : 'recusada'}!`, description: 'Status atualizado com sucesso.' });
+      setDetalhes(null);
+      setObsText('');
+      await load();
+    }
+    setProcessing(null);
+  };
+
+  const filtered = matriculas
+    .filter(m => m.status === activeTab)
+    .filter(m =>
+      m.profile?.full_name?.toLowerCase().includes(search.toLowerCase()) ||
+      m.curso_id?.toLowerCase().includes(search.toLowerCase())
+    );
+
+  const countByTab = (tab: string) => matriculas.filter(m => m.status === tab).length;
+
+  return (
+    <div className="p-6 space-y-6">
+      <div>
+        <h1 className="text-2xl font-merriweather font-bold text-primary">Matrículas</h1>
+        <p className="text-muted-foreground mt-1">Gerencie e aprove as matrículas dos alunos</p>
+      </div>
+
+      {/* Tabs */}
+      <div className="flex gap-1 bg-muted/40 border border-border rounded-xl p-1 w-fit">
+        {TABS.map(tab => (
+          <button
+            key={tab.key}
+            onClick={() => setActiveTab(tab.key)}
+            className={`flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-sm font-medium transition-all ${
+              activeTab === tab.key
+                ? 'bg-card border border-border text-foreground shadow-sm'
+                : 'text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            {tab.label}
+            {countByTab(tab.key) > 0 && (
+              <span className={`text-xs px-1.5 py-0.5 rounded-full ${activeTab === tab.key ? 'bg-primary/20 text-primary' : 'bg-muted text-muted-foreground'}`}>
+                {countByTab(tab.key)}
+              </span>
+            )}
+          </button>
+        ))}
+      </div>
+
+      {/* Search */}
+      <div className="relative max-w-sm">
+        <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <Input
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+          placeholder="Buscar por aluno ou curso..."
+          className="pl-9 bg-background border-border text-foreground"
+        />
+      </div>
+
+      {/* Table */}
+      <div className="bg-card border border-border rounded-xl overflow-hidden">
+        {loading ? (
+          <div className="flex items-center justify-center gap-2 p-12 text-muted-foreground animate-pulse">
+            <Loader2 className="h-4 w-4 animate-spin" /> Carregando matrículas...
+          </div>
+        ) : filtered.length === 0 ? (
+          <div className="flex flex-col items-center justify-center p-12 text-muted-foreground gap-2">
+            <Book className="h-10 w-10 opacity-30" />
+            <p>Nenhuma matrícula {activeTab === 'pendente' ? 'pendente' : `com status "${activeTab}"`}.</p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-border bg-muted/30">
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Aluno</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Curso</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Status</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Data</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Ações</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.map((m, i) => (
+                  <tr key={m.id} className={`border-b border-border last:border-0 hover:bg-muted/20 transition-colors ${i % 2 === 0 ? '' : 'bg-muted/5'}`}>
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-2">
+                        <div className="h-7 w-7 rounded-full bg-primary/20 flex items-center justify-center shrink-0">
+                          <User className="h-3.5 w-3.5 text-primary" />
+                        </div>
+                        <div>
+                          <p className="font-medium text-foreground">{m.profile?.full_name ?? 'Desconhecido'}</p>
+                          <p className="text-xs text-muted-foreground">{m.profile?.email ?? '—'}</p>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-4 py-3 text-sm text-foreground">{COURSE_LABELS[m.curso_id] ?? m.curso_id ?? '—'}</td>
+                    <td className="px-4 py-3"><StatusBadge status={m.status} /></td>
+                    <td className="px-4 py-3 text-xs text-muted-foreground">{new Date(m.created_at).toLocaleDateString('pt-BR')}</td>
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-1.5">
+                        <button onClick={() => { setDetalhes(m); setObsText(m.observacao ?? ''); }}
+                          className="h-7 w-7 rounded-lg border border-border flex items-center justify-center hover:border-primary/40 hover:text-primary transition-all">
+                          <Eye className="h-3.5 w-3.5" />
+                        </button>
+                        {m.status === 'pendente' && (
+                          <>
+                            <button
+                              onClick={() => updateStatus(m.id, 'ativo')}
+                              disabled={processing === m.id}
+                              className="h-7 w-7 rounded-lg bg-green-500/10 border border-green-500/30 flex items-center justify-center hover:bg-green-500/20 transition-all text-green-500">
+                              {processing === m.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
+                            </button>
+                            <button
+                              onClick={() => updateStatus(m.id, 'trancado')}
+                              disabled={processing === m.id}
+                              className="h-7 w-7 rounded-lg bg-red-500/10 border border-red-500/30 flex items-center justify-center hover:bg-red-500/20 transition-all text-red-500">
+                              <X className="h-3.5 w-3.5" />
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {/* Detail Modal */}
+      {detalhes && (
+        <div className="fixed inset-0 bg-background/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-card border border-border rounded-2xl p-6 w-full max-w-md space-y-4 shadow-2xl">
+            <h2 className="text-lg font-merriweather font-bold text-foreground">Detalhes da Matrícula</h2>
+
+            <div className="space-y-2 text-sm">
+              <div className="flex justify-between py-2 border-b border-border">
+                <span className="text-muted-foreground">Aluno</span>
+                <span className="font-medium text-foreground">{detalhes.profile?.full_name ?? '—'}</span>
+              </div>
+              <div className="flex justify-between py-2 border-b border-border">
+                <span className="text-muted-foreground">E-mail</span>
+                <span className="text-foreground">{detalhes.profile?.email ?? '—'}</span>
+              </div>
+              <div className="flex justify-between py-2 border-b border-border">
+                <span className="text-muted-foreground">Curso</span>
+                <span className="text-foreground">{COURSE_LABELS[detalhes.curso_id] ?? detalhes.curso_id ?? '—'}</span>
+              </div>
+              <div className="flex justify-between py-2 border-b border-border">
+                <span className="text-muted-foreground">Status</span>
+                <StatusBadge status={detalhes.status} />
+              </div>
+              <div className="flex justify-between py-2 border-b border-border">
+                <span className="text-muted-foreground">Data</span>
+                <span className="text-foreground">{new Date(detalhes.created_at).toLocaleDateString('pt-BR')}</span>
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-muted-foreground">Observação</label>
+              <textarea
+                value={obsText}
+                onChange={e => setObsText(e.target.value)}
+                rows={3}
+                placeholder="Adicione uma observação opcional..."
+                className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary resize-none"
+              />
+            </div>
+
+            <div className="flex gap-2 pt-1">
+              {detalhes.status === 'pendente' && (
+                <>
+                  <Button onClick={() => updateStatus(detalhes.id, 'ativo')}
+                    disabled={!!processing} className="flex-1 bg-green-600 hover:bg-green-700 text-white gap-2">
+                    <Check className="h-4 w-4" /> Aprovar
+                  </Button>
+                  <Button onClick={() => updateStatus(detalhes.id, 'trancado')}
+                    disabled={!!processing} variant="destructive" className="flex-1 gap-2">
+                    <X className="h-4 w-4" /> Recusar
+                  </Button>
+                </>
+              )}
+              <Button variant="outline" onClick={() => setDetalhes(null)}
+                className="flex-1 border-border text-foreground">
+                Fechar
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

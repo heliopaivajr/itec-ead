@@ -26,6 +26,7 @@ import Perfil          from "./pages/dashboard/Perfil";
 import Leads           from "./pages/dashboard/Leads";
 import Usuarios        from "./pages/dashboard/Usuarios";
 import MeusCursos      from "./pages/dashboard/MeusCursos";
+import Matriculas      from "./pages/dashboard/Matriculas";
 import ComingSoon      from "./pages/dashboard/ComingSoon";
 
 import { supabase } from '@/lib/supabase';
@@ -94,7 +95,7 @@ const App = () => (
               {/* Admin */}
               <Route path="usuarios"      element={<Usuarios />} />
               <Route path="leads"         element={<Leads />} />
-              <Route path="matriculas"    element={<ComingSoon title="Matrículas" icon={Book} description="Aprovação e gestão de matrículas em desenvolvimento." />} />
+              <Route path="matriculas"    element={<Matriculas />} />
               <Route path="cursos-admin"  element={<ComingSoon title="Cursos" icon={Book} description="CRUD de cursos e gerenciamento de grade curricular em desenvolvimento." />} />
               <Route path="notificacoes"  element={<ComingSoon title="Notificações" icon={Bell} description="Envio de comunicados e avisos para alunos e professores em desenvolvimento." />} />
 
