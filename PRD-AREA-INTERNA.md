@@ -1022,55 +1022,69 @@ src/
 
 ## 8. ROADMAP DE IMPLEMENTAÇÃO
 
-### Prioridade 1 — Sprint 3 (Próximas 4 semanas)
-1. Refatorar `DashboardHome` → 3 componentes separados por role
-2. Criar `KpiCard.tsx` reutilizável (admin, professor, aluno)
-3. Implementar `MeusCursos` com progresso real (DB: cursos, modulos, progresso_aluno)
-4. Criar `Matriculas.tsx` com aprovação/recusa (admin)
-5. Criar tabelas no Supabase (cursos, modulos, aulas, progresso_aluno, matriculas melhorada)
+### Sprint 3 — Dashboard por Role + Módulos Core (Em andamento)
 
-### Prioridade 2 — Sprint 4 (Semanas 5–8)
-6. Implementar `Frequencia.tsx` (view aluno + lançamento professor)
-7. Implementar `Notas.tsx` (view aluno + lançamento professor)
-8. Criar `Avisos.tsx` + `AvisosFeed` + `NotificacoesBadge` no header
-9. Criar `CursosAdmin.tsx` com CRUD completo
-10. Implementar módulo de `Materiais` (upload para Supabase Storage)
+| # | Tarefa | Status |
+|---|--------|--------|
+| 1 | Refatorar `DashboardHome` → 3 views separadas por role | ✅ Concluído |
+| 2 | Criar `KpiCard.tsx` reutilizável (admin, professor, aluno) | ✅ Concluído |
+| 3 | Criar `Matriculas.tsx` com aprovação/recusa e modal de detalhe | ✅ Concluído |
+| 4 | Criar `Avisos.tsx` + `AvisoCard` + `NovoAvisoModal` + RLS Supabase | ✅ Concluído |
+| 5 | SQL: tabela `avisos` com políticas RLS completas | ✅ Concluído |
+| 6 | Implementar `MeusCursos` com progresso real (barras, módulos, aulas) | 🟡 Próximo |
+| 7 | SQL: tabelas `cursos`, `modulos`, `aulas`, `progresso_aluno` | 🟡 Próximo |
 
-### Prioridade 3 — Sprint 5 (Semanas 9–12)
-11. `Calendario.tsx` com react-big-calendar
-12. `Certificados.tsx` com geração em PDF
-13. `Financeiro.tsx` / `Pagamentos.tsx`
-14. Sistema de busca global no header
+### Sprint 4 — Módulos Acadêmicos Avançados (Semanas 5–8)
 
-### Prioridade 4 — Sprint 6 (Pós-lançamento)
-15. Chat/Comunidade em tempo real (Supabase Realtime)
-16. PWA + notificações push
-17. Relatórios exportáveis (PDF/Excel)
-18. App mobile (React Native / Expo)
+| # | Tarefa | Status |
+|---|--------|--------|
+| 8  | `Frequencia.tsx` — view aluno (histórico) + lançamento professor | 🔴 Pendente |
+| 9  | `Notas.tsx` — tabela de notas aluno + formulário professor | 🔴 Pendente |
+| 10 | `CursosAdmin.tsx` — CRUD completo com módulos reordenáveis | 🔴 Pendente |
+| 11 | `Materiais.tsx` — upload para Supabase Storage | 🔴 Pendente |
+| 12 | `NotificacoesDropdown` — badge no header + dropdown de não lidas | 🔴 Pendente |
+
+### Sprint 5 — Calendário, Financeiro e Certificados (Semanas 9–12)
+
+| # | Tarefa | Status |
+|---|--------|--------|
+| 13 | `Calendario.tsx` com react-big-calendar | 🔴 Pendente |
+| 14 | `Certificados.tsx` com geração em PDF + código de validação | 🔴 Pendente |
+| 15 | `Financeiro.tsx` / `Pagamentos.tsx` com Recharts | 🔴 Pendente |
+| 16 | Busca global no header | 🔴 Pendente |
+
+### Sprint 6 — Pós-lançamento
+
+| # | Tarefa | Status |
+|---|--------|--------|
+| 17 | Chat/Comunidade em tempo real (Supabase Realtime) | 🔴 Pendente |
+| 18 | PWA + notificações push | 🔴 Pendente |
+| 19 | Relatórios exportáveis (PDF/Excel) | 🔴 Pendente |
+| 20 | App mobile (React Native / Expo) | 🔴 Pendente |
 
 ---
 
 ## 9. CHECKLIST DE O QUE COPIAR DO EDUC
 
-| Módulo EDUC | Arquivo Vue | Equivalente ITEC | Prioridade |
+| Módulo EDUC | Arquivo Vue | Equivalente ITEC | Status |
 |---|---|---|---|
-| Dashboard Aluno | `index2.vue` | `DashboardAlunoHome.tsx` | 🔴 Alta |
-| Dashboard Professor | `index3.vue` | `DashboardProfessorHome.tsx` | 🔴 Alta |
-| Dashboard Admin | `index1.vue` | `DashboardAdminHome.tsx` | 🔴 Alta |
-| Meus Cursos | `StudentDetails.vue` | `CursoDetalhe.tsx` | 🔴 Alta |
-| Frequência Aluno | `StudentAttendance.vue` | `Frequencia.tsx` | 🔴 Alta |
-| Lançar Notas | `ExamResult.vue` | `Notas.tsx` | 🔴 Alta |
-| Matrículas | `StudentList.vue` | `Matriculas.tsx` | 🔴 Alta |
-| Mural Avisos | `NoticeBoard.vue` | `Avisos.tsx` | 🟡 Média |
-| Calendário | `Event.vue` | `Calendario.tsx` | 🟡 Média |
-| Materiais | `Library.vue` | `Materiais.tsx` | 🟡 Média |
-| Certificados | `Certificate.vue` | `Certificados.tsx` | 🟡 Média |
-| Financeiro Admin | `FeesCollection.vue` | `Financeiro.tsx` | 🟡 Média |
-| Horários | `TeacherTimetable.vue` | `Agenda.tsx` | 🟢 Baixa |
-| Gestão de Cursos | `ClassList.vue` | `CursosAdmin.tsx` | 🟡 Média |
-| KPI Widgets | `index1/Widget.vue` | `KpiCard.tsx` | 🔴 Alta |
-| Gráficos | `RevenueStatic.vue` | `ReceitaDespesaChart.tsx` | 🟡 Média |
-| Tabelas | `StudentTable.vue` | `DataTable.tsx` | 🔴 Alta |
+| Dashboard Aluno | `index2.vue` | `DashboardHome → AlunoView` | ✅ Feito |
+| Dashboard Professor | `index3.vue` | `DashboardHome → ProfessorView` | ✅ Feito |
+| Dashboard Admin | `index1.vue` | `DashboardHome → AdminView` | ✅ Feito |
+| KPI Widgets | `index1/Widget.vue` | `KpiCard.tsx` | ✅ Feito |
+| Matrículas | `StudentList.vue` | `Matriculas.tsx` | ✅ Feito |
+| Mural Avisos | `NoticeBoard.vue` | `Avisos.tsx` + `AvisoCard.tsx` | ✅ Feito |
+| Meus Cursos | `StudentDetails.vue` | `MeusCursos.tsx` / `CursoDetalhe.tsx` | 🟡 Parcial |
+| Gestão de Cursos | `ClassList.vue` | `CursosAdmin.tsx` | 🟡 Parcial |
+| Frequência Aluno | `StudentAttendance.vue` | `Frequencia.tsx` | 🔴 Pendente |
+| Lançar Notas | `ExamResult.vue` | `Notas.tsx` | 🔴 Pendente |
+| Materiais | `Library.vue` | `Materiais.tsx` | 🔴 Pendente |
+| Calendário | `Event.vue` | `Calendario.tsx` | 🔴 Pendente |
+| Certificados | `Certificate.vue` | `Certificados.tsx` | 🔴 Pendente |
+| Financeiro Admin | `FeesCollection.vue` | `Financeiro.tsx` | 🔴 Pendente |
+| Horários | `TeacherTimetable.vue` | `Agenda.tsx` | 🔴 Pendente |
+| Gráficos | `RevenueStatic.vue` | `ReceitaDespesaChart.tsx` | 🔴 Pendente |
+| Tabelas | `StudentTable.vue` | `DataTable.tsx` (reutilizável) | 🔴 Pendente |
 
 ---
 
