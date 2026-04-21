@@ -3,7 +3,7 @@ import {
   Book, User, Users, Tv, CalendarDays,
   FileText, CreditCard, HelpCircle, Bell,
   Settings, ShieldAlert, BookOpen, LayoutDashboard,
-  LogOut, ClipboardList, UserCheck, Building2, Shield
+  LogOut, ClipboardList, UserCheck, Building2, Shield, Megaphone
 } from 'lucide-react';
 import {
   SidebarProvider, Sidebar, SidebarHeader, SidebarContent, SidebarFooter,
@@ -53,6 +53,7 @@ const menuByRole: Record<string, { icon: React.ElementType; label: string; href:
     { icon: Users,           label: 'Comunidade',     href: '/dashboard/comunidade', tooltip: 'Fóruns e grupos' },
     { icon: CalendarDays,    label: 'Eventos',        href: '/dashboard/eventos',    tooltip: 'Calendário acadêmico' },
     { icon: FileText,        label: 'Documentos',     href: '/dashboard/documentos', tooltip: 'Certificados e histórico' },
+    { icon: Megaphone,        label: 'Avisos',         href: '/dashboard/avisos',     tooltip: 'Mural de avisos' },
     { icon: CreditCard,      label: 'Pagamentos',     href: '/dashboard/pagamentos', tooltip: 'Boletos e financeiro' },
     { icon: HelpCircle,      label: 'Suporte',        href: '/dashboard/suporte',    tooltip: 'Central de ajuda' },
     { icon: Settings,        label: 'Configurações',  href: '/dashboard/perfil',     tooltip: 'Perfil e preferências' },
@@ -63,6 +64,7 @@ const menuByRole: Record<string, { icon: React.ElementType; label: string; href:
     { icon: BookOpen,        label: 'Materiais',      href: '/dashboard/materiais',       tooltip: 'Apostilas e slides' },
     { icon: ClipboardList,   label: 'Avaliações',     href: '/dashboard/avaliacoes',      tooltip: 'Provas e trabalhos' },
     { icon: CalendarDays,    label: 'Agenda',         href: '/dashboard/agenda',          tooltip: 'Calendário de aulas' },
+    { icon: Megaphone,        label: 'Avisos',         href: '/dashboard/avisos',          tooltip: 'Mural de avisos' },
     { icon: Bell,            label: 'Notificações',   href: '/dashboard/notificacoes',    tooltip: 'Avisos e mensagens' },
     { icon: Settings,        label: 'Configurações',  href: '/dashboard/perfil',          tooltip: 'Perfil e preferências' },
   ],
@@ -73,6 +75,7 @@ const menuByRole: Record<string, { icon: React.ElementType; label: string; href:
     { icon: ClipboardList,   label: 'Leads',          href: '/dashboard/leads',           tooltip: 'Interessados cadastrados' },
     { icon: CreditCard,      label: 'Financeiro',     href: '/dashboard/financeiro',      tooltip: 'Mensalidades e pagamentos' },
     { icon: FileText,        label: 'Documentos',     href: '/dashboard/documentos',      tooltip: 'Certificados e histórico' },
+    { icon: Megaphone,        label: 'Avisos',         href: '/dashboard/avisos',          tooltip: 'Mural de avisos' },
     { icon: Bell,            label: 'Notificações',   href: '/dashboard/notificacoes',    tooltip: 'Enviar comunicados' },
     { icon: Settings,        label: 'Configurações',  href: '/dashboard/perfil',          tooltip: 'Perfil' },
   ],
@@ -84,6 +87,7 @@ const menuByRole: Record<string, { icon: React.ElementType; label: string; href:
     { icon: ClipboardList,   label: 'Leads',          href: '/dashboard/leads',           tooltip: 'Interessados cadastrados' },
     { icon: CreditCard,      label: 'Financeiro',     href: '/dashboard/financeiro',      tooltip: 'Gestão financeira' },
     { icon: FileText,        label: 'Documentos',     href: '/dashboard/documentos',      tooltip: 'Certificados e histórico' },
+    { icon: Megaphone,        label: 'Avisos',         href: '/dashboard/avisos',          tooltip: 'Mural de avisos' },
     { icon: Bell,            label: 'Notificações',   href: '/dashboard/notificacoes',    tooltip: 'Enviar comunicados' },
     { icon: ShieldAlert,     label: 'Segurança',      href: '/dashboard/seguranca',       tooltip: 'Logs e permissões' },
     { icon: Settings,        label: 'Configurações',  href: '/dashboard/perfil',          tooltip: 'Config. da plataforma' },

@@ -28,6 +28,7 @@ import Usuarios        from "./pages/dashboard/Usuarios";
 import MeusCursos      from "./pages/dashboard/MeusCursos";
 import Matriculas      from "./pages/dashboard/Matriculas";
 import CursosAdmin     from "./pages/dashboard/CursosAdmin";
+import Avisos          from "./pages/dashboard/Avisos";
 import ComingSoon      from "./pages/dashboard/ComingSoon";
 
 import { supabase } from '@/lib/supabase';
@@ -99,6 +100,7 @@ const App = () => (
               <Route path="matriculas"    element={<Matriculas />} />
               <Route path="cursos-admin"  element={<CursosAdmin />} />
               <Route path="financeiro"    element={<ComingSoon title="Financeiro" icon={CreditCard} description="Gestão financeira, mensalidades e relatórios em desenvolvimento." />} />
+              <Route path="avisos"        element={<Avisos />} />
               <Route path="notificacoes"  element={<ComingSoon title="Notificações" icon={Bell} description="Envio de comunicados e avisos para alunos e professores em desenvolvimento." />} />
               <Route path="seguranca"     element={<ComingSoon title="Segurança & LGPD" icon={ShieldAlert} description="Logs de acesso, controle de permissões e conformidade LGPD em desenvolvimento." />} />
 
