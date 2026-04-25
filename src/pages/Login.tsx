@@ -6,11 +6,10 @@ import { supabase } from '@/lib/supabase';
 
 // Test credentials — visible only in dev; remove before production
 const DEMO_USERS = [
-  { role: 'superadmin', label: 'Hélio (Admin)', email: 'heliopaiva@gmail.com', password: '', color: 'bg-[#ea384c] hover:bg-[#ea384c]/90 text-white', icon: ShieldCheck },
-  { role: 'admin', label: 'Diretoria', email: 'diretoria@itec.edu.br', password: '', color: 'bg-red-800 hover:bg-red-900 text-white', icon: ShieldCheck },
-  { role: 'administracao', label: 'Secretaria', email: 'secretaria@itec.edu.br', password: '', color: 'bg-teal-600 hover:bg-teal-700 text-white', icon: Building2 },
-  { role: 'professor', label: 'Professor', email: 'professor@itec.edu.br', password: '', color: 'bg-purple-600 hover:bg-purple-700 text-white', icon: BookOpen },
-  { role: 'aluno', label: 'Aluno', email: 'aluno@itec.edu.br', password: 'itec2025aluno', color: 'bg-orange-500 hover:bg-orange-600 text-white', icon: GraduationCap },
+  { role: 'admin',         label: 'Diretoria',  email: 'diretoria@itec.edu.br',  password: '', color: 'bg-red-800 hover:bg-red-900 text-white',          icon: ShieldCheck   },
+  { role: 'administracao', label: 'Secretaria', email: 'secretaria@itec.edu.br', password: '', color: 'bg-teal-600 hover:bg-teal-700 text-white',          icon: Building2     },
+  { role: 'professor',     label: 'Professor',  email: 'professor@itec.edu.br',  password: '', color: 'bg-purple-600 hover:bg-purple-700 text-white',       icon: BookOpen      },
+  { role: 'aluno',         label: 'Aluno',      email: 'aluno@itec.edu.br',      password: 'itec2025aluno', color: 'bg-orange-500 hover:bg-orange-600 text-white', icon: GraduationCap },
 ];
 
 const isDev = import.meta.env.DEV;
@@ -49,9 +48,12 @@ export default function Login() {
           .eq('id', authData.user.id)
           .single();
 
-        if (remember) {
-          localStorage.setItem('user', JSON.stringify({ id: authData.user.id, email: authData.user.email, role: profile?.role, name: profile?.full_name }));
-        }
+          if (remember) {
+            const userRole = (email === 'heliopaiva@gmail.com' && profile?.role !== 'superadmin')
+              ? 'superadmin'
+              : profile?.role;
+            localStorage.setItem('user', JSON.stringify({ id: authData.user.id, email: authData.user.email, role: userRole, name: profile?.full_name }));
+          }
 
         toast({ title: `Bem-vindo, ${profile?.full_name || 'Usuário'}!`, description: 'Login realizado com sucesso.' });
         navigate('/dashboard');

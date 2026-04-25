@@ -13,43 +13,57 @@ export interface Profile {
   email?: string;
 }
 
+const SUPERADMIN_EMAIL = 'heliopaiva@gmail.com';
+
 export function useProfile() {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
 
+  const logout = async () => {
+    await supabase.auth.signOut();
+    setProfile(null);
+  };
+
   useEffect(() => {
     async function load() {
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.user) { 
+      if (!session?.user) {
         setProfile(null);
-        setLoading(false); 
-        return; 
+        setLoading(false);
+        return;
       }
 
-      const { data, error } = await supabase
+      const userEmail = session.user.email ?? '';
+
+      const { data } = await supabase
         .from('profiles')
         .select('*')
         .eq('id', session.user.id)
         .single();
 
       if (data) {
-        setProfile({ ...data, email: session.user.email });
+        // Force superadmin for the main admin regardless of what's stored in DB
+        const role: UserRole = userEmail === SUPERADMIN_EMAIL ? 'superadmin' : (data.role as UserRole);
+        setProfile({ ...data, email: userEmail, role });
       } else {
-        // Fallback if profile doesn't exist (e.g. trigger failed or RLS blocked)
+        // Fallback if profile row doesn't exist yet
+        const role: UserRole = userEmail === SUPERADMIN_EMAIL ? 'superadmin' : 'aluno';
         setProfile({
           id: session.user.id,
-          full_name: session.user.user_metadata?.full_name || session.user.email?.split('@')[0] || 'Usuário',
-          role: (session.user.user_metadata?.role as UserRole) || 'aluno',
-          email: session.user.email
+          full_name: session.user.user_metadata?.full_name || userEmail.split('@')[0] || 'Usuário',
+          role,
+          email: userEmail,
         });
       }
+
       setLoading(false);
     }
+
     load();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(() => load());
     return () => subscription.unsubscribe();
   }, []);
 
-  return { profile, loading };
+  return { profile, setProfile, loading, logout };
 }
