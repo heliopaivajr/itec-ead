@@ -34,7 +34,7 @@ const Navbar = () => {
 
           {/* Logo */}
           <Link to="/" className="flex items-center space-x-2 shrink-0">
-            <img src="/lovable-uploads/00c3510e-28c5-45a4-9b59-cfd3d101068d.png" alt="ITEC Logo" className="h-9 w-auto" />
+            <img src="/lovable-uploads/00c3510e-28c5-45a4-9b59-cfd3d101068d.png" alt="ITEC Logo" className="h-20 w-auto drop-shadow-lg rounded-md transition-transform duration-300 hover:scale-105" />
             <span className="font-merriweather font-bold text-foreground text-lg hidden sm:block">
               ITEC
             </span>
