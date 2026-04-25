@@ -74,14 +74,9 @@ const Navbar = () => {
                 </Button>
               </>
             ) : (
-              <>
-                <Link to="/login" className={`flex items-center text-sm ${navLink}`}>
-                  <User className="mr-1 h-4 w-4" /> Entrar
-                </Link>
-                <Button size="sm" className="bg-primary hover:bg-primary/80 text-primary-foreground" asChild>
-                  <Link to="/login">Área do Aluno</Link>
-                </Button>
-              </>
+              <Button size="sm" className="bg-primary hover:bg-primary/80 text-primary-foreground font-semibold" asChild>
+                <Link to="/login"><User className="mr-2 h-4 w-4" /> Entrar</Link>
+              </Button>
             )}
           </div>
 
@@ -115,14 +110,9 @@ const Navbar = () => {
                     </Button>
                   </>
                 ) : (
-                  <>
-                    <Button variant="outline" className="flex-1 border-border" asChild>
-                      <Link to="/login">Entrar</Link>
-                    </Button>
-                    <Button className="flex-1 bg-primary text-primary-foreground" asChild>
-                      <Link to="/login">Área do Aluno</Link>
-                    </Button>
-                  </>
+                  <Button className="w-full bg-primary text-primary-foreground font-semibold" asChild>
+                    <Link to="/login"><User className="mr-2 h-4 w-4" /> Entrar</Link>
+                  </Button>
                 )}
               </div>
             </div>

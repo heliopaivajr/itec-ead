@@ -1,8 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-
-const inputClass = 'w-full px-4 py-2 rounded-md bg-background border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary';
+import { Instagram, MessageCircle, ExternalLink } from 'lucide-react';
 
 const CallToAction = () => (
   <section className="py-20 bg-muted/30 relative overflow-hidden">
@@ -46,7 +45,7 @@ const CallToAction = () => (
             </p>
             <div className="space-y-4">
               {[
-                { label: 'Telefone', value: '(81) 9999-0000', icon: 'M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z' },
+                { label: 'Telefone', value: '(81) 99116-1448 (zap)', icon: 'M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z' },
                 { label: 'E-mail', value: 'secretaria@itec.edu.br', icon: 'M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z' },
                 { label: 'Horário de Atendimento', value: 'Segunda a Sexta: 8h às 18h', icon: 'M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z' },
               ].map(item => (
@@ -65,19 +64,37 @@ const CallToAction = () => (
             </div>
           </div>
 
-          <div className="bg-accent/40 p-6 rounded-lg border border-border">
-            <h3 className="font-merriweather font-bold text-xl text-foreground mb-4">
-              Agende uma Conversa
+          <div className="bg-accent/40 p-6 rounded-lg border border-border flex flex-col justify-center h-full">
+            <h3 className="font-merriweather font-bold text-xl text-foreground mb-4 text-center">
+              Faça sua Pré-inscrição
             </h3>
-            <form className="space-y-3">
-              <input type="text"  placeholder="Nome completo" className={inputClass} />
-              <input type="email" placeholder="E-mail"         className={inputClass} />
-              <input type="tel"   placeholder="Telefone"       className={inputClass} />
-              <textarea placeholder="Como podemos ajudar?" rows={3} className={inputClass} />
-              <Button className="bg-primary hover:bg-primary/80 text-primary-foreground w-full">
-                Enviar Mensagem
-              </Button>
-            </form>
+            <p className="text-muted-foreground mb-6 text-center text-sm">
+              Preencha nosso formulário oficial de interesse e aguarde o contato da nossa equipe.
+            </p>
+            
+            <Button asChild size="lg" className="bg-primary hover:bg-primary/80 text-primary-foreground w-full mb-6 text-lg py-6 shadow-lg shadow-primary/20">
+              <a href="https://forms.gle/16rAE9rjrS3fb4b79" target="_blank" rel="noopener noreferrer">
+                Se Inscreva aqui 👇 <ExternalLink className="ml-2 h-5 w-5" />
+              </a>
+            </Button>
+            
+            <div className="pt-6 border-t border-border">
+              <p className="text-sm font-medium text-foreground text-center mb-4">
+                Acessar o nosso Instagram e WhatsApp:
+              </p>
+              <div className="flex flex-col gap-3">
+                <a href="https://wa.me/5581991161448" target="_blank" rel="noopener noreferrer" 
+                   className="flex items-center justify-center gap-2 px-4 py-2.5 bg-[#25D366] hover:bg-[#20bd5a] text-white font-medium rounded-md transition-colors shadow-sm">
+                  <MessageCircle className="h-5 w-5" />
+                  WhatsApp (81) 99116-1448
+                </a>
+                <a href="https://instagram.com/itec.teologia" target="_blank" rel="noopener noreferrer" 
+                   className="flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-[#833ab4] via-[#fd1d1d] to-[#fcb045] hover:opacity-90 text-white font-medium rounded-md transition-opacity shadow-sm">
+                  <Instagram className="h-5 w-5" />
+                  @itec.teologia
+                </a>
+              </div>
+            </div>
           </div>
         </div>
       </div>
