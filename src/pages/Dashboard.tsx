@@ -21,26 +21,26 @@ import { ThemeSwitcher } from '@/components/ThemeSwitcher';
 export type DashboardContext = { profile: Profile };
 
 // ─── Role helpers ─────────────────────────────────────────────
-// treat legacy 'admin' as 'superadmin'
-export function isSuperAdmin(role: UserRole) { return role === 'superadmin' || role === 'admin'; }
-export function isSecretaria(role: UserRole) { return role === 'secretaria'; }
+// treat legacy 'admin' as 'superadmin' unless otherwise specified. Actually, 'admin' is Diretoria now.
+export function isSuperAdmin(role: UserRole) { return role === 'superadmin'; }
+export function isAdministracao(role: UserRole) { return role === 'administracao' || role === 'admin'; }
 export function isProfessor(role: UserRole)  { return role === 'professor'; }
 export function isAluno(role: UserRole)       { return role === 'aluno'; }
 
 const roleLabel: Record<string, string> = {
-  aluno:      'Aluno',
-  professor:  'Professor',
-  secretaria: 'Administração',
-  admin:      'SuperAdmin',
-  superadmin: 'SuperAdmin',
+  aluno:         'Aluno',
+  professor:     'Professor',
+  administracao: 'Secretaria',
+  admin:         'Diretoria',
+  superadmin:    'SuperAdmin',
 };
 
 const roleColor: Record<string, string> = {
-  aluno:      'text-blue-400',
-  professor:  'text-green-400',
-  secretaria: 'text-teal-400',
-  admin:      'text-primary',
-  superadmin: 'text-primary',
+  aluno:         'text-blue-400',
+  professor:     'text-green-400',
+  administracao: 'text-teal-400',
+  admin:         'text-red-400',
+  superadmin:    'text-primary',
 };
 
 // ─── Menu items per role ──────────────────────────────────────
@@ -68,7 +68,7 @@ const menuByRole: Record<string, { icon: React.ElementType; label: string; href:
     { icon: Bell,            label: 'Notificações',   href: '/dashboard/notificacoes',    tooltip: 'Avisos e mensagens' },
     { icon: Settings,        label: 'Configurações',  href: '/dashboard/perfil',          tooltip: 'Perfil e preferências' },
   ],
-  secretaria: [
+  administracao: [
     { icon: LayoutDashboard, label: 'Dashboard',      href: '/dashboard',                tooltip: 'Painel geral',           end: true },
     { icon: Users,           label: 'Usuários',       href: '/dashboard/usuarios',        tooltip: 'Ver alunos e professores' },
     { icon: UserCheck,       label: 'Matrículas',     href: '/dashboard/matriculas',      tooltip: 'Aprovar matrículas' },
@@ -78,6 +78,16 @@ const menuByRole: Record<string, { icon: React.ElementType; label: string; href:
     { icon: Megaphone,        label: 'Avisos',         href: '/dashboard/avisos',          tooltip: 'Mural de avisos' },
     { icon: Bell,            label: 'Notificações',   href: '/dashboard/notificacoes',    tooltip: 'Enviar comunicados' },
     { icon: Settings,        label: 'Configurações',  href: '/dashboard/perfil',          tooltip: 'Perfil' },
+  ],
+  admin: [
+    { icon: LayoutDashboard, label: 'Dashboard',      href: '/dashboard',                tooltip: 'Painel geral',           end: true },
+    { icon: Users,           label: 'Usuários',       href: '/dashboard/usuarios',        tooltip: 'Todos os usuários' },
+    { icon: Book,            label: 'Cursos',         href: '/dashboard/cursos-admin',    tooltip: 'Gerenciar cursos' },
+    { icon: UserCheck,       label: 'Matrículas',     href: '/dashboard/matriculas',      tooltip: 'Aprovar matrículas' },
+    { icon: ClipboardList,   label: 'Leads',          href: '/dashboard/leads',           tooltip: 'Interessados cadastrados' },
+    { icon: CreditCard,      label: 'Financeiro',     href: '/dashboard/financeiro',      tooltip: 'Gestão financeira' },
+    { icon: FileText,        label: 'Documentos',     href: '/dashboard/documentos',      tooltip: 'Certificados e histórico' },
+    { icon: Megaphone,        label: 'Avisos',         href: '/dashboard/avisos',          tooltip: 'Mural de avisos' },
   ],
   superadmin: [
     { icon: LayoutDashboard, label: 'Dashboard',      href: '/dashboard',                tooltip: 'Painel geral',           end: true },
@@ -93,8 +103,6 @@ const menuByRole: Record<string, { icon: React.ElementType; label: string; href:
     { icon: Settings,        label: 'Configurações',  href: '/dashboard/perfil',          tooltip: 'Config. da plataforma' },
   ],
 };
-// legacy alias
-menuByRole.admin = menuByRole.superadmin;
 
 // ─── Dashboard Layout ─────────────────────────────────────────
 

@@ -277,7 +277,7 @@ export default function DashboardHome() {
   const { profile } = useOutletContext<DashboardContext>();
   const { role, full_name } = profile;
 
-  if (role === 'superadmin' || role === 'admin' || role === 'secretaria') return <AdminView name={full_name} />;
+  if (role === 'superadmin' || role === 'admin' || role === 'administracao') return <AdminView name={full_name} />;
   if (role === 'professor') return <ProfessorView name={full_name} />;
   return <AlunoView name={full_name} />;
 }

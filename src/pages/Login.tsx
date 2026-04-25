@@ -6,10 +6,10 @@ import { supabase } from '@/lib/supabase';
 
 // Test credentials — visible only in dev; remove before production
 const DEMO_USERS = [
-  { role: 'superadmin', label: 'SuperAdmin',      email: 'admin@itec.edu.br',     password: 'itec2025admin', color: 'bg-[#ea384c] hover:bg-[#ea384c]/90 text-white',        icon: ShieldCheck },
-  { role: 'secretaria', label: 'Administração',   email: '',                       password: '',              color: 'bg-teal-600 hover:bg-teal-700 text-white',             icon: Building2 },
-  { role: 'professor',  label: 'Professor',        email: 'professor@itec.edu.br', password: 'itec2025prof',  color: 'bg-purple-600 hover:bg-purple-700 text-white',         icon: BookOpen },
-  { role: 'aluno',      label: 'Aluno',            email: 'aluno@itec.edu.br',     password: 'itec2025aluno', color: 'bg-orange-500 hover:bg-orange-600 text-white',         icon: GraduationCap },
+  { role: 'admin', label: 'Diretoria', email: 'diretoria@itec.edu.br', password: 'itec2025admin', color: 'bg-[#ea384c] hover:bg-[#ea384c]/90 text-white', icon: ShieldCheck },
+  { role: 'administracao', label: 'Secretaria', email: 'secretaria@itec.edu.br', password: 'itec2025sec', color: 'bg-teal-600 hover:bg-teal-700 text-white', icon: Building2 },
+  { role: 'professor', label: 'Professor', email: 'professor@itec.edu.br', password: 'itec2025prof', color: 'bg-purple-600 hover:bg-purple-700 text-white', icon: BookOpen },
+  { role: 'aluno', label: 'Aluno', email: 'aluno@itec.edu.br', password: 'itec2025aluno', color: 'bg-orange-500 hover:bg-orange-600 text-white', icon: GraduationCap },
 ];
 
 const isDev = import.meta.env.DEV;
@@ -18,15 +18,15 @@ export default function Login() {
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  const [email, setEmail]       = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [showPwd, setShowPwd]   = useState(false);
+  const [showPwd, setShowPwd] = useState(false);
   const [remember, setRemember] = useState(false);
-  const [loading, setLoading]   = useState(false);
+  const [loading, setLoading] = useState(false);
 
   const fillDemo = (user: typeof DEMO_USERS[0]) => {
     if (!user.email) {
-      toast({ title: 'Conta de demo não configurada', description: `Crie um usuário "${user.label}" via DevSetup ou pelo Supabase.`, variant: 'destructive' });
+      toast({ title: 'Conta não configurada', description: `Crie um usuário "${user.label}" via DevSetup ou pelo Supabase.`, variant: 'destructive' });
       return;
     }
     setEmail(user.email);

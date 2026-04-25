@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { AvisoCard, type Aviso } from '@/components/avisos/AvisoCard';
 import { NovoAvisoModal } from '@/components/avisos/NovoAvisoModal';
 import { supabase } from '@/lib/supabase';
-import { isSuperAdmin, isProfessor, isSecretaria } from '../Dashboard';
+import { isSuperAdmin, isProfessor, isAdministracao } from '../Dashboard';
 import type { DashboardContext } from '../Dashboard';
 
 const FILTROS = [
@@ -25,8 +25,8 @@ export default function Avisos() {
   const [filtro, setFiltro]       = useState('todos');
   const [busca, setBusca]         = useState('');
 
-  const canPublish = isSuperAdmin(profile.role) || isSecretaria(profile.role) || isProfessor(profile.role);
-  const canDelete  = isSuperAdmin(profile.role) || isSecretaria(profile.role);
+  const canPublish = isSuperAdmin(profile.role) || isAdministracao(profile.role) || isProfessor(profile.role);
+  const canDelete  = isSuperAdmin(profile.role) || isAdministracao(profile.role);
 
   const load = useCallback(async () => {
     setLoading(true);

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 
-export type UserRole = 'aluno' | 'professor' | 'secretaria' | 'admin' | 'superadmin';
+export type UserRole = 'aluno' | 'professor' | 'administracao' | 'admin' | 'superadmin';
 
 export interface Profile {
   id: string;
@@ -20,7 +20,11 @@ export function useProfile() {
   useEffect(() => {
     async function load() {
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.user) { setLoading(false); return; }
+      if (!session?.user) { 
+        setProfile(null);
+        setLoading(false); 
+        return; 
+      }
 
       const { data, error } = await supabase
         .from('profiles')
