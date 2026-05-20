@@ -101,10 +101,10 @@ export default function Login() {
         <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[400px] h-[400px] bg-[#ea384c]/20 rounded-full blur-3xl" />
 
         <div className="relative z-10 flex flex-col items-center text-center px-12 space-y-6">
-          {/* Logo */}
-          <div className="h-28 w-28 rounded-full border-2 border-[#ea384c]/40 bg-white/5 flex items-center justify-center shadow-2xl shadow-[#ea384c]/20">
+          {/* Logo — clicável */}
+          <Link to="/" className="h-28 w-28 rounded-full border-2 border-[#ea384c]/40 bg-white/5 flex items-center justify-center shadow-2xl shadow-[#ea384c]/20 hover:border-[#ea384c]/80 hover:bg-white/10 transition-all duration-300 cursor-pointer" title="Voltar ao site">
             <img src="/logo_itec.png" alt="ITEC" className="h-20 w-20 object-contain" />
-          </div>
+          </Link>
 
           <div className="space-y-2">
             <h1 className="text-3xl font-merriweather font-bold text-white tracking-tight">ITEC EAD</h1>
