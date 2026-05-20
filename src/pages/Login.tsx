@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { Eye, EyeOff, Loader2, ShieldCheck, Building2, BookOpen, GraduationCap } from 'lucide-react';
+import { Eye, EyeOff, Loader2, ShieldCheck, Building2, BookOpen, GraduationCap, ArrowLeft } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/lib/supabase';
 
@@ -120,13 +120,26 @@ export default function Login() {
         </div>
 
         {/* Bottom */}
-        <div className="absolute bottom-6 text-white/20 text-xs">
-          Unidade Janga · Paulista-PE
+        <div className="absolute bottom-6 flex flex-col items-center gap-2">
+          <Link to="/" className="flex items-center gap-1.5 text-white/30 hover:text-white/60 text-xs transition-colors group">
+            <ArrowLeft className="h-3 w-3 transition-transform group-hover:-translate-x-0.5" />
+            Voltar ao site
+          </Link>
+          <span className="text-white/20 text-xs">Unidade Janga · Paulista-PE</span>
         </div>
       </div>
 
       {/* ── Right Panel — form ────────────────────── */}
-      <div className="flex-1 flex flex-col items-center justify-center bg-background px-6 py-12">
+      <div className="flex-1 flex flex-col items-center justify-center bg-background px-6 py-12 relative">
+        {/* Back to home — top left */}
+        <Link
+          to="/"
+          className="absolute top-5 left-5 flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors group"
+        >
+          <ArrowLeft className="h-4 w-4 transition-transform group-hover:-translate-x-0.5" />
+          Página inicial
+        </Link>
+
         {/* Mobile logo */}
         <div className="lg:hidden flex items-center gap-3 mb-8">
           <img src="/logo_itec.png" alt="ITEC" className="h-10 w-10 object-contain" />

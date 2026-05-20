@@ -3,7 +3,7 @@ import {
   Book, User, Users, Tv, CalendarDays,
   FileText, CreditCard, HelpCircle, Bell,
   Settings, ShieldAlert, BookOpen, LayoutDashboard,
-  LogOut, ClipboardList, UserCheck, Building2, Shield, Megaphone
+  LogOut, ClipboardList, UserCheck, Building2, Shield, Megaphone, Home
 } from 'lucide-react';
 import {
   SidebarProvider, Sidebar, SidebarHeader, SidebarContent, SidebarFooter,
@@ -11,7 +11,7 @@ import {
   SidebarGroup, SidebarGroupLabel
 } from '@/components/ui/sidebar';
 import { Button } from '@/components/ui/button';
-import { NavLink, Outlet, useNavigate } from 'react-router-dom';
+import { NavLink, Link, Outlet, useNavigate } from 'react-router-dom';
 import { useProfile } from '@/hooks/use-profile';
 import type { Profile, UserRole } from '@/hooks/use-profile';
 import { supabase } from '@/lib/supabase';
@@ -186,6 +186,10 @@ const Dashboard = () => {
                 <p className="text-xs text-muted-foreground truncate">{profile.email}</p>
               </div>
             </div>
+            <Button variant="ghost" size="sm" asChild
+              className="w-full text-muted-foreground hover:text-primary hover:bg-sidebar-accent gap-2 justify-start">
+              <Link to="/"><Home className="h-4 w-4" /> <span className="hidden sm:block">Página inicial</span></Link>
+            </Button>
             <Button variant="ghost" size="sm" onClick={handleLogout}
               className="w-full text-muted-foreground hover:text-primary hover:bg-sidebar-accent gap-2 justify-start">
               <LogOut className="h-4 w-4" /> <span className="hidden sm:block">Sair</span>
@@ -200,6 +204,10 @@ const Dashboard = () => {
               <div className="h-14 flex items-center px-4 gap-4">
                 <SidebarTrigger />
                 <div className="flex-1" />
+                <Link to="/" className="hidden sm:flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors">
+                  <Home className="h-4 w-4" />
+                  <span className="hidden md:inline">Página inicial</span>
+                </Link>
                 <ThemeSwitcher />
                 <Button variant="outline" size="sm" className="border-border text-foreground/70 hover:text-primary">
                   <Bell className="h-4 w-4 mr-2 text-primary" /> Notificações
