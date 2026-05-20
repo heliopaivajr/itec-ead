@@ -34,7 +34,7 @@ const Navbar = () => {
 
           {/* Logo */}
           <Link to="/" className="flex items-center space-x-2 shrink-0">
-            <img src="/lovable-uploads/00c3510e-28c5-45a4-9b59-cfd3d101068d.png" alt="ITEC Logo" className="h-20 w-auto drop-shadow-lg rounded-md transition-transform duration-300 hover:scale-105" />
+            <img src="/lovable-uploads/00c3510e-28c5-45a4-9b59-cfd3d101068d.png" alt="ITEC Logo" className="h-20 w-auto drop-shadow-lg rounded-md transition-transform duration-300 hover:scale-105" width={150} height={80} />
             <span className="font-merriweather font-bold text-foreground text-lg hidden sm:block">
               ITEC
             </span>
@@ -83,7 +83,12 @@ const Navbar = () => {
           {/* Mobile toggle */}
           <div className="md:hidden flex items-center gap-2">
             <ThemeSwitcher />
-            <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)} className="text-foreground">
+            <button
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              className="text-foreground"
+              aria-label={mobileMenuOpen ? 'Fechar menu' : 'Abrir menu'}
+              aria-expanded={mobileMenuOpen}
+            >
               {mobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
             </button>
           </div>

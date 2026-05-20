@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { lazy, Suspense, useEffect, useState } from 'react';
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -11,25 +11,26 @@ import {
   Bell, ShieldAlert
 } from 'lucide-react';
 
-import Index           from "./pages/Index";
-import Dashboard       from "./pages/Dashboard";
-import Login           from "./pages/Login";
-import RecuperarSenha  from "./pages/RecuperarSenha";
-import Cadastro        from "./pages/Cadastro";
-import Professores     from "./pages/Professores";
-import Cursos          from "./pages/Cursos";
-import DevSetup        from "./pages/DevSetup";
-import NotFound        from "./pages/NotFound";
+import Index from "./pages/Index";
 
-import DashboardHome   from "./pages/dashboard/DashboardHome";
-import Perfil          from "./pages/dashboard/Perfil";
-import Leads           from "./pages/dashboard/Leads";
-import Usuarios        from "./pages/dashboard/Usuarios";
-import MeusCursos      from "./pages/dashboard/MeusCursos";
-import Matriculas      from "./pages/dashboard/Matriculas";
-import CursosAdmin     from "./pages/dashboard/CursosAdmin";
-import Avisos          from "./pages/dashboard/Avisos";
-import ComingSoon      from "./pages/dashboard/ComingSoon";
+const Dashboard      = lazy(() => import("./pages/Dashboard"));
+const Login          = lazy(() => import("./pages/Login"));
+const RecuperarSenha = lazy(() => import("./pages/RecuperarSenha"));
+const Cadastro       = lazy(() => import("./pages/Cadastro"));
+const Professores    = lazy(() => import("./pages/Professores"));
+const Cursos         = lazy(() => import("./pages/Cursos"));
+const DevSetup       = lazy(() => import("./pages/DevSetup"));
+const NotFound       = lazy(() => import("./pages/NotFound"));
+
+const DashboardHome = lazy(() => import("./pages/dashboard/DashboardHome"));
+const Perfil        = lazy(() => import("./pages/dashboard/Perfil"));
+const Leads         = lazy(() => import("./pages/dashboard/Leads"));
+const Usuarios      = lazy(() => import("./pages/dashboard/Usuarios"));
+const MeusCursos    = lazy(() => import("./pages/dashboard/MeusCursos"));
+const Matriculas    = lazy(() => import("./pages/dashboard/Matriculas"));
+const CursosAdmin   = lazy(() => import("./pages/dashboard/CursosAdmin"));
+const Avisos        = lazy(() => import("./pages/dashboard/Avisos"));
+const ComingSoon    = lazy(() => import("./pages/dashboard/ComingSoon"));
 
 import { supabase } from '@/lib/supabase';
 
@@ -58,6 +59,15 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   return children;
 };
 
+const PageFallback = () => (
+  <div className="min-h-screen bg-background flex items-center justify-center">
+    <div className="flex flex-col items-center gap-3 text-muted-foreground animate-pulse">
+      <img src="/logo_itec.png" alt="ITEC" width={48} height={48} className="opacity-60" />
+      <span className="text-sm">Carregando...</span>
+    </div>
+  </div>
+);
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <ThemeProvider>
@@ -65,6 +75,7 @@ const App = () => (
         <Toaster />
         <Sonner />
         <BrowserRouter>
+          <Suspense fallback={<PageFallback />}>
           <Routes>
             {/* Public */}
             <Route path="/"              element={<Index />} />
@@ -111,6 +122,7 @@ const App = () => (
             {/* Catch-all */}
             <Route path="*" element={<NotFound />} />
           </Routes>
+          </Suspense>
         </BrowserRouter>
       </TooltipProvider>
     </ThemeProvider>

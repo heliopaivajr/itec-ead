@@ -27,10 +27,12 @@ const Hero = () => {
         <div className="grid md:grid-cols-2 gap-12 items-center">
           <div className="text-white space-y-6">
             <div className="inline-block p-2 bg-itec-bloodRed/20 rounded-lg backdrop-blur-sm border border-itec-bloodRed/30 mb-4">
-              <img 
-                src="/lovable-uploads/00c3510e-28c5-45a4-9b59-cfd3d101068d.png" 
-                alt="ITEC Logo" 
-                className="h-16 w-auto" 
+              <img
+                src="/lovable-uploads/00c3510e-28c5-45a4-9b59-cfd3d101068d.png"
+                alt="ITEC Logo"
+                className="h-16 w-auto"
+                width={120}
+                height={64}
               />
             </div>
             <h1 className="font-merriweather font-bold text-4xl lg:text-5xl leading-tight">
@@ -62,7 +64,7 @@ const Hero = () => {
               <div className="absolute -top-3 -right-3 bg-itec-bloodRed text-white text-xs font-bold px-3 py-1 rounded-full animate-glow">
                 Inscrições Abertas
               </div>
-              <h3 className="font-merriweather font-bold text-itec-bloodRed text-xl mb-3">Graduação em Teologia</h3>
+              <h2 className="font-merriweather font-bold text-itec-bloodRed text-xl mb-3">Graduação em Teologia</h2>
               <ul className="space-y-2 text-sm text-white">
                 <li className="flex items-center">
                   <div className="w-5 h-5 rounded-full bg-itec-bloodRed/20 flex items-center justify-center mr-2">
