@@ -19,6 +19,11 @@ const RecuperarSenha = lazy(() => import("./pages/RecuperarSenha"));
 const Cadastro       = lazy(() => import("./pages/Cadastro"));
 const Professores    = lazy(() => import("./pages/Professores"));
 const Cursos         = lazy(() => import("./pages/Cursos"));
+const Sobre          = lazy(() => import("./pages/Sobre"));
+const Docentes       = lazy(() => import("./pages/Docentes"));
+const Contato        = lazy(() => import("./pages/Contato"));
+const Comunidade     = lazy(() => import("./pages/Comunidade"));
+const Blog           = lazy(() => import("./pages/Blog"));
 const DevSetup       = lazy(() => import("./pages/DevSetup"));
 const NotFound       = lazy(() => import("./pages/NotFound"));
 
@@ -84,6 +89,11 @@ const App = () => (
             <Route path="/cadastro"      element={<Cadastro />} />
             <Route path="/cursos"        element={<Cursos />} />
             <Route path="/professores"   element={<Professores />} />
+            <Route path="/sobre"         element={<Sobre />} />
+            <Route path="/docentes"      element={<Docentes />} />
+            <Route path="/contato"       element={<Contato />} />
+            <Route path="/comunidade"    element={<Comunidade />} />
+            <Route path="/blog"          element={<Blog />} />
             <Route path="/dev-setup"     element={<DevSetup />} />
 
             {/* Dashboard — nested protected routes */}
