@@ -28,7 +28,7 @@ const Hero = () => {
           <div className="text-white space-y-6">
             <div className="inline-block p-2 bg-itec-bloodRed/20 rounded-lg backdrop-blur-sm border border-itec-bloodRed/30 mb-4">
               <img
-                src="/lovable-uploads/00c3510e-28c5-45a4-9b59-cfd3d101068d.png"
+                src="/uploads/00c3510e-28c5-45a4-9b59-cfd3d101068d.png"
                 alt="ITEC Logo"
                 className="h-16 w-auto"
                 width={120}
