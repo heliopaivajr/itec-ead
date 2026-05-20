@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx vite *)",
+      "Bash(curl -s http://localhost:5173)",
+      "Bash(Start-Process powershell *)",
+      "PowerShell(Set-Location \"e:\\\\_HELIOJR\\\\ITEC\\\\itec-ead\"; Start-Process powershell -ArgumentList \"-NoExit\", \"-Command\", \"npx vite --port 5173\")",
+      "Bash(npx lighthouse *)"
+    ]
+  }
+}
