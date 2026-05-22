@@ -66,7 +66,7 @@ export default function ReservarVaga() {
         <div className="container-custom relative z-10 text-center">
           <div className="inline-flex items-center gap-2 bg-primary/15 border border-primary/30 text-primary text-xs font-bold px-4 py-1.5 rounded-full mb-5 uppercase tracking-widest">
             <Flame className="h-3.5 w-3.5 text-orange-400" />
-            Matrículas Abertas · 2025
+            Matrículas Abertas · 2026
           </div>
           <h1 className="font-merriweather font-bold text-3xl md:text-4xl text-white mb-3">
             Reserve sua <span className="text-primary">Vaga</span>
@@ -119,7 +119,7 @@ export default function ReservarVaga() {
               <div className="bg-primary/5 border border-primary/20 rounded-xl px-5 py-4 flex items-start gap-3">
                 <Flame className="h-5 w-5 text-primary shrink-0 mt-0.5" />
                 <p className="text-sm text-foreground/80 leading-relaxed">
-                  Ao reservar sua vaga você garante sua posição na turma de <strong>2025</strong>. As vagas são limitadas e a confirmação da matrícula é feita após contato da secretaria.
+                  Ao reservar sua vaga você garante sua posição na turma de <strong>2026</strong>. As vagas são limitadas e a confirmação da matrícula é feita após contato da secretaria.
                 </p>
               </div>
 
