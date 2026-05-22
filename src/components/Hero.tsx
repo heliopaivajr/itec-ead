@@ -80,7 +80,7 @@ const Hero = () => {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                     </svg>
                   </div>
-                  <span>Modalidade: 100% online</span>
+                  <span>Modalidade: Híbrida (Presencial e Online)</span>
                 </li>
                 <li className="flex items-center">
                   <div className="w-5 h-5 rounded-full bg-itec-bloodRed/20 flex items-center justify-center mr-2">

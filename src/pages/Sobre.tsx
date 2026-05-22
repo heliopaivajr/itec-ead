@@ -145,7 +145,7 @@ export default function Sobre() {
           </div>
           <h2 className="font-merriweather font-bold text-2xl text-foreground mb-4">Venha nos Conhecer</h2>
           <p className="text-muted-foreground max-w-lg mx-auto mb-8">
-            Nossa sede está localizada em Paulista-PE. Embora a formação seja 100% online,
+            Nossa sede está localizada em Paulista-PE. A formação é híbrida (presencial e online),
             realizamos eventos presenciais, cultos e encontros de comunidade ao longo do ano.
           </p>
           <p className="text-xs text-muted-foreground mb-2">secretaria@itecedu.com · (81) 99116-1448 · itecedu.com</p>
