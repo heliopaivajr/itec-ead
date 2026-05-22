@@ -2,6 +2,7 @@
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
+import { Flame, ArrowRight } from 'lucide-react';
 
 const Hero = () => {
   return (
@@ -60,6 +61,51 @@ const Hero = () => {
           </div>
           
           <div className="relative">
+
+            {/* ── Card Matrículas Abertas ── */}
+            <Link
+              to="/cadastro"
+              className="absolute -top-6 -left-6 z-20 group"
+              style={{ transform: 'rotate(-5deg)' }}
+            >
+              <div
+                className="relative px-5 py-4 rounded-xl shadow-2xl overflow-hidden cursor-pointer transition-all duration-300 group-hover:scale-105 group-hover:rotate-0"
+                style={{
+                  background: 'linear-gradient(135deg, #c8102e 0%, #8b0000 50%, #5a0010 100%)',
+                  boxShadow: '0 8px 32px rgba(200,16,46,0.55), inset 0 1px 0 rgba(255,255,255,0.15)',
+                  minWidth: '185px',
+                }}
+              >
+                {/* Brilho interno */}
+                <div className="absolute inset-0 rounded-xl"
+                  style={{ background: 'radial-gradient(ellipse at 30% 20%, rgba(255,255,255,0.12) 0%, transparent 60%)' }} />
+
+                {/* Linha decorativa topo */}
+                <div className="absolute top-0 left-4 right-4 h-px bg-white/30 rounded-full" />
+
+                <div className="relative z-10">
+                  <div className="flex items-center gap-1.5 mb-1.5">
+                    <Flame className="h-3.5 w-3.5 text-orange-300" />
+                    <span className="text-orange-200 text-[10px] font-bold uppercase tracking-[.18em]">
+                      Novos Alunos · 2025
+                    </span>
+                  </div>
+
+                  <p className="text-white font-merriweather font-bold text-base leading-tight">
+                    Matrículas<br />Abertas
+                  </p>
+
+                  <div className="flex items-center gap-1 mt-2.5">
+                    <span className="text-white/75 text-[11px] font-medium">Inscreva-se agora</span>
+                    <ArrowRight className="h-3 w-3 text-white/75 transition-transform group-hover:translate-x-1" />
+                  </div>
+                </div>
+
+                {/* Ponto brilhante pulsando */}
+                <div className="absolute top-3 right-3 h-2 w-2 rounded-full bg-orange-300 shadow-lg shadow-orange-400/60 animate-pulse" />
+              </div>
+            </Link>
+
             <div className="bg-gray-900/80 backdrop-blur-md p-6 rounded-lg shadow-xl border border-itec-bloodRed/50 transform rotate-1 animate-pulse-slow">
               <div className="absolute -top-3 -right-3 bg-itec-bloodRed text-white text-xs font-bold px-3 py-1 rounded-full animate-glow">
                 Inscrições Abertas
