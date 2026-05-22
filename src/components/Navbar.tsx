@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Menu, X, ChevronDown, User, LogOut } from 'lucide-react';
@@ -34,7 +34,7 @@ const Navbar = () => {
 
           {/* Logo */}
           <Link to="/" className="flex items-center space-x-2 shrink-0">
-            <img src="/uploads/00c3510e-28c5-45a4-9b59-cfd3d101068d.png" alt="ITEC Logo" className="h-20 w-auto drop-shadow-lg rounded-md transition-transform duration-300 hover:scale-105" width={150} height={80} />
+            <img src="/logo_itec_transparent.png" alt="ITEC Logo" className="h-20 w-auto drop-shadow-lg rounded-md transition-transform duration-300 hover:scale-105" width={150} height={80} />
             <span className="font-merriweather font-bold text-foreground text-lg hidden sm:block">
               ITEC
             </span>

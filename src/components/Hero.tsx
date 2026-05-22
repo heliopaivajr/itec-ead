@@ -25,17 +25,12 @@ const ANIM_CSS = `
 const Hero = () => {
   const videoRef  = useRef<HTMLVideoElement>(null);
   const [muted,   setMuted]   = useState(true);
-  const [canAudio, setCanAudio] = useState(false);
-
-  // Autoplay muted; mark audio-capable after first interaction
+  // Autoplay muted
   useEffect(() => {
     const v = videoRef.current;
     if (!v) return;
     v.muted = true;
     v.play().catch(() => {});
-    const unlock = () => setCanAudio(true);
-    document.addEventListener('click', unlock, { once: true });
-    return () => document.removeEventListener('click', unlock);
   }, []);
 
   const toggleAudio = () => {
@@ -90,7 +85,7 @@ const Hero = () => {
             {/* Logo */}
             <div className="hero-anim-logo inline-block p-2 bg-itec-bloodRed/20 rounded-lg backdrop-blur-sm border border-itec-bloodRed/30">
               <img
-                src="/lovable-uploads/00c3510e-28c5-45a4-9b59-cfd3d101068d.png"
+                src="/logo_itec_transparent.png"
                 alt="ITEC Logo"
                 className="h-16 w-auto"
                 width={120}
