@@ -22,7 +22,7 @@ const previewCourses = [
     title: 'SETEB',
     description: 'Seminário de Educação Teológica Básica. Três anos cobrindo Teologia Básica, Antigo e Novo Testamento. Aberto a todos os cristãos.',
     duration: '3 anos',
-    schedule: 'Quintas-feiras — 19h às 20h',
+    schedule: 'Terças-feiras — 19h às 20h',
     headerBg: 'from-blue-500/20 via-card to-card',
   },
   {

@@ -136,9 +136,9 @@ export const courses: Course[] = [
     badgeColor: 'bg-blue-900/40 text-blue-300 border-blue-800',
     requisito: 'Aberto a todos',
     duracao: '3 anos',
-    horario: 'Quintas-feiras — 19h00 às 20h00',
+    horario: 'Terças-feiras — 19h00 às 20h00',
     modalidade: 'Presencial',
-    descricao: 'Curso introdutório de teologia para cristãos que desejam aprofundar o conhecimento bíblico. Aulas semanais às quintas-feiras, cobrindo do fundamento teológico ao Novo Testamento.',
+    descricao: 'Curso introdutório de teologia para cristãos que desejam aprofundar o conhecimento bíblico. Aulas semanais às terças-feiras, uma hora por semana, cobrindo do fundamento teológico ao Novo Testamento.',
     totalHoras: 'Aulas semanais (1h/semana)',
     grade: [
       {

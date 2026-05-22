@@ -21,7 +21,7 @@ const courseInfo: Record<string, { nome: string; duracao: string; horario: strin
   'seteb': {
     nome: 'SETEB — Curso Básico de Teologia',
     duracao: '3 anos',
-    horario: 'Quintas-feiras — 19h às 20h',
+    horario: 'Terças-feiras — 19h às 20h',
     cor: 'from-blue-500/20 to-card',
   },
   'ministerial-mulheres': {
