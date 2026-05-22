@@ -24,7 +24,7 @@ export default function Sobre() {
       <Navbar />
 
       {/* Hero */}
-      <section className="relative py-20 overflow-hidden bg-gradient-to-br from-black via-gray-900 to-gray-800">
+      <section className="relative py-20 overflow-hidden bg-gradient-to-br from-gray-900 via-gray-800 to-gray-700">
         <div className="absolute inset-0 opacity-[0.04]"
           style={{ backgroundImage: 'linear-gradient(#ffffff 1px,transparent 1px),linear-gradient(90deg,#ffffff 1px,transparent 1px)', backgroundSize: '40px 40px' }} />
         <div className="absolute -right-32 top-0 w-96 h-96 rounded-full bg-primary/20 blur-3xl" />
@@ -148,6 +148,7 @@ export default function Sobre() {
             Nossa sede está localizada em Paulista-PE. Embora a formação seja 100% online,
             realizamos eventos presenciais, cultos e encontros de comunidade ao longo do ano.
           </p>
+          <p className="text-xs text-muted-foreground mb-2">secretaria@itecedu.com · (81) 99116-1448 · itecedu.com</p>
           <a href="/contato" className="inline-flex items-center gap-2 bg-primary hover:bg-primary/90 text-white font-semibold px-6 py-3 rounded-lg transition-colors">
             <Calendar className="h-4 w-4" /> Entrar em contato
           </a>

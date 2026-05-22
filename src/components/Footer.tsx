@@ -1,5 +1,4 @@
 
-import React from 'react';
 import { Link } from 'react-router-dom';
 
 const Footer = () => {
@@ -54,11 +53,10 @@ const Footer = () => {
           <div>
             <h3 className="font-merriweather font-semibold text-lg mb-4">Contato</h3>
             <address className="not-italic space-y-2 text-sm">
-              <p>Rua da Teologia, 123</p>
-              <p>São Paulo - SP</p>
-              <p>CEP: 01234-567</p>
-              <p className="pt-2">contato@itec.br</p>
-              <p>(11) 5555-5555</p>
+              <p>Unidade Janga · Paulista-PE</p>
+              <p className="pt-2">secretaria@itecedu.com</p>
+              <p>(81) 99116-1448 (WhatsApp)</p>
+              <p>itecedu.com</p>
             </address>
           </div>
 

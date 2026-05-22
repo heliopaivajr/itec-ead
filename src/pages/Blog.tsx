@@ -85,7 +85,7 @@ export default function Blog() {
       <Navbar />
 
       {/* Hero */}
-      <section className="relative py-20 overflow-hidden bg-gradient-to-br from-black via-gray-900 to-gray-800">
+      <section className="relative py-20 overflow-hidden bg-gradient-to-br from-gray-900 via-gray-800 to-gray-700">
         <div className="absolute inset-0 opacity-[0.04]"
           style={{ backgroundImage: 'linear-gradient(#ffffff 1px,transparent 1px),linear-gradient(90deg,#ffffff 1px,transparent 1px)', backgroundSize: '40px 40px' }} />
         <div className="container-custom relative z-10 text-center">

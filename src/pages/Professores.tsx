@@ -37,7 +37,7 @@ const Professores = () => {
     <div className="min-h-screen flex flex-col bg-background text-foreground">
       <Navbar />
       <main className="flex-grow">
-        <section className="py-16 bg-gradient-to-br from-black via-gray-900 to-gray-800">
+        <section className="py-16 bg-gradient-to-br from-gray-900 via-gray-800 to-gray-700">
           <div className="container-custom text-center text-white">
             <h1 className="font-merriweather font-bold text-4xl mb-4">
               Corpo <span className="text-itec-bloodRed">Docente</span>

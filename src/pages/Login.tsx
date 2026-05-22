@@ -93,7 +93,7 @@ export default function Login() {
   return (
     <div className="min-h-screen flex">
       {/* ── Left Panel — brand ────────────────────── */}
-      <div className="hidden lg:flex lg:w-[45%] xl:w-[40%] flex-col items-center justify-center relative overflow-hidden bg-[#0d0d0d]">
+      <div className="hidden lg:flex lg:w-[45%] xl:w-[40%] flex-col items-center justify-center relative overflow-hidden bg-gray-900">
         {/* Background grid */}
         <div className="absolute inset-0 opacity-[0.04]"
           style={{ backgroundImage: 'linear-gradient(#ffffff 1px,transparent 1px),linear-gradient(90deg,#ffffff 1px,transparent 1px)', backgroundSize: '40px 40px' }} />

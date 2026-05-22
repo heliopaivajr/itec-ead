@@ -17,7 +17,7 @@ export default function Contato() {
       <Navbar />
 
       {/* Hero */}
-      <section className="relative py-20 overflow-hidden bg-gradient-to-br from-black via-gray-900 to-gray-800">
+      <section className="relative py-20 overflow-hidden bg-gradient-to-br from-gray-900 via-gray-800 to-gray-700">
         <div className="absolute inset-0 opacity-[0.04]"
           style={{ backgroundImage: 'linear-gradient(#ffffff 1px,transparent 1px),linear-gradient(90deg,#ffffff 1px,transparent 1px)', backgroundSize: '40px 40px' }} />
         <div className="container-custom relative z-10 text-center">
@@ -44,9 +44,11 @@ export default function Contato() {
                 <h2 className="font-merriweather font-bold text-2xl text-foreground mb-6">Informações de Contato</h2>
                 <div className="space-y-5">
                   {[
-                    { icon: MapPin,  label: 'Endereço',  value: 'Unidade Janga · Paulista-PE · Brasil' },
-                    { icon: Mail,    label: 'E-mail',    value: 'contato@itec.edu.br' },
-                    { icon: Phone,   label: 'WhatsApp',  value: '+55 (81) 99999-0000' },
+                    { icon: MapPin,  label: 'Endereço',    value: 'Unidade Janga · Paulista-PE · Brasil' },
+                    { icon: Mail,    label: 'Secretaria',  value: 'secretaria@itecedu.com' },
+                    { icon: Mail,    label: 'Financeiro',  value: 'financeiro@itecedu.com' },
+                    { icon: Mail,    label: 'Coord. Acadêmica', value: 'educacao@itecedu.com' },
+                    { icon: Phone,   label: 'WhatsApp',    value: '(81) 99116-1448' },
                     { icon: Clock,   label: 'Atendimento', value: 'Seg–Sex: 8h–17h' },
                   ].map(c => (
                     <div key={c.label} className="flex items-start gap-4">
@@ -67,7 +69,7 @@ export default function Contato() {
                 <p className="text-sm font-semibold text-green-400 mb-1">Resposta rápida via WhatsApp</p>
                 <p className="text-xs text-muted-foreground mb-4">Para matrículas e dúvidas urgentes, fale direto pelo WhatsApp.</p>
                 <a
-                  href="https://wa.me/5581999990000?text=Ol%C3%A1%2C%20tenho%20interesse%20nos%20cursos%20do%20ITEC!"
+                  href="https://wa.me/5581991161448?text=Ol%C3%A1%2C%20tenho%20interesse%20nos%20cursos%20do%20ITEC!"
                   target="_blank" rel="noopener noreferrer"
                   className="inline-flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white text-sm font-semibold px-4 py-2 rounded-lg transition-colors"
                 >
