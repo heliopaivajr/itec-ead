@@ -23,11 +23,11 @@ const Hero = () => {
       <div className="absolute -right-40 -bottom-40 w-96 h-96 rounded-full bg-itec-bloodRed opacity-20 blur-3xl animate-pulse-slow"></div>
       <div className="absolute -left-40 -top-40 w-96 h-96 rounded-full bg-itec-bloodRed opacity-20 blur-3xl animate-pulse-slow"></div>
       
-      {/* ── Card Matrículas Abertas — canto inferior esquerdo ── */}
+      {/* ── Card Matrículas Abertas — canto inferior DIREITO ── */}
       <Link
         to="/reservar-vaga"
-        className="absolute bottom-8 left-6 z-20 group hidden md:block"
-        style={{ transform: 'rotate(-4deg)' }}
+        className="absolute bottom-8 right-6 z-20 group hidden md:block"
+        style={{ transform: 'rotate(3deg)' }}
       >
         <div
           className="relative px-7 py-5 rounded-2xl shadow-2xl overflow-hidden cursor-pointer transition-all duration-300 group-hover:scale-105 group-hover:rotate-0"
@@ -37,53 +37,34 @@ const Hero = () => {
             minWidth: '220px',
           }}
         >
-          {/* Brilho interno */}
           <div className="absolute inset-0 rounded-2xl pointer-events-none"
             style={{ background: 'radial-gradient(ellipse at 25% 15%, rgba(255,255,255,0.14) 0%, transparent 55%)' }} />
-          {/* Linha decorativa topo */}
           <div className="absolute top-0 left-5 right-5 h-px bg-white/25 rounded-full" />
 
           <div className="relative z-10 space-y-2">
-            {/* Tag */}
             <div className="flex items-center gap-1.5">
               <Flame className="h-4 w-4 text-orange-300 shrink-0" />
               <span className="text-orange-200 text-[10px] font-extrabold uppercase tracking-[.2em]">
-                Novos Alunos · 2025
+                Novos Alunos · 2026
               </span>
               <div className="h-1.5 w-1.5 rounded-full bg-orange-300 animate-pulse ml-1" />
             </div>
 
-            {/* Título grande */}
             <p className="text-white font-merriweather font-extrabold text-xl uppercase leading-tight tracking-wide">
               Matrículas<br />Abertas
             </p>
 
-            {/* Subtítulo */}
-            <p className="text-white/70 text-xs uppercase tracking-widest font-semibold">
-              Reserve sua vaga
+            <p className="text-orange-200/90 text-xs uppercase tracking-widest font-bold">
+              Início — Agosto 2026
             </p>
 
-            {/* CTA */}
             <div className="flex items-center gap-1.5 pt-1 border-t border-white/15">
-              <span className="text-white/80 text-xs font-bold uppercase tracking-wider">Inscreva-se agora</span>
+              <span className="text-white/80 text-xs font-bold uppercase tracking-wider">Reserve sua vaga</span>
               <ArrowRight className="h-3.5 w-3.5 text-white/80 transition-transform group-hover:translate-x-1" />
             </div>
           </div>
         </div>
       </Link>
-
-      {/* Versão mobile — inline no texto */}
-      <div className="md:hidden px-4 pb-2">
-        <Link
-          to="/reservar-vaga"
-          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-white font-bold text-sm uppercase tracking-wider"
-          style={{ background: 'linear-gradient(135deg, #d40e28 0%, #9b0a20 100%)' }}
-        >
-          <Flame className="h-4 w-4 text-orange-300" />
-          Matrículas Abertas — Reserve sua vaga
-          <ArrowRight className="h-4 w-4" />
-        </Link>
-      </div>
 
       <div className="container-custom relative z-10">
         <div className="grid md:grid-cols-2 gap-12 items-center">
@@ -107,17 +88,11 @@ const Hero = () => {
               <Button asChild className="bg-itec-bloodRed hover:bg-itec-bloodRed/90 text-white border-2 border-transparent hover:border-itec-bloodRed hover:bg-transparent transition-all duration-300">
                 <Link to="/cursos">Conheça Nossos Cursos</Link>
               </Button>
-              <Button asChild variant="outline" className="bg-transparent text-itec-bloodRed border-itec-bloodRed hover:bg-itec-bloodRed hover:text-white transition-all duration-300">
-                <Link to="/ebook">Baixar E-book Gratuito</Link>
-              </Button>
             </div>
-            <div className="pt-4 flex flex-col sm:flex-row items-center gap-4 text-sm">
-              <div className="flex -space-x-2">
-                {[1, 2, 3, 4].map((num) => (
-                  <div key={num} className="w-8 h-8 rounded-full border-2 border-itec-bloodRed/50 overflow-hidden bg-black/50" />
-                ))}
-              </div>
-              <p>Mais de <strong className="text-itec-bloodRed">1.200 alunos</strong> já formados</p>
+            <div className="pt-4">
+              <p className="text-sm text-white/70 italic leading-relaxed border-l-2 border-itec-bloodRed/60 pl-3">
+                "Onde a Palavra de Deus encontra a sua vocação."
+              </p>
             </div>
           </div>
           
