@@ -34,7 +34,12 @@ const Navbar = () => {
 
           {/* Logo */}
           <Link to="/" className="flex items-center space-x-2 shrink-0">
-            <img src="/logo_itec_transparent.png" alt="ITEC Logo" className="h-20 w-auto drop-shadow-lg rounded-md transition-transform duration-300 hover:scale-105" width={150} height={80} />
+            <div className="h-11 w-11 rounded-full bg-primary flex items-center justify-center shadow-md shadow-primary/40 shrink-0 transition-transform duration-300 hover:scale-105">
+              <img src="/logo_itec_transparent.png" alt="ITEC Logo"
+                className="h-8 w-8 object-contain"
+                style={{ filter: 'brightness(0) invert(1)' }}
+                width={32} height={32} />
+            </div>
             <span className="font-merriweather font-bold text-foreground text-lg hidden sm:block">
               ITEC
             </span>

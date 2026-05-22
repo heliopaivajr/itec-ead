@@ -82,14 +82,15 @@ const Hero = () => {
           {/* Coluna esquerda */}
           <div className="text-white space-y-6">
 
-            {/* Logo */}
-            <div className="hero-anim-logo inline-block p-2 bg-itec-bloodRed/20 rounded-lg backdrop-blur-sm border border-itec-bloodRed/30">
+            {/* Logo — branca sobre o vídeo */}
+            <div className="hero-anim-logo inline-block">
               <img
                 src="/logo_itec_transparent.png"
                 alt="ITEC Logo"
-                className="h-16 w-auto"
-                width={120}
-                height={64}
+                className="h-20 w-auto drop-shadow-lg"
+                style={{ filter: 'brightness(0) invert(1) drop-shadow(0 2px 8px rgba(0,0,0,0.5))' }}
+                width={140}
+                height={80}
               />
             </div>
 
