@@ -15,7 +15,7 @@ const Footer = () => {
               <span className="font-merriweather font-bold text-white text-xl">ITEC</span>
             </div>
             <p className="text-sm text-gray-300">
-              Instituto de Teologia Cristã - Formando líderes através de uma educação teológica de excelência desde 1990.
+              Instituto de Teologia Cristã — fundado com muita oração em 2025, formando líderes para o Reino de Deus.
             </p>
             <div className="flex space-x-4">
               <a href="https://facebook.com" className="text-white hover:text-itec-gold transition-colors">

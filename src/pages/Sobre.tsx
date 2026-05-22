@@ -11,7 +11,7 @@ const valores = [
 ];
 
 const linha_do_tempo = [
-  { ano: '2005', evento: 'Fundação do ITEC em Paulista-PE, com a primeira turma de Teologia Básica.' },
+  { ano: '2025', evento: 'Fundação do ITEC em Paulista-PE com muita oração, com a primeira turma de Teologia Básica.' },
   { ano: '2010', evento: 'Expansão para o ensino semipresencial, atendendo alunos de todo o Nordeste.' },
   { ano: '2015', evento: 'Lançamento do curso de Graduação em Teologia com 185 créditos.' },
   { ano: '2020', evento: 'Migração para o modelo 100% EAD, com plataforma digital própria.' },
@@ -80,7 +80,7 @@ export default function Sobre() {
             <div className="grid grid-cols-2 gap-4">
               {[
                 { num: '+1.200', label: 'Alunos formados' },
-                { num: '20 anos', label: 'de história' },
+                { num: '2025', label: 'Ano de fundação' },
                 { num: '3 cursos', label: 'de formação' },
                 { num: '100%', label: 'Online' },
               ].map(s => (
@@ -116,7 +116,7 @@ export default function Sobre() {
         <div className="container-custom">
           <div className="text-center mb-12">
             <h2 className="font-merriweather font-bold text-3xl text-foreground mb-3">Nossa História</h2>
-            <p className="text-muted-foreground max-w-xl mx-auto">Dois décadas de fidelidade à vocação de formar servos de Deus.</p>
+            <p className="text-muted-foreground max-w-xl mx-auto">Nascido em oração em 2025, fiel à vocação de formar servos de Deus.</p>
           </div>
           <div className="max-w-2xl mx-auto relative">
             <div className="absolute left-8 top-0 bottom-0 w-px bg-border" />
