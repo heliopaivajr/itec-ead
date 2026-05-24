@@ -1,11 +1,18 @@
-# Environment variables — NUNCA commitar
+# ── Variáveis de ambiente — NUNCA commitar ────────────────────────────────────
 .env
 .env.local
 .env.*.local
 .env.production
 .env.development
 
-# Logs
+# ── Dependências ──────────────────────────────────────────────────────────────
+node_modules
+
+# ── Build ─────────────────────────────────────────────────────────────────────
+dist
+dist-ssr
+
+# ── Logs ──────────────────────────────────────────────────────────────────────
 logs
 *.log
 npm-debug.log*
@@ -14,12 +21,16 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
-node_modules
-dist
-dist-ssr
+# ── Relatórios e análises locais (não commitar) ───────────────────────────────
+lighthouse-report.json
 *.local
 
-# Editor directories and files
+# ── Vídeos fonte (pasta raiz /videos/) ───────────────────────────────────────
+# Os vídeos servidos ficam em /public/videos/ e SÃO commitados.
+# Esta pasta /videos/ são os arquivos originais/brutos — não commitar (pesados).
+/videos/
+
+# ── Editor ────────────────────────────────────────────────────────────────────
 .vscode/*
 !.vscode/extensions.json
 .idea
