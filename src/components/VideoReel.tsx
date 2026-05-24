@@ -1,17 +1,18 @@
-import React, { useRef, useState, useCallback, useEffect } from 'react';
-import { ChevronLeft, ChevronRight, Volume2, VolumeX } from 'lucide-react';
+import { useRef, useState, useCallback, useEffect } from 'react';
+import { ChevronLeft, ChevronRight, Volume2, VolumeX, RotateCcw } from 'lucide-react';
 
 const videos = [
-  { src: '/videos/v01.mp4', label: 'Matrículas Abertas',      tag: '🎓 Inscreva-se',   color: 'from-red-900/70'    },
-  { src: '/videos/v02.mp4', label: 'Testemunho',              tag: '❤️ Depoimento',    color: 'from-purple-900/70' },
-  { src: '/videos/v03.mp4', label: 'Curso para Mulheres',     tag: '👩‍🎓 Ministério',  color: 'from-rose-900/70'   },
-  { src: '/videos/v04.mp4', label: 'Sala de Aula',            tag: '📚 Ensino',         color: 'from-blue-900/70'   },
-  { src: '/videos/v05.mp4', label: 'Chamada para Matrícula',  tag: '🔔 Não perca!',     color: 'from-amber-900/70'  },
+  { src: '/videos/v01.mp4', label: 'Matrículas Abertas',     tag: '🎓 Inscreva-se',  color: 'from-red-900/70'    },
+  { src: '/videos/v02.mp4', label: 'Testemunho',             tag: '❤️ Depoimento',   color: 'from-purple-900/70' },
+  { src: '/videos/v03.mp4', label: 'Curso para Mulheres',    tag: '👩‍🎓 Ministério', color: 'from-rose-900/70'   },
+  { src: '/videos/v04.mp4', label: 'Sala de Aula',           tag: '📚 Ensino',        color: 'from-blue-900/70'   },
+  { src: '/videos/v05.mp4', label: 'Chamada para Matrícula', tag: '🔔 Não perca!',    color: 'from-amber-900/70'  },
 ];
 
 // ─── Card individual ──────────────────────────────────────────────────────────
 function VideoCard({
-  video, index, active, sectionVisible, globalMuted, onActivate, onToggleMute,
+  video, index, active, sectionVisible, globalMuted,
+  onActivate, onToggleMute, onEnded,
 }: {
   video: typeof videos[0];
   index: number;
@@ -20,59 +21,85 @@ function VideoCard({
   globalMuted: boolean;
   onActivate: (i: number) => void;
   onToggleMute: () => void;
+  onEnded: () => void;
 }) {
   const videoRef = useRef<HTMLVideoElement>(null);
+  const [progress, setProgress] = useState(0);
+  const [ended, setEnded]       = useState(false);
 
-  // Autoplay / pause conforme visibilidade da seção e card ativo
+  // Play/pause conforme ativo + visível
   useEffect(() => {
     const v = videoRef.current;
     if (!v) return;
     if (sectionVisible && active) {
       v.muted = globalMuted;
+      v.currentTime = 0;
+      setEnded(false);
+      setProgress(0);
       v.play().catch(() => {});
     } else {
       v.pause();
-      if (!active) v.currentTime = 0;
+      v.currentTime = 0;
+      setProgress(0);
+      setEnded(false);
     }
-  }, [sectionVisible, active, globalMuted]);
+  }, [sectionVisible, active]);
 
-  // Sync muted separado (sem reiniciar o vídeo)
+  // Sync muted sem reiniciar
   useEffect(() => {
     const v = videoRef.current;
     if (v) v.muted = globalMuted;
   }, [globalMuted]);
 
-  const handleClick = useCallback(() => {
-    onActivate(index);
-  }, [index, onActivate]);
+  const handleTimeUpdate = useCallback(() => {
+    const v = videoRef.current;
+    if (!v || !v.duration) return;
+    setProgress((v.currentTime / v.duration) * 100);
+  }, []);
+
+  const handleEnded = useCallback(() => {
+    setEnded(true);
+    onEnded();
+  }, [onEnded]);
+
+  const handleReplay = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    const v = videoRef.current;
+    if (!v) return;
+    v.currentTime = 0;
+    setEnded(false);
+    setProgress(0);
+    v.play().catch(() => {});
+  }, []);
 
   return (
     <div
-      onClick={handleClick}
+      onClick={() => onActivate(index)}
       className={`
         relative flex-shrink-0 rounded-2xl overflow-hidden cursor-pointer select-none
         transition-all duration-500 ease-out group
         ${active
-          ? 'w-[200px] sm:w-[230px] scale-105 z-10 shadow-2xl shadow-primary/40'
-          : 'w-[160px] sm:w-[185px] scale-100 opacity-60 hover:opacity-85 hover:scale-[1.02]'
+          ? 'w-[200px] sm:w-[240px] scale-105 z-10 shadow-2xl shadow-primary/40'
+          : 'w-[160px] sm:w-[185px] scale-100 opacity-55 hover:opacity-80 hover:scale-[1.02]'
         }
       `}
       style={{ aspectRatio: '9/16' }}
     >
-      {/* Vídeo */}
+      {/* Vídeo — sem loop, avança ao terminar */}
       <video
         ref={videoRef}
         src={video.src}
         className="absolute inset-0 w-full h-full object-cover"
-        loop
         playsInline
         muted
         preload="auto"
+        onTimeUpdate={handleTimeUpdate}
+        onEnded={handleEnded}
       />
 
-      {/* Gradiente base */}
-      <div className={`absolute inset-0 bg-gradient-to-t ${video.color} to-transparent transition-opacity duration-300 ${active ? 'opacity-30' : 'opacity-60'}`} />
-      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
+      {/* Overlay gradiente */}
+      <div className={`absolute inset-0 bg-gradient-to-t ${video.color} to-transparent transition-opacity duration-300 ${active ? 'opacity-20' : 'opacity-55'}`} />
+      <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-transparent to-transparent" />
 
       {/* Tag topo esquerdo */}
       <div className="absolute top-3 left-3">
@@ -81,52 +108,59 @@ function VideoCard({
         </span>
       </div>
 
-      {/* Botão som — só no card ativo */}
-      {active && (
+      {/* Botão som — card ativo */}
+      {active && !ended && (
         <button
           onClick={e => { e.stopPropagation(); onToggleMute(); }}
           className="absolute top-3 right-3 h-8 w-8 rounded-full bg-black/60 backdrop-blur-sm border border-white/25 flex items-center justify-center text-white hover:bg-primary transition-all z-20"
           title={globalMuted ? 'Ativar som' : 'Silenciar'}
         >
-          {globalMuted
-            ? <VolumeX className="h-3.5 w-3.5" />
-            : <Volume2 className="h-3.5 w-3.5" />
-          }
+          {globalMuted ? <VolumeX className="h-3.5 w-3.5" /> : <Volume2 className="h-3.5 w-3.5" />}
         </button>
       )}
 
-      {/* Indicador "mudo" nos inativos */}
-      {!active && (
-        <div className="absolute top-3 right-3 h-6 w-6 rounded-full bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-          <VolumeX className="h-3 w-3 text-white/60" />
+      {/* Botão replay quando terminou */}
+      {active && ended && (
+        <button
+          onClick={handleReplay}
+          className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-black/50 backdrop-blur-sm z-20"
+        >
+          <div className="h-12 w-12 rounded-full bg-primary/80 flex items-center justify-center">
+            <RotateCcw className="h-5 w-5 text-white" />
+          </div>
+          <span className="text-white text-xs font-bold uppercase tracking-wider">Assistir novamente</span>
+        </button>
+      )}
+
+      {/* Barra de progresso — só no card ativo */}
+      {active && !ended && (
+        <div className="absolute bottom-0 left-0 right-0 h-1 bg-white/20 z-10">
+          <div
+            className="h-full bg-primary transition-none rounded-full"
+            style={{ width: `${progress}%` }}
+          />
         </div>
       )}
 
-      {/* Rodapé com título + equalizer */}
-      <div className="absolute bottom-0 left-0 right-0 p-3">
+      {/* Rodapé título + equalizer */}
+      <div className="absolute bottom-3 left-0 right-0 px-3">
         <p className="text-white font-bold text-xs leading-tight drop-shadow">{video.label}</p>
-        {active && !globalMuted && (
+        {active && !globalMuted && !ended && (
           <div className="flex items-end gap-0.5 mt-1.5 h-4">
             {[3, 6, 4, 7, 5, 3, 6].map((h, i) => (
-              <div
-                key={i}
-                className="w-[3px] bg-primary rounded-full"
-                style={{
-                  height: `${h}px`,
-                  animation: `eq ${0.4 + i * 0.07}s ease-in-out infinite alternate`,
-                }}
-              />
+              <div key={i} className="w-[3px] bg-primary rounded-full"
+                style={{ height: `${h}px`, animation: `eq ${0.4 + i * 0.07}s ease-in-out infinite alternate` }} />
             ))}
           </div>
         )}
       </div>
 
-      {/* Anel brilhante no card ativo */}
+      {/* Anel brilhante ativo */}
       {active && (
         <div className="absolute inset-0 rounded-2xl ring-2 ring-primary/70 pointer-events-none" />
       )}
 
-      {/* Hint "toque para ver" em mobile no inativo */}
+      {/* Hint hover nos inativos */}
       {!active && (
         <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200">
           <div className="h-10 w-10 rounded-full bg-white/10 backdrop-blur-sm border border-white/30 flex items-center justify-center">
@@ -140,13 +174,13 @@ function VideoCard({
 
 // ─── Seção principal ──────────────────────────────────────────────────────────
 export default function VideoReel() {
-  const sectionRef  = useRef<HTMLElement>(null);
-  const scrollRef   = useRef<HTMLDivElement>(null);
+  const sectionRef = useRef<HTMLElement>(null);
+  const scrollRef  = useRef<HTMLDivElement>(null);
   const [visible,   setVisible]   = useState(false);
   const [activeIdx, setActiveIdx] = useState(0);
   const [muted,     setMuted]     = useState(true);
 
-  // IntersectionObserver — inicia quando 30% da seção aparecer na tela
+  // IntersectionObserver — inicia ao entrar na tela
   useEffect(() => {
     const el = sectionRef.current;
     if (!el) return;
@@ -158,20 +192,20 @@ export default function VideoReel() {
     return () => obs.disconnect();
   }, []);
 
-  // Auto-avança o card ativo a cada 6 s (enquanto seção visível)
-  useEffect(() => {
-    if (!visible) return;
-    const t = setInterval(() => {
-      setActiveIdx(i => (i + 1) % videos.length);
-    }, 6000);
-    return () => clearInterval(t);
-  }, [visible]);
+  // Avança para o próximo ao terminar o vídeo
+  const handleVideoEnded = useCallback(() => {
+    setActiveIdx(i => (i + 1) % videos.length);
+  }, []);
+
+  const goTo = useCallback((idx: number) => {
+    setActiveIdx(idx);
+  }, []);
 
   const scroll = (dir: 'left' | 'right') => {
     scrollRef.current?.scrollBy({ left: dir === 'right' ? 260 : -260, behavior: 'smooth' });
   };
 
-  // Ao mudar card ativo, centraliza no scroll
+  // Centraliza o card ativo no scroll
   useEffect(() => {
     const rail = scrollRef.current;
     if (!rail) return;
@@ -183,7 +217,6 @@ export default function VideoReel() {
 
   return (
     <section ref={sectionRef} className="py-20 bg-[#0a0a0a] overflow-hidden">
-      {/* Equalizer keyframes injetado uma vez */}
       <style>{`
         @keyframes eq {
           from { transform: scaleY(1); }
@@ -196,24 +229,24 @@ export default function VideoReel() {
         {/* Cabeçalho */}
         <div className="flex items-end justify-between mb-8">
           <div>
-            <p className="text-primary text-xs font-bold uppercase tracking-[.2em] mb-2">
-              ITEC em vídeo
-            </p>
+            <p className="text-primary text-xs font-bold uppercase tracking-[.2em] mb-2">ITEC em vídeo</p>
             <h2 className="font-merriweather font-bold text-2xl md:text-3xl text-white">
               Conheça o ITEC de perto
             </h2>
             <p className="text-white/35 text-sm mt-1 flex items-center gap-1.5">
               <span className={`inline-block h-1.5 w-1.5 rounded-full ${visible ? 'bg-primary animate-pulse' : 'bg-white/20'}`} />
-              {visible ? 'Reproduzindo · clique no 🔊 para ouvir' : 'Role para ver os vídeos'}
+              {visible
+                ? `Vídeo ${activeIdx + 1} de ${videos.length} · clique no 🔊 para ouvir`
+                : 'Role para ver os vídeos'}
             </p>
           </div>
 
           <div className="flex gap-2">
-            <button onClick={() => scroll('left')}
+            <button onClick={() => goTo(Math.max(0, activeIdx - 1))}
               className="h-10 w-10 rounded-full border border-white/20 bg-white/5 hover:bg-primary/80 hover:border-primary text-white flex items-center justify-center transition-all">
               <ChevronLeft className="h-5 w-5" />
             </button>
-            <button onClick={() => scroll('right')}
+            <button onClick={() => goTo((activeIdx + 1) % videos.length)}
               className="h-10 w-10 rounded-full border border-white/20 bg-white/5 hover:bg-primary/80 hover:border-primary text-white flex items-center justify-center transition-all">
               <ChevronRight className="h-5 w-5" />
             </button>
@@ -234,8 +267,9 @@ export default function VideoReel() {
               active={activeIdx === i}
               sectionVisible={visible}
               globalMuted={muted}
-              onActivate={idx => { setActiveIdx(idx); }}
+              onActivate={goTo}
               onToggleMute={() => setMuted(m => !m)}
+              onEnded={handleVideoEnded}
             />
           ))}
 
@@ -255,9 +289,7 @@ export default function VideoReel() {
         {/* Dots */}
         <div className="flex justify-center gap-2 mt-6">
           {videos.map((_, i) => (
-            <button
-              key={i}
-              onClick={() => setActiveIdx(i)}
+            <button key={i} onClick={() => goTo(i)}
               className={`h-1.5 rounded-full transition-all duration-300 ${
                 activeIdx === i ? 'w-8 bg-primary' : 'w-2 bg-white/20 hover:bg-white/40'
               }`}
