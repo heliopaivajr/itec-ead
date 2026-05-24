@@ -1,4 +1,4 @@
-import { useRef, useState, useCallback, useEffect } from 'react';
+import { useRef, useState, useEffect, useCallback } from 'react';
 import { ChevronLeft, ChevronRight, Volume2, VolumeX, RotateCcw } from 'lucide-react';
 
 const videos = [
@@ -9,90 +9,24 @@ const videos = [
   { src: '/videos/v05.mp4', label: 'Chamada para Matrícula', tag: '🔔 Não perca!',    color: 'from-amber-900/70'  },
 ];
 
-// ─── Card individual ──────────────────────────────────────────────────────────
+// ─── Card puramente visual — sem lógica de playback ──────────────────────────
 function VideoCard({
-  video, index, active, sectionVisible, globalMuted,
-  onActivate, onToggleMute, onEnded,
+  video, index, active, muted, progress, ended,
+  videoRef, onActivate, onToggleMute, onReplay, onTimeUpdate, onEnded,
 }: {
   video: typeof videos[0];
   index: number;
   active: boolean;
-  sectionVisible: boolean;
-  globalMuted: boolean;
+  muted: boolean;
+  progress: number;
+  ended: boolean;
+  videoRef: React.RefObject<HTMLVideoElement>;
   onActivate: (i: number) => void;
   onToggleMute: () => void;
+  onReplay: () => void;
+  onTimeUpdate: () => void;
   onEnded: () => void;
 }) {
-  const videoRef   = useRef<HTMLVideoElement>(null);
-  const wasActive  = useRef(false);
-  const [progress, setProgress] = useState(0);
-  const [ended,    setEnded]    = useState(false);
-
-  // Efeito 1: quando o card ATIVA — reseta e começa do zero
-  useEffect(() => {
-    const v = videoRef.current;
-    if (!v) return;
-    if (active) {
-      // Só reseta se estava inativo antes (troca real de card)
-      if (!wasActive.current) {
-        v.currentTime = 0;
-        setProgress(0);
-        setEnded(false);
-      }
-      wasActive.current = true;
-      if (sectionVisible) {
-        v.muted = globalMuted;
-        v.play().catch(() => {});
-      }
-    } else {
-      // Card desativado — pausa mas NÃO reseta currentTime aqui
-      // (reset feito via wasActive na próxima ativação)
-      wasActive.current = false;
-      v.pause();
-      v.currentTime = 0;
-      setProgress(0);
-      setEnded(false);
-    }
-  }, [active]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // Efeito 2: play/pause quando a seção entra/sai da tela (sem resetar)
-  useEffect(() => {
-    const v = videoRef.current;
-    if (!v || !active || ended) return;
-    if (sectionVisible) {
-      v.play().catch(() => {});
-    } else {
-      v.pause(); // pausa sem resetar — retoma de onde parou
-    }
-  }, [sectionVisible, active, ended]);
-
-  // Efeito 3: sync muted sem interferir no playback
-  useEffect(() => {
-    const v = videoRef.current;
-    if (v) v.muted = globalMuted;
-  }, [globalMuted]);
-
-  const handleTimeUpdate = useCallback(() => {
-    const v = videoRef.current;
-    if (!v || !v.duration) return;
-    setProgress((v.currentTime / v.duration) * 100);
-  }, []);
-
-  const handleEnded = useCallback(() => {
-    setEnded(true);
-    onEnded();
-  }, [onEnded]);
-
-  const handleReplay = useCallback((e: React.MouseEvent) => {
-    e.stopPropagation();
-    const v = videoRef.current;
-    if (!v) return;
-    v.currentTime = 0;
-    setEnded(false);
-    setProgress(0);
-    v.play().catch(() => {});
-  }, []);
-
   return (
     <div
       onClick={() => onActivate(index)}
@@ -106,7 +40,6 @@ function VideoCard({
       `}
       style={{ aspectRatio: '9/16' }}
     >
-      {/* Vídeo — sem loop, avança ao terminar */}
       <video
         ref={videoRef}
         src={video.src}
@@ -114,38 +47,33 @@ function VideoCard({
         playsInline
         muted
         preload="auto"
-        onTimeUpdate={handleTimeUpdate}
-        onEnded={handleEnded}
+        onTimeUpdate={onTimeUpdate}
+        onEnded={onEnded}
       />
 
-      {/* Overlay gradiente */}
+      {/* Gradiente */}
       <div className={`absolute inset-0 bg-gradient-to-t ${video.color} to-transparent transition-opacity duration-300 ${active ? 'opacity-20' : 'opacity-55'}`} />
       <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-transparent to-transparent" />
 
-      {/* Tag topo esquerdo */}
+      {/* Tag */}
       <div className="absolute top-3 left-3">
         <span className="text-[10px] font-bold bg-black/60 backdrop-blur-sm text-white px-2 py-0.5 rounded-full border border-white/20">
           {video.tag}
         </span>
       </div>
 
-      {/* Botão som — card ativo */}
+      {/* Botão som */}
       {active && !ended && (
-        <button
-          onClick={e => { e.stopPropagation(); onToggleMute(); }}
-          className="absolute top-3 right-3 h-8 w-8 rounded-full bg-black/60 backdrop-blur-sm border border-white/25 flex items-center justify-center text-white hover:bg-primary transition-all z-20"
-          title={globalMuted ? 'Ativar som' : 'Silenciar'}
-        >
-          {globalMuted ? <VolumeX className="h-3.5 w-3.5" /> : <Volume2 className="h-3.5 w-3.5" />}
+        <button onClick={e => { e.stopPropagation(); onToggleMute(); }}
+          className="absolute top-3 right-3 h-8 w-8 rounded-full bg-black/60 backdrop-blur-sm border border-white/25 flex items-center justify-center text-white hover:bg-primary transition-all z-20">
+          {muted ? <VolumeX className="h-3.5 w-3.5" /> : <Volume2 className="h-3.5 w-3.5" />}
         </button>
       )}
 
-      {/* Botão replay quando terminou */}
+      {/* Replay */}
       {active && ended && (
-        <button
-          onClick={handleReplay}
-          className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-black/50 backdrop-blur-sm z-20"
-        >
+        <button onClick={e => { e.stopPropagation(); onReplay(); }}
+          className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-black/50 backdrop-blur-sm z-20">
           <div className="h-12 w-12 rounded-full bg-primary/80 flex items-center justify-center">
             <RotateCcw className="h-5 w-5 text-white" />
           </div>
@@ -153,20 +81,17 @@ function VideoCard({
         </button>
       )}
 
-      {/* Barra de progresso — só no card ativo */}
+      {/* Barra de progresso */}
       {active && !ended && (
         <div className="absolute bottom-0 left-0 right-0 h-1 bg-white/20 z-10">
-          <div
-            className="h-full bg-primary transition-none rounded-full"
-            style={{ width: `${progress}%` }}
-          />
+          <div className="h-full bg-primary rounded-full" style={{ width: `${progress}%`, transition: 'none' }} />
         </div>
       )}
 
-      {/* Rodapé título + equalizer */}
+      {/* Rodapé */}
       <div className="absolute bottom-3 left-0 right-0 px-3">
         <p className="text-white font-bold text-xs leading-tight drop-shadow">{video.label}</p>
-        {active && !globalMuted && !ended && (
+        {active && !muted && !ended && (
           <div className="flex items-end gap-0.5 mt-1.5 h-4">
             {[3, 6, 4, 7, 5, 3, 6].map((h, i) => (
               <div key={i} className="w-[3px] bg-primary rounded-full"
@@ -176,12 +101,8 @@ function VideoCard({
         )}
       </div>
 
-      {/* Anel brilhante ativo */}
-      {active && (
-        <div className="absolute inset-0 rounded-2xl ring-2 ring-primary/70 pointer-events-none" />
-      )}
+      {active && <div className="absolute inset-0 rounded-2xl ring-2 ring-primary/70 pointer-events-none" />}
 
-      {/* Hint hover nos inativos */}
       {!active && (
         <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200">
           <div className="h-10 w-10 rounded-full bg-white/10 backdrop-blur-sm border border-white/30 flex items-center justify-center">
@@ -193,38 +114,105 @@ function VideoCard({
   );
 }
 
-// ─── Seção principal ──────────────────────────────────────────────────────────
+// ─── Seção principal — controla playback diretamente via refs ─────────────────
 export default function VideoReel() {
   const sectionRef = useRef<HTMLElement>(null);
   const scrollRef  = useRef<HTMLDivElement>(null);
-  const [visible,   setVisible]   = useState(false);
+
+  // Refs para cada elemento <video> — criados uma vez, nunca recriados
+  const videoRefs = useRef<React.RefObject<HTMLVideoElement>[]>(
+    videos.map(() => ({ current: null }))
+  );
+
   const [activeIdx, setActiveIdx] = useState(0);
   const [muted,     setMuted]     = useState(true);
+  const [progress,  setProgress]  = useState(0);
+  const [ended,     setEnded]     = useState(false);
+  const [visible,   setVisible]   = useState(false);
 
-  // IntersectionObserver — inicia ao entrar na tela
+  // Função central: troca o vídeo ativo — chamada APENAS aqui
+  const playVideo = useCallback((idx: number, startMuted = true) => {
+    // Para e reseta todos os outros
+    videoRefs.current.forEach((ref, i) => {
+      if (i !== idx && ref.current) {
+        ref.current.pause();
+        ref.current.currentTime = 0;
+      }
+    });
+
+    // Inicia o novo
+    const v = videoRefs.current[idx].current;
+    if (!v) return;
+    v.currentTime = 0;
+    v.muted = startMuted;
+    setProgress(0);
+    setEnded(false);
+    v.play().catch(() => {});
+  }, []);
+
+  // IntersectionObserver — threshold baixo para não pausar com scroll leve
   useEffect(() => {
     const el = sectionRef.current;
     if (!el) return;
     const obs = new IntersectionObserver(
-      ([entry]) => setVisible(entry.isIntersecting),
-      { threshold: 0.3 },
+      ([entry]) => {
+        setVisible(entry.isIntersecting);
+        if (entry.isIntersecting) {
+          // Retoma o vídeo ativo quando a seção fica visível
+          const v = videoRefs.current[activeIdx].current;
+          if (v && !v.ended) v.play().catch(() => {});
+        } else {
+          // Pausa quando sai da tela — SEM resetar currentTime
+          const v = videoRefs.current[activeIdx].current;
+          if (v) v.pause();
+        }
+      },
+      { threshold: 0.1 }, // threshold baixo = não pausa por scroll leve
     );
     obs.observe(el);
     return () => obs.disconnect();
-  }, []);
+  }, [activeIdx]); // re-registra quando activeIdx muda para ter ref atualizado
 
-  // Avança para o próximo ao terminar o vídeo
-  const handleVideoEnded = useCallback(() => {
-    setActiveIdx(i => (i + 1) % videos.length);
-  }, []);
+  // Inicia o vídeo 0 quando a seção fica visível pela primeira vez
+  const startedRef = useRef(false);
+  useEffect(() => {
+    if (visible && !startedRef.current) {
+      startedRef.current = true;
+      playVideo(0, true);
+    }
+  }, [visible, playVideo]);
 
   const goTo = useCallback((idx: number) => {
     setActiveIdx(idx);
-  }, []);
+    playVideo(idx, muted);
+  }, [muted, playVideo]);
 
-  const scroll = (dir: 'left' | 'right') => {
-    scrollRef.current?.scrollBy({ left: dir === 'right' ? 260 : -260, behavior: 'smooth' });
-  };
+  const handleTimeUpdate = useCallback(() => {
+    const v = videoRefs.current[activeIdx].current;
+    if (!v || !v.duration) return;
+    setProgress((v.currentTime / v.duration) * 100);
+  }, [activeIdx]);
+
+  const handleEnded = useCallback(() => {
+    setEnded(true);
+    // Avança para o próximo após pequena pausa
+    setTimeout(() => {
+      const next = (activeIdx + 1) % videos.length;
+      setActiveIdx(next);
+      playVideo(next, muted);
+    }, 800);
+  }, [activeIdx, muted, playVideo]);
+
+  const handleToggleMute = useCallback(() => {
+    const next = !muted;
+    setMuted(next);
+    const v = videoRefs.current[activeIdx].current;
+    if (v) v.muted = next;
+  }, [muted, activeIdx]);
+
+  const handleReplay = useCallback(() => {
+    playVideo(activeIdx, muted);
+  }, [activeIdx, muted, playVideo]);
 
   // Centraliza o card ativo no scroll
   useEffect(() => {
@@ -246,8 +234,6 @@ export default function VideoReel() {
       `}</style>
 
       <div className="container-custom">
-
-        {/* Cabeçalho */}
         <div className="flex items-end justify-between mb-8">
           <div>
             <p className="text-primary text-xs font-bold uppercase tracking-[.2em] mb-2">ITEC em vídeo</p>
@@ -256,12 +242,9 @@ export default function VideoReel() {
             </h2>
             <p className="text-white/35 text-sm mt-1 flex items-center gap-1.5">
               <span className={`inline-block h-1.5 w-1.5 rounded-full ${visible ? 'bg-primary animate-pulse' : 'bg-white/20'}`} />
-              {visible
-                ? `Vídeo ${activeIdx + 1} de ${videos.length} · clique no 🔊 para ouvir`
-                : 'Role para ver os vídeos'}
+              {visible ? `Vídeo ${activeIdx + 1} de ${videos.length} · clique no 🔊 para ouvir` : 'Role para ver os vídeos'}
             </p>
           </div>
-
           <div className="flex gap-2">
             <button onClick={() => goTo(Math.max(0, activeIdx - 1))}
               className="h-10 w-10 rounded-full border border-white/20 bg-white/5 hover:bg-primary/80 hover:border-primary text-white flex items-center justify-center transition-all">
@@ -274,40 +257,36 @@ export default function VideoReel() {
           </div>
         </div>
 
-        {/* Trilho */}
-        <div
-          ref={scrollRef}
-          className="flex gap-4 overflow-x-auto pb-4"
-          style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
-        >
+        <div ref={scrollRef} className="flex gap-4 overflow-x-auto pb-4"
+          style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
           {videos.map((v, i) => (
             <VideoCard
               key={v.src}
               video={v}
               index={i}
               active={activeIdx === i}
-              sectionVisible={visible}
-              globalMuted={muted}
+              muted={muted}
+              progress={activeIdx === i ? progress : 0}
+              ended={activeIdx === i ? ended : false}
+              videoRef={videoRefs.current[i]}
               onActivate={goTo}
-              onToggleMute={() => setMuted(m => !m)}
-              onEnded={handleVideoEnded}
+              onToggleMute={handleToggleMute}
+              onReplay={handleReplay}
+              onTimeUpdate={handleTimeUpdate}
+              onEnded={handleEnded}
             />
           ))}
 
-          {/* Card CTA */}
           <a href="/cursos"
             className="flex-shrink-0 rounded-2xl border-2 border-dashed border-white/15 hover:border-primary/50 flex flex-col items-center justify-center gap-3 text-white/35 hover:text-primary transition-all duration-300 w-[160px] sm:w-[185px]"
             style={{ aspectRatio: '9/16' }}>
             <div className="h-12 w-12 rounded-full border-2 border-current flex items-center justify-center">
               <ChevronRight className="h-6 w-6" />
             </div>
-            <span className="text-xs font-bold uppercase tracking-wider text-center px-3">
-              Ver nossos cursos
-            </span>
+            <span className="text-xs font-bold uppercase tracking-wider text-center px-3">Ver nossos cursos</span>
           </a>
         </div>
 
-        {/* Dots */}
         <div className="flex justify-center gap-2 mt-6">
           {videos.map((_, i) => (
             <button key={i} onClick={() => goTo(i)}
@@ -317,7 +296,6 @@ export default function VideoReel() {
             />
           ))}
         </div>
-
       </div>
     </section>
   );
