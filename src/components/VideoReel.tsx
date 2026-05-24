@@ -23,29 +23,50 @@ function VideoCard({
   onToggleMute: () => void;
   onEnded: () => void;
 }) {
-  const videoRef = useRef<HTMLVideoElement>(null);
+  const videoRef   = useRef<HTMLVideoElement>(null);
+  const wasActive  = useRef(false);
   const [progress, setProgress] = useState(0);
-  const [ended, setEnded]       = useState(false);
+  const [ended,    setEnded]    = useState(false);
 
-  // Play/pause conforme ativo + visível
+  // Efeito 1: quando o card ATIVA — reseta e começa do zero
   useEffect(() => {
     const v = videoRef.current;
     if (!v) return;
-    if (sectionVisible && active) {
-      v.muted = globalMuted;
-      v.currentTime = 0;
-      setEnded(false);
-      setProgress(0);
-      v.play().catch(() => {});
+    if (active) {
+      // Só reseta se estava inativo antes (troca real de card)
+      if (!wasActive.current) {
+        v.currentTime = 0;
+        setProgress(0);
+        setEnded(false);
+      }
+      wasActive.current = true;
+      if (sectionVisible) {
+        v.muted = globalMuted;
+        v.play().catch(() => {});
+      }
     } else {
+      // Card desativado — pausa mas NÃO reseta currentTime aqui
+      // (reset feito via wasActive na próxima ativação)
+      wasActive.current = false;
       v.pause();
       v.currentTime = 0;
       setProgress(0);
       setEnded(false);
     }
-  }, [sectionVisible, active]);
+  }, [active]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Sync muted sem reiniciar
+  // Efeito 2: play/pause quando a seção entra/sai da tela (sem resetar)
+  useEffect(() => {
+    const v = videoRef.current;
+    if (!v || !active || ended) return;
+    if (sectionVisible) {
+      v.play().catch(() => {});
+    } else {
+      v.pause(); // pausa sem resetar — retoma de onde parou
+    }
+  }, [sectionVisible, active, ended]);
+
+  // Efeito 3: sync muted sem interferir no playback
   useEffect(() => {
     const v = videoRef.current;
     if (v) v.muted = globalMuted;
