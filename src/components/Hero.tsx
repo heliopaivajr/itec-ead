@@ -151,7 +151,7 @@ const Hero = () => {
                   <div className="text-itec-bloodRed font-bold">R$ 249,90<span className="text-xs font-normal text-white">/mês</span></div>
                 </div>
                 <Button asChild className="bg-itec-bloodRed hover:bg-itec-bloodRed/80 text-white shadow-md">
-                  <Link to="/matricula">Matricule-se</Link>
+                  <Link to="/reservar-vaga">Matricule-se</Link>
                 </Button>
               </div>
             </div>
