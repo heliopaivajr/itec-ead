@@ -77,3 +77,24 @@ Static course definitions live in `src/data/courses.ts`. The three courses are: 
 ### PRD and documentation
 
 `.prd/prd.md` contains the full project checklist — what's done, what's pending, known bugs, and next steps. Update it when completing significant features.
+
+---
+
+## ⚠️ Contexto separado: `.ai-system/`
+
+A pasta `.ai-system/` **não faz parte desta plataforma web**. É um sistema completamente independente que roda no **Claude.ai (Projetos)** — não no Claude Code — para produção de documentos institucionais do ITEC.
+
+```
+.ai-system/
+├── CLAUDE.md       ← regras globais do sistema documental
+├── SYSTEM.md       ← contexto do produto documental
+├── STACK.md        ← ferramentas: Word, Google Drive, python-docx
+├── ARCHITECTURE.md
+├── agents/         ← 18 agentes especializados (arquiteto, LGPD, etc.)
+├── runbooks/
+└── templates/
+```
+
+**O que esse sistema faz:** padroniza e gera documentos institucionais em `.docx` — manuais do professor (16 disciplinas, padrão NOVO3), contratos, apostilas, horários acadêmicos. Stack: Claude.ai + Microsoft Word + Google Drive.
+
+**Regra:** ao trabalhar neste repositório (Claude Code), ignore o conteúdo de `.ai-system/` — ele é lido pelo Claude.ai Projetos em outro contexto. Não misture as duas responsabilidades.
