@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
+import { env } from '@/config/env';
 
 export type UserRole = 'aluno' | 'professor' | 'administracao' | 'admin' | 'superadmin';
 
@@ -13,7 +14,7 @@ export interface Profile {
   email?: string;
 }
 
-const SUPERADMIN_EMAIL = 'heliopaiva@gmail.com';
+const SUPERADMIN_EMAIL = env.superadminEmail;
 
 export function useProfile() {
   const [profile, setProfile] = useState<Profile | null>(null);

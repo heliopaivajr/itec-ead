@@ -3,6 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { Eye, EyeOff, Loader2, ShieldCheck, Building2, BookOpen, GraduationCap, ArrowLeft } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/lib/supabase';
+import { env } from '@/config/env';
 
 const GoogleIcon = () => (
   <svg viewBox="0 0 24 24" className="h-4 w-4" aria-hidden="true">
@@ -73,7 +74,7 @@ export default function Login() {
           .single();
 
           if (remember) {
-            const userRole = (email === 'heliopaiva@gmail.com' && profile?.role !== 'superadmin')
+            const userRole = (email === env.superadminEmail && profile?.role !== 'superadmin')
               ? 'superadmin'
               : profile?.role;
             localStorage.setItem('user', JSON.stringify({ id: authData.user.id, email: authData.user.email, role: userRole, name: profile?.full_name }));
