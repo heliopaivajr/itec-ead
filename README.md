@@ -22,7 +22,7 @@
 
 | Camada | Tecnologia |
 |---|---|
-| Frontend | React 18 + TypeScript + Vite |
+| Frontend | React 18 + TypeScript + Vite 6 |
 | Estilização | Tailwind CSS + Shadcn UI (Radix) |
 | Backend / Auth / DB | Supabase (PostgreSQL + RLS + Storage) |
 | Deploy | Vercel (CD automático via GitHub) |
@@ -30,6 +30,7 @@
 | Formulários | React Hook Form + Zod |
 | Gráficos | Recharts |
 | Ícones | Lucide React |
+| Testes | Vitest + Testing Library |
 
 ---
 
@@ -63,20 +64,26 @@ Edite o `.env`:
 ```env
 VITE_SUPABASE_URL=https://SEU_PROJETO.supabase.co
 VITE_SUPABASE_ANON_KEY=sua_anon_key_aqui
+VITE_SITE_URL=https://www.itecedu.com
 ```
 
-> As credenciais ficam em **Supabase Dashboard → Settings → API**.
-> O arquivo `.env` está no `.gitignore` — **nunca commitar**.
+> As credenciais ficam em **Supabase Dashboard → Settings → API**.  
+> O arquivo `.env` está no `.gitignore` — **nunca commitar**.  
+> Nunca use prefixo `VITE_` para dados sensíveis — variáveis VITE_ ficam visíveis no bundle.
 
 ### 3. Configure o Supabase
 
 Execute os scripts SQL no **SQL Editor do Supabase Dashboard** (nesta ordem):
 
 ```
-.prd/01_handle_new_user_trigger.sql   ← trigger de criação de perfil
-.prd/02_profiles_rls.sql              ← políticas RLS da tabela profiles
-.prd/supabase/migration_sprint3_avisos.sql  ← tabela de avisos
+supabase/migrations/20260525_001_rls_leads_cursos.sql
+supabase/migrations/20260525_002_rls_matriculas.sql
+supabase/migrations/20260525_003_rls_avisos_fix.sql
+supabase/migrations/20260525_004_superadmin_role_db.sql    ← role superadmin no banco
+supabase/migrations/20260525_005_disciplinas_schema.sql    ← grade curricular + seed
 ```
+
+> Para desfazer qualquer migration, use o arquivo `_rollback.sql` correspondente.
 
 ### 4. Rode o servidor de desenvolvimento
 
@@ -91,11 +98,13 @@ Acesse: `http://localhost:8080`
 ## Scripts disponíveis
 
 ```bash
-pnpm dev          # Servidor de desenvolvimento
-pnpm build        # Build de produção
-pnpm build:dev    # Build em modo development
-pnpm preview      # Preview do build local
-pnpm lint         # ESLint
+pnpm dev              # Servidor de desenvolvimento
+pnpm build            # Build de produção
+pnpm lint             # ESLint
+pnpm test             # Testes em modo watch
+pnpm test:run         # Testes (one-shot, para CI)
+pnpm test:coverage    # Relatório de cobertura em coverage/
+pnpm test:ui          # Interface visual dos testes no browser
 ```
 
 ---
@@ -105,74 +114,105 @@ pnpm lint         # ESLint
 ```
 itec-ead/
 ├── public/
-│   ├── logo_itec_transparent.png   # Logo sem fundo (usada no site)
-│   ├── logo_itec.png               # Logo original
+│   ├── logo_itec_transparent.png   # Logo sem fundo
 │   ├── og-image.png                # Imagem OG para WhatsApp/redes (1200×630)
-│   ├── favicon.ico
-│   ├── robots.txt
 │   └── videos/                     # Vídeos servidos pelo site
-│       ├── hero-bg.mp4             # Vídeo de fundo do Hero
-│       ├── v01.mp4 → v05.mp4       # Vídeos do carrossel (seção ITEC em vídeo)
+│       ├── hero-bg.mp4             # Fundo do Hero
+│       └── v01.mp4 → v05.mp4       # Carrossel VideoReel
 │
 ├── src/
+│   ├── services/                   # Camada de serviços — toda lógica Supabase
+│   │   ├── auth.service.ts         # signIn, signOut, reset (erros em PT-BR)
+│   │   ├── profile.service.ts      # getRole, getProfile, upsert
+│   │   ├── leads.service.ts        # createLead + fallback localStorage
+│   │   ├── avisos.service.ts       # CRUD de avisos
+│   │   ├── dashboard.service.ts    # KPIs + listas recentes
+│   │   └── cursos.service.ts       # disciplinas + syncPrerequisitos (rollback)
+│   │
 │   ├── pages/
-│   │   ├── Index.tsx               # Landing page principal
-│   │   ├── Login.tsx               # Login (Email + Google OAuth)
+│   │   ├── Index.tsx               # Landing page
+│   │   ├── Login.tsx               # Email + Google OAuth
 │   │   ├── Cadastro.tsx
 │   │   ├── RecuperarSenha.tsx
-│   │   ├── Cursos.tsx              # Lista dos 3 cursos
+│   │   ├── ReservarVaga.tsx        # Formulário de interesse + LGPD
+│   │   ├── Privacidade.tsx         # Política de privacidade (LGPD)
+│   │   ├── AguardandoAprovacao.tsx # Tela para role 'pendente'
+│   │   ├── Cursos.tsx
 │   │   ├── Professores.tsx
-│   │   ├── Sobre.tsx               # Nossa Missão
-│   │   ├── Docentes.tsx            # Corpo docente
+│   │   ├── Sobre.tsx
 │   │   ├── Contato.tsx
 │   │   ├── Comunidade.tsx
 │   │   ├── Blog.tsx
-│   │   ├── ReservarVaga.tsx        # Formulário de interesse + LGPD
-│   │   ├── NotFound.tsx
-│   │   ├── DevSetup.tsx            # Só em desenvolvimento
-│   │   ├── Dashboard.tsx           # Layout base do dashboard
+│   │   ├── DevSetup.tsx            # Só em desenvolvimento (/dev-setup)
+│   │   ├── Dashboard.tsx           # Layout base + menuByRole
 │   │   └── dashboard/
-│   │       ├── DashboardHome.tsx   # KPIs por role
-│   │       ├── Perfil.tsx
-│   │       ├── Leads.tsx
-│   │       ├── Usuarios.tsx
-│   │       ├── MeusCursos.tsx
-│   │       ├── Matriculas.tsx
-│   │       ├── CursosAdmin.tsx
+│   │       ├── DashboardHome.tsx   # KPIs por role (Admin/Prof/Aluno)
+│   │       ├── CursosAdmin.tsx     # Grade curricular editável
 │   │       ├── Avisos.tsx
+│   │       ├── Leads.tsx
+│   │       ├── Matriculas.tsx
+│   │       ├── Usuarios.tsx
+│   │       ├── Perfil.tsx
+│   │       ├── MeusCursos.tsx
 │   │       └── ComingSoon.tsx
 │   │
 │   ├── components/
-│   │   ├── Hero.tsx                # Hero com vídeo bg + animações
+│   │   ├── ProtectedRoute.tsx      # RBAC: bloqueia 'pendente', role inválido
+│   │   ├── Hero.tsx                # Hero com vídeo + animações CSS
 │   │   ├── Navbar.tsx
 │   │   ├── Footer.tsx
 │   │   ├── VideoReel.tsx           # Carrossel estilo Netflix
-│   │   ├── Features.tsx
-│   │   ├── CoursePreview.tsx
-│   │   ├── Testimonials.tsx
 │   │   ├── CallToAction.tsx
 │   │   └── ui/                     # Shadcn UI components
 │   │
-│   ├── lib/
-│   │   └── supabase.ts             # Client Supabase (usa VITE_*)
+│   ├── test/                       # Testes Vitest + Testing Library
+│   │   ├── setup.ts                # Mock global do Supabase
+│   │   ├── utils.tsx               # customRender com providers
+│   │   ├── components/
+│   │   │   └── ProtectedRoute.test.tsx  # 8 cenários de RBAC
+│   │   └── pages/
+│   │       └── ReservarVaga.test.tsx    # 6 cenários (LGPD, erros, sucesso)
+│   │
+│   ├── hooks/
+│   │   ├── use-profile.tsx         # Lê perfil + role do Supabase
+│   │   └── use-theme-mode.ts
+│   │
+│   ├── config/
+│   │   └── env.ts                  # Ponto único de leitura de env vars
 │   │
 │   ├── data/
-│   │   └── courses.ts              # Dados dos 3 cursos
+│   │   ├── courses.ts              # 3 cursos do ITEC
+│   │   └── disciplinas.ts          # Grade curricular (40 disciplinas, fallback local)
 │   │
-│   └── hooks/
-│       ├── use-profile.ts
-│       └── use-theme-mode.ts
+│   └── lib/
+│       └── supabase.ts             # Client Supabase
 │
-├── .prd/                           # Documentação do projeto
-│   ├── prd.md                      # PRD principal (checklist completo)
-│   └── _archive/                   # Histórico de decisões
+├── supabase/
+│   └── migrations/                 # Scripts SQL versionados + rollbacks
+│
+├── .ai-system/                     # Sistema documental (Claude.ai — contexto separado)
+│   └── adr/                        # Architecture Decision Records
 │
 ├── .env.example                    # Template de variáveis (commitar ✅)
-├── .env                            # Credenciais reais (NÃO commitar 🚫)
-├── vercel.json                     # Cache + security headers
-├── vite.config.ts                  # manualChunks + aliases
-├── tailwind.config.ts
-└── index.html                      # Meta tags OG, fontes, title
+├── vercel.json                     # Cache + CSP + security headers
+├── vite.config.ts                  # manualChunks + aliases + Vitest config
+└── CLAUDE.md                       # Guia de arquitetura para Claude Code
+```
+
+---
+
+## Arquitetura — camada de serviços
+
+Todo acesso ao Supabase passa por `src/services/`. Componentes e páginas **não importam `supabase` diretamente** — apenas os services o fazem.
+
+```
+Componente/Página
+      ↓
+  src/services/          ← única camada que conhece o Supabase
+      ↓
+  src/lib/supabase.ts    ← client configurado com env vars
+      ↓
+  Supabase (PostgreSQL + RLS)
 ```
 
 ---
@@ -181,12 +221,14 @@ itec-ead/
 
 | Role | Quem | Acesso |
 |---|---|---|
-| `pendente` | Novo cadastro | Área de espera |
+| `pendente` | Novo cadastro | Redirecionado para `/aguardando` — sem acesso ao dashboard |
 | `aluno` | Aluno aprovado | Área do aluno |
-| `professor` | Docente | Lançar notas, frequência, materiais |
+| `professor` | Docente | Turmas, materiais, avisos |
 | `administracao` | Secretaria | Leads, matrículas, avisos |
 | `admin` | Diretoria | Todos os painéis |
-| `superadmin` | Dev (Hélio) | Acesso total + LGPD + auditoria |
+| `superadmin` | Dev (Hélio) | Acesso total + segurança + LGPD |
+
+> O role `superadmin` é definido diretamente no banco (tabela `profiles`) — não há email hardcoded no código.
 
 ---
 
@@ -194,33 +236,38 @@ itec-ead/
 
 | Curso | Duração | Horário | Modalidade |
 |---|---|---|---|
-| Graduação em Teologia | 3 anos / 185 créditos | Seg, Qua, Sex — 18h45 | Híbrida |
+| Graduação em Teologia (Teologia Livre) | 3 anos / 6 módulos | Seg, Qua, Sex — 18h45 | Híbrida |
 | SETEB | 3 anos | Terças — 19h às 20h | Presencial |
 | Ministerial para Mulheres | Anual (7 disciplinas) | Quintas — 19h às 22h | Presencial |
+
+Turma 2026 — início em agosto.
 
 ---
 
 ## O que está em produção
 
-- ✅ Landing page completa com vídeo de fundo e animações
-- ✅ Carrossel de vídeos estilo Netflix (5 vídeos)
-- ✅ Formulário de reserva de vaga com LGPD
-- ✅ Páginas: /sobre, /docentes, /contato, /comunidade, /blog
-- ✅ Dashboard com painéis por role
-- ✅ Auth com Email + Google OAuth (Supabase)
-- ✅ Leads, Matrículas, Avisos, Usuários
+- ✅ Landing page com vídeo de fundo, animações e carrossel de vídeos
+- ✅ Formulário de reserva de vaga com consentimento LGPD
+- ✅ Página de Política de Privacidade (LGPD completa)
+- ✅ Auth: Email + Google OAuth (Supabase)
+- ✅ Dashboard multi-role: Admin, Professor, Aluno
+- ✅ Leads, Matrículas, Avisos, Usuários, Grade Curricular
+- ✅ ProtectedRoute com RBAC — bloqueia role `pendente`
 - ✅ Tema Dark / Light / Sépia
+- ✅ CSP configurada (sem domínios de protótipo)
+- ✅ Camada de serviços completa (6 services)
+- ✅ Testes: Vitest + 15 testes (ProtectedRoute + ReservarVaga)
 - ✅ Deploy automático Vercel + domínio itecedu.com
 
 ## Próximos passos
 
-- [ ] FAQ na landing page
+- [ ] `usuarios.service` — isolar páginas admin restantes
+- [ ] Testes para Login, Dashboard, CursosAdmin
 - [ ] E-mail automático ao reservar vaga (Resend)
-- [ ] Tabelas acadêmicas no Supabase (cursos, módulos, aulas)
 - [ ] MeusCursos com progresso real
 - [ ] Frequência e Notas
 - [ ] Certificados digitais com QR Code
-- [ ] Financeiro / Mensalidades
+- [ ] FAQ na landing page
 
 ---
 
