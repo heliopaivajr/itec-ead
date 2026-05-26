@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Search, User, Shield, GraduationCap, BookOpen, Loader2, Users, Edit } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { supabase } from '@/lib/supabase';
+import { getUsuarios, updateRole, updateUsuario } from '@/services/usuarios.service';
 import { useToast } from '@/hooks/use-toast';
 
 interface UserRow {
@@ -35,11 +35,7 @@ export default function Usuarios() {
 
   const load = async () => {
     setLoading(true);
-    const { data } = await supabase
-      .from('profiles')
-      .select('*')
-      .order('created_at', { ascending: false });
-    setUsers(data ?? []);
+    setUsers(await getUsuarios());
     setLoading(false);
   };
 
@@ -47,13 +43,10 @@ export default function Usuarios() {
 
   const changeRole = async (userId: string, newRole: UserRow['role']) => {
     setUpdating(userId);
-    const { error } = await supabase
-      .from('profiles')
-      .update({ role: newRole })
-      .eq('id', userId);
+    const { error } = await updateRole(userId, newRole);
 
     if (error) {
-      toast({ title: 'Erro ao atualizar role', description: error.message, variant: 'destructive' });
+      toast({ title: 'Erro ao atualizar role', description: error, variant: 'destructive' });
     } else {
       setUsers(prev => prev.map(u => u.id === userId ? { ...u, role: newRole } : u));
       toast({ title: 'Role atualizado!', description: 'Permissão do usuário alterada com sucesso.' });
@@ -64,17 +57,10 @@ export default function Usuarios() {
   const handleEditSave = async () => {
     if (!editUser) return;
     setUpdating(editUser.id);
-    const { error } = await supabase
-      .from('profiles')
-      .update({ 
-        full_name: editForm.full_name, 
-        telefone: editForm.telefone, 
-        role: editForm.role 
-      })
-      .eq('id', editUser.id);
+    const { error } = await updateUsuario(editUser.id, editForm);
 
     if (error) {
-      toast({ title: 'Erro ao salvar', description: error.message, variant: 'destructive' });
+      toast({ title: 'Erro ao salvar', description: error, variant: 'destructive' });
     } else {
       toast({ title: 'Usuário atualizado!', description: 'Dados salvos com sucesso.' });
       await load();

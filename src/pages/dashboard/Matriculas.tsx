@@ -3,7 +3,7 @@ import { Check, X, Eye, Loader2, User, Book } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { StatusBadge } from '@/components/dashboard/StatusBadge';
-import { supabase } from '@/lib/supabase';
+import { getMatriculas, updateStatusMatricula } from '@/services/matriculas.service';
 import { useToast } from '@/hooks/use-toast';
 
 interface Matricula {
@@ -41,11 +41,7 @@ export default function Matriculas() {
 
   const load = async () => {
     setLoading(true);
-    const { data } = await supabase
-      .from('matriculas')
-      .select('*, profile:profiles(full_name, email)')
-      .order('created_at', { ascending: false });
-    setMatriculas(data ?? []);
+    setMatriculas(await getMatriculas());
     setLoading(false);
   };
 
@@ -53,13 +49,10 @@ export default function Matriculas() {
 
   const updateStatus = async (id: string, novoStatus: string) => {
     setProcessing(id);
-    const { error } = await supabase
-      .from('matriculas')
-      .update({ status: novoStatus, observacao: obsText || null })
-      .eq('id', id);
+    const { error } = await updateStatusMatricula(id, novoStatus, obsText);
 
     if (error) {
-      toast({ title: 'Erro', description: error.message, variant: 'destructive' });
+      toast({ title: 'Erro', description: error, variant: 'destructive' });
     } else {
       toast({ title: `Matrícula ${novoStatus === 'ativo' ? 'aprovada' : 'recusada'}!`, description: 'Status atualizado com sucesso.' });
       setDetalhes(null);

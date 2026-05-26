@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Search, Download, Mail, Phone, User, Calendar } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { supabase } from '@/lib/supabase';
+import { getLeadsRecentes } from '@/services/dashboard.service';
 
 interface Lead {
   id: string;
@@ -38,14 +38,10 @@ export default function Leads() {
   const [search, setSearch] = useState('');
 
   useEffect(() => {
-    supabase
-      .from('leads_cursos')
-      .select('*')
-      .order('created_at', { ascending: false })
-      .then(({ data }) => {
-        setLeads(data ?? []);
-        setLoading(false);
-      });
+    getLeadsRecentes(1000).then(data => {
+      setLeads(data as Lead[]);
+      setLoading(false);
+    });
   }, []);
 
   const filtered = leads.filter(l =>

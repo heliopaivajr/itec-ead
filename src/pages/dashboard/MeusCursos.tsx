@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import { BookOpen, Clock, ExternalLink } from 'lucide-react';
-import { supabase } from '@/lib/supabase';
+import { getMinhasMatriculas } from '@/services/matriculas.service';
 import type { DashboardContext } from '../Dashboard';
 
 interface Matricula {
@@ -45,14 +45,10 @@ export default function MeusCursos() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    supabase
-      .from('matriculas')
-      .select('*')
-      .eq('aluno_id', profile.id)
-      .then(({ data }) => {
-        setMatriculas(data ?? []);
-        setLoading(false);
-      });
+    getMinhasMatriculas(profile.id).then(data => {
+      setMatriculas(data);
+      setLoading(false);
+    });
   }, [profile.id]);
 
   if (loading) {

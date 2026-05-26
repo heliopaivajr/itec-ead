@@ -4,7 +4,7 @@ import { User, Camera, Save, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { supabase } from '@/lib/supabase';
+import { updatePerfil } from '@/services/usuarios.service';
 import { useToast } from '@/hooks/use-toast';
 import type { DashboardContext } from '../Dashboard';
 
@@ -31,14 +31,11 @@ export default function Perfil() {
 
   const handleSave = async () => {
     setSaving(true);
-    const { error } = await supabase
-      .from('profiles')
-      .update({ full_name: fullName, telefone, bio, updated_at: new Date().toISOString() })
-      .eq('id', profile.id);
+    const { error } = await updatePerfil(profile.id, { full_name: fullName, telefone, bio });
 
     setSaving(false);
     if (error) {
-      toast({ title: 'Erro ao salvar', description: error.message, variant: 'destructive' });
+      toast({ title: 'Erro ao salvar', description: error, variant: 'destructive' });
     } else {
       toast({ title: 'Perfil atualizado!', description: 'Suas informações foram salvas com sucesso.' });
     }
