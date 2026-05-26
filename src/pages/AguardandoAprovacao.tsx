@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { supabase } from '@/lib/supabase';
+import { getSession, signOut } from '@/services/auth.service';
 import { Button } from '@/components/ui/button';
 import { Clock, LogOut, Mail } from 'lucide-react';
 
@@ -8,13 +8,13 @@ const AguardandoAprovacao = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    getSession().then(session => {
       if (!session) navigate('/login', { replace: true });
     });
   }, [navigate]);
 
   const handleLogout = async () => {
-    await supabase.auth.signOut();
+    await signOut();
     navigate('/login', { replace: true });
   };
 
