@@ -123,50 +123,44 @@ BEGIN
 END $$;
 
 -- ─── 4. PRÉ-REQUISITOS ───────────────────────────────────────
-DO $$
-DECLARE
-  PROCEDURE ins(cod_disc TEXT, cod_pre TEXT, tp TEXT) AS $$
-  DECLARE d UUID; p UUID;
-  BEGIN
-    SELECT id INTO d FROM public.disciplinas_v2 WHERE codigo = cod_disc;
-    SELECT id INTO p FROM public.disciplinas_v2 WHERE codigo = cod_pre;
-    IF d IS NOT NULL AND p IS NOT NULL THEN
-      INSERT INTO public.prerequisitos_v2 (disciplina_id, prerequisito_id, tipo)
-      VALUES (d, p, tp) ON CONFLICT DO NOTHING;
-    END IF;
-  END;
-BEGIN
+-- INSERT direto com subquery — sem procedure aninhada
+INSERT INTO public.prerequisitos_v2 (disciplina_id, prerequisito_id, tipo)
+SELECT d.id, p.id, rel.tp
+FROM (VALUES
   -- NT sequência
-  CALL ins('B1NTA','B1NTG','prerequisito');
-  CALL ins('B2NTP','B1NTA','prerequisito');
-  CALL ins('B2NTG','B2NTP','prerequisito');
+  ('B1NTA','B1NTG','prerequisito'),
+  ('B2NTP','B1NTA','prerequisito'),
+  ('B2NTG','B2NTP','prerequisito'),
   -- AT sequência
-  CALL ins('B1ATH','B1ATG','prerequisito');
-  CALL ins('B2ATP','B1ATH','prerequisito');
-  CALL ins('B2ATQ','B2ATP','prerequisito');
+  ('B1ATH','B1ATG','prerequisito'),
+  ('B2ATP','B1ATH','prerequisito'),
+  ('B2ATQ','B2ATP','prerequisito'),
   -- Teologia Sistemática
-  CALL ins('T1CRI','T1DOG','prerequisito');
-  CALL ins('T2SOT','T1CRI','prerequisito');
-  CALL ins('T2ESC','T2SOT','prerequisito');
+  ('T1CRI','T1DOG','prerequisito'),
+  ('T2SOT','T1CRI','prerequisito'),
+  ('T2ESC','T2SOT','prerequisito'),
   -- Grego
-  CALL ins('B2GRK','B1GRG','prerequisito');
+  ('B2GRK','B1GRG','prerequisito'),
   -- Hebraico
-  CALL ins('B2HE2','B2HEB','prerequisito');
+  ('B2HE2','B2HEB','prerequisito'),
   -- Bibliologia → Hermenêutica
-  CALL ins('B2HER','B1BIB','prerequisito');
+  ('B2HER','B1BIB','prerequisito'),
   -- Homilética
-  CALL ins('P3HO2','P3HOM','prerequisito');
+  ('P3HO2','P3HOM','prerequisito'),
   -- Aconselhamento
-  CALL ins('P3AC2','P3ACO','prerequisito');
+  ('P3AC2','P3ACO','prerequisito'),
   -- Missiologia
-  CALL ins('T2MIS','T1MIS','prerequisito');
-  CALL ins('T2MIH','T2MIS','prerequisito');
-  CALL ins('T3MIP','T2MIH','prerequisito');
+  ('T2MIS','T1MIS','prerequisito'),
+  ('T2MIH','T2MIS','prerequisito'),
+  ('T3MIP','T2MIH','prerequisito'),
   -- História da Igreja
-  CALL ins('T1HIM','T1HIG','prerequisito');
+  ('T1HIM','T1HIG','prerequisito'),
   -- Co-requisitos
-  CALL ins('B2EXT','B2GRK','corequisito');
-  CALL ins('B2EXT','B2HER','corequisito');
-  CALL ins('B3EAT','B2HE2','corequisito');
-  CALL ins('B3EAT','B2HER','corequisito');
-END $$;
+  ('B2EXT','B2GRK','corequisito'),
+  ('B2EXT','B2HER','corequisito'),
+  ('B3EAT','B2HE2','corequisito'),
+  ('B3EAT','B2HER','corequisito')
+) AS rel(cod_disc, cod_pre, tp)
+JOIN public.disciplinas_v2 d ON d.codigo = rel.cod_disc
+JOIN public.disciplinas_v2 p ON p.codigo = rel.cod_pre
+ON CONFLICT (disciplina_id, prerequisito_id) DO NOTHING;
