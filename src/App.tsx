@@ -35,9 +35,13 @@ const Leads         = lazy(() => import("./pages/dashboard/Leads"));
 const Usuarios      = lazy(() => import("./pages/dashboard/Usuarios"));
 const MeusCursos    = lazy(() => import("./pages/dashboard/MeusCursos"));
 const Matriculas    = lazy(() => import("./pages/dashboard/Matriculas"));
-const CursosAdmin   = lazy(() => import("./pages/dashboard/CursosAdmin"));
-const Avisos        = lazy(() => import("./pages/dashboard/Avisos"));
-const ComingSoon    = lazy(() => import("./pages/dashboard/ComingSoon"));
+const CursosAdmin        = lazy(() => import("./pages/dashboard/CursosAdmin"));
+const Avisos             = lazy(() => import("./pages/dashboard/Avisos"));
+const ComingSoon         = lazy(() => import("./pages/dashboard/ComingSoon"));
+const ProfessorHome      = lazy(() => import("./pages/dashboard/ProfessorHome"));
+const LancarFrequencia   = lazy(() => import("./pages/dashboard/LancarFrequencia"));
+const VerTurma           = lazy(() => import("./pages/dashboard/VerTurma"));
+const ContratoForm       = lazy(() => import("./pages/dashboard/ContratoForm"));
 import ProtectedRoute from '@/components/ProtectedRoute';
 
 const queryClient = new QueryClient();
@@ -105,6 +109,12 @@ const App = () => (
               <Route path="avisos"        element={<Avisos />} />
               <Route path="notificacoes"  element={<ComingSoon title="Notificações" icon={Bell} description="Envio de comunicados e avisos para alunos e professores em desenvolvimento." />} />
               <Route path="seguranca"     element={<ComingSoon title="Segurança & LGPD" icon={ShieldAlert} description="Logs de acesso, controle de permissões e conformidade LGPD em desenvolvimento." />} />
+
+              {/* Professor */}
+              <Route path="professor"                              element={<ProfessorHome />} />
+              <Route path="professor/frequencia/:disciplinaId"    element={<LancarFrequencia />} />
+              <Route path="professor/turma/:disciplinaId"         element={<VerTurma />} />
+              <Route path="professor/contrato/:contratoId"        element={<ContratoForm />} />
 
               {/* All roles */}
               <Route path="perfil" element={<Perfil />} />
