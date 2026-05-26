@@ -25,6 +25,7 @@ const Contato        = lazy(() => import("./pages/Contato"));
 const Comunidade     = lazy(() => import("./pages/Comunidade"));
 const Blog           = lazy(() => import("./pages/Blog"));
 const ReservarVaga   = lazy(() => import("./pages/ReservarVaga"));
+const Privacidade    = lazy(() => import("./pages/Privacidade"));
 const DevSetup       = lazy(() => import("./pages/DevSetup"));
 const NotFound       = lazy(() => import("./pages/NotFound"));
 
@@ -96,6 +97,7 @@ const App = () => (
             <Route path="/comunidade"    element={<Comunidade />} />
             <Route path="/blog"          element={<Blog />} />
             <Route path="/reservar-vaga" element={<ReservarVaga />} />
+            <Route path="/privacidade"   element={<Privacidade />} />
             <Route path="/dev-setup"     element={<DevSetup />} />
 
             {/* Dashboard — nested protected routes */}
