@@ -38,6 +38,9 @@ const Matriculas    = lazy(() => import("./pages/dashboard/Matriculas"));
 const CursosAdmin        = lazy(() => import("./pages/dashboard/CursosAdmin"));
 const Avisos             = lazy(() => import("./pages/dashboard/Avisos"));
 const ComingSoon         = lazy(() => import("./pages/dashboard/ComingSoon"));
+const NovaMatricula      = lazy(() => import("./pages/dashboard/NovaMatricula"));
+const FinanceiroPage     = lazy(() => import("./pages/dashboard/Financeiro"));
+const Convalidacoes      = lazy(() => import("./pages/dashboard/Convalidacoes"));
 const ProfessorHome      = lazy(() => import("./pages/dashboard/ProfessorHome"));
 const LancarFrequencia   = lazy(() => import("./pages/dashboard/LancarFrequencia"));
 const VerTurma           = lazy(() => import("./pages/dashboard/VerTurma"));
@@ -101,7 +104,10 @@ const App = () => (
               <Route path="agenda"      element={<ComingSoon title="Agenda" icon={CalendarDays} description="Calendário de aulas e compromissos acadêmicos em desenvolvimento." />} />
 
               {/* Admin / Secretaria */}
-              <Route path="usuarios"      element={<Usuarios />} />
+              <Route path="nova-matricula"  element={<NovaMatricula />} />
+              <Route path="financeiro"      element={<FinanceiroPage />} />
+              <Route path="convalidacoes"   element={<Convalidacoes />} />
+              <Route path="usuarios"        element={<Usuarios />} />
               <Route path="leads"         element={<Leads />} />
               <Route path="matriculas"    element={<Matriculas />} />
               <Route path="cursos-admin"  element={<CursosAdmin />} />
