@@ -25,8 +25,9 @@ const Comunidade     = lazy(() => import("./pages/Comunidade"));
 const Blog           = lazy(() => import("./pages/Blog"));
 const ReservarVaga   = lazy(() => import("./pages/ReservarVaga"));
 const Privacidade    = lazy(() => import("./pages/Privacidade"));
-const DevSetup       = lazy(() => import("./pages/DevSetup"));
-const NotFound       = lazy(() => import("./pages/NotFound"));
+const DevSetup              = lazy(() => import("./pages/DevSetup"));
+const NotFound              = lazy(() => import("./pages/NotFound"));
+const AguardandoAprovacao   = lazy(() => import("./pages/AguardandoAprovacao"));
 
 const DashboardHome = lazy(() => import("./pages/dashboard/DashboardHome"));
 const Perfil        = lazy(() => import("./pages/dashboard/Perfil"));
@@ -42,16 +43,37 @@ import { supabase } from '@/lib/supabase';
 
 const queryClient = new QueryClient();
 
+// Roles that are allowed to access the dashboard.
+// 'pendente' is intentionally excluded — those users are redirected to /aguardando.
+// Unknown/missing roles also redirect to /login (secure by default).
+const ROLES_COM_ACESSO: string[] = ['aluno', 'professor', 'administracao', 'admin', 'superadmin'];
+
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const [session, setSession] = useState<any>(undefined);
+  const [role, setRole]       = useState<string | null | undefined>(undefined);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => setSession(session));
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => setSession(session));
+    async function check() {
+      const { data: { session: s } } = await supabase.auth.getSession();
+      setSession(s ?? null);
+      if (!s?.user) { setRole(null); return; }
+
+      const { data } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', s.user.id)
+        .single();
+
+      setRole(data?.role ?? null);
+    }
+
+    check();
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(() => check());
     return () => subscription.unsubscribe();
   }, []);
 
-  if (session === undefined) {
+  // Still loading
+  if (session === undefined || role === undefined) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="flex flex-col items-center gap-3 text-muted-foreground animate-pulse">
@@ -61,7 +83,11 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
       </div>
     );
   }
-  if (!session) return <Navigate to="/login" replace />;
+
+  if (!session)                         return <Navigate to="/login"     replace />;
+  if (role === 'pendente')              return <Navigate to="/aguardando" replace />;
+  if (!ROLES_COM_ACESSO.includes(role)) return <Navigate to="/login"     replace />;
+
   return children;
 };
 
@@ -98,6 +124,7 @@ const App = () => (
             <Route path="/reservar-vaga" element={<ReservarVaga />} />
             <Route path="/privacidade"   element={<Privacidade />} />
             <Route path="/dev-setup"     element={<DevSetup />} />
+            <Route path="/aguardando"    element={<AguardandoAprovacao />} />
 
             {/* Dashboard — nested protected routes */}
             <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>}>

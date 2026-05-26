@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { env } from '@/config/env';
 
-export type UserRole = 'aluno' | 'professor' | 'administracao' | 'admin' | 'superadmin';
+export type UserRole = 'pendente' | 'aluno' | 'professor' | 'administracao' | 'admin' | 'superadmin';
 
 export interface Profile {
   id: string;
