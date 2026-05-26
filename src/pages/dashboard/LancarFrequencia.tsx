@@ -63,13 +63,18 @@ export default function LancarFrequencia() {
     // Busca todos os alunos únicos que têm algum registro nessa disciplina
     const alunosUnicos = [...new Set(registros.map(r => r.aluno_id))];
 
+    // Mapa aluno_id → nome/email via join já incluso nos registros
+    const nomeMap = new Map(
+      registros.map(r => [r.aluno_id, r.aluno?.full_name ?? r.aluno_id])
+    );
+
     const rows: AlunoRow[] = await Promise.all(
       alunosUnicos.map(async (alunoId): Promise<AlunoRow> => {
-        const resumo    = await getResumoFrequencia(alunoId, disciplinaId);
+        const resumo      = await getResumoFrequencia(alunoId, disciplinaId);
         const registroDia = doDia.find(r => r.aluno_id === alunoId);
         return {
           aluno_id:         alunoId,
-          nome:             alunoId, // nome real via join futuro
+          nome:             nomeMap.get(alunoId) ?? alunoId,
           presente:         registroDia?.presente ?? true,
           percentual_atual: resumo.percentual_presenca,
         };

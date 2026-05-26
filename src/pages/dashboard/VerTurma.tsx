@@ -39,13 +39,18 @@ export default function VerTurma() {
 
       setDisciplina(disc);
 
+      // Mapa aluno_id → nome via join já incluso nos registros
+      const nomeMap = new Map(
+        registros.map(r => [r.aluno_id, r.aluno?.full_name ?? r.aluno_id])
+      );
+
       const alunosUnicos = [...new Set(registros.map(r => r.aluno_id))];
       const rows: AlunoTurma[] = await Promise.all(
         alunosUnicos.map(async (alunoId): Promise<AlunoTurma> => {
           const resumo = await getResumoFrequencia(alunoId, disciplinaId);
           return {
             aluno_id:    alunoId,
-            nome:        alunoId, // nome real via join futuro
+            nome:        nomeMap.get(alunoId) ?? alunoId,
             percentual:  resumo.percentual_presenca,
             total_aulas: resumo.total_aulas,
             presencas:   resumo.presencas,
@@ -61,9 +66,9 @@ export default function VerTurma() {
   }, [disciplinaId]);
 
   const exportCsv = () => {
-    const header = 'Aluno ID,Freq.%,Total Aulas,Presenças,Status\n';
+    const header = 'Nome,Freq.%,Total Aulas,Presenças,Status\n';
     const rows   = alunos.map(a =>
-      `"${a.aluno_id}",${a.percentual},${a.total_aulas},${a.presencas},"${a.status}"`
+      `"${a.nome}",${a.percentual},${a.total_aulas},${a.presencas},"${a.status}"`
     ).join('\n');
     const blob = new Blob([header + rows], { type: 'text/csv' });
     const url  = URL.createObjectURL(blob);

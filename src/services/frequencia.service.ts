@@ -1,9 +1,16 @@
 import { supabase } from '@/lib/supabase';
 
+export interface AlunoBasico {
+  id: string;
+  full_name: string;
+  email: string;
+}
+
 export interface RegistroFrequencia {
   id: string;
   disciplina_id: string;
   aluno_id: string;
+  aluno?: AlunoBasico;
   professor_id: string;
   data_aula: string;
   presente: boolean;
@@ -11,6 +18,13 @@ export interface RegistroFrequencia {
   documento_url: string | null;
   observacao: string | null;
   registrado_em: string;
+}
+
+export interface AlunoEmRisco {
+  aluno_id: string;
+  nome: string;
+  email: string;
+  percentual: number;
 }
 
 export type FrequenciaStatus = 'ok' | 'alerta' | 'reprovado';
@@ -39,7 +53,7 @@ export async function getFrequenciaByDisciplina(
 ): Promise<RegistroFrequencia[]> {
   let query = supabase
     .from('frequencia')
-    .select('*')
+    .select('*, aluno:profiles!frequencia_aluno_id_fkey(id, full_name, email)')
     .eq('disciplina_id', disciplinaId)
     .order('data_aula', { ascending: false });
 
@@ -107,30 +121,38 @@ export async function justificarFalta(
   return { error: null };
 }
 
-// Retorna alunos com percentual abaixo do limite (default 75%)
+// Retorna alunos com percentual abaixo do limite (default 75%) com nome e email
 export async function getAlunosAbaixoLimite(
   disciplinaId: string,
   limite = 75
-): Promise<{ aluno_id: string; percentual: number }[]> {
+): Promise<AlunoEmRisco[]> {
   const { data, error } = await supabase
     .from('frequencia')
-    .select('aluno_id, presente')
+    .select('aluno_id, presente, aluno:profiles!frequencia_aluno_id_fkey(full_name, email)')
     .eq('disciplina_id', disciplinaId);
 
   if (error || !data) return [];
 
+  type Row = { aluno_id: string; presente: boolean; aluno: { full_name: string; email: string } | null };
+
   // Agrega por aluno em JS
-  const porAluno = new Map<string, { total: number; presencas: number }>();
-  for (const r of data as { aluno_id: string; presente: boolean }[]) {
-    const entry = porAluno.get(r.aluno_id) ?? { total: 0, presencas: 0 };
+  const porAluno = new Map<string, { total: number; presencas: number; nome: string; email: string }>();
+  for (const r of data as Row[]) {
+    const entry = porAluno.get(r.aluno_id) ?? {
+      total: 0, presencas: 0,
+      nome:  r.aluno?.full_name ?? r.aluno_id,
+      email: r.aluno?.email ?? '',
+    };
     entry.total++;
     if (r.presente) entry.presencas++;
     porAluno.set(r.aluno_id, entry);
   }
 
   return Array.from(porAluno.entries())
-    .map(([aluno_id, { total, presencas }]) => ({
+    .map(([aluno_id, { total, presencas, nome, email }]) => ({
       aluno_id,
+      nome,
+      email,
       percentual: total > 0 ? Math.round((presencas / total) * 100) : 100,
     }))
     .filter(a => a.percentual < limite)
