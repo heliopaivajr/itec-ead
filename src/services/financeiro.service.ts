@@ -1,0 +1,196 @@
+import { supabase } from '@/lib/supabase';
+
+export interface TaxaMatricula {
+  id: string;
+  aluno_id: string;
+  matricula_id: string | null;
+  valor: number;
+  status: 'pendente' | 'pago' | 'isento';
+  data_vencimento: string | null;
+  data_pagamento: string | null;
+  comprovante_url: string | null;
+  registrado_por: string | null;
+  observacoes: string | null;
+  criado_em: string;
+}
+
+export interface Mensalidade {
+  id: string;
+  aluno_id: string;
+  matricula_id: string | null;
+  valor: number;
+  mes_referencia: string;
+  data_vencimento: string;
+  status: 'pendente' | 'pago' | 'atrasado' | 'isento' | 'cancelado';
+  data_pagamento: string | null;
+  comprovante_url: string | null;
+  registrado_por: string | null;
+  observacoes: string | null;
+  criado_em: string;
+}
+
+export interface ResumoFinanceiro {
+  em_dia: boolean;
+  total_pendente: number;
+  mensalidades_atrasadas: number;
+  proxima_mensalidade: Mensalidade | null;
+}
+
+export interface Inadimplente {
+  aluno_id: string;
+  nome: string;
+  mensalidades_atrasadas: number;
+  valor_total: number;
+}
+
+export interface ServiceResult {
+  error: string | null;
+}
+
+export async function getTaxaMatricula(alunoId: string): Promise<TaxaMatricula | null> {
+  const { data, error } = await supabase
+    .from('taxa_matricula')
+    .select('*')
+    .eq('aluno_id', alunoId)
+    .single();
+
+  if (error || !data) return null;
+  return data as TaxaMatricula;
+}
+
+export async function registrarPagamentoTaxa(
+  alunoId: string,
+  comprovanteUrl: string,
+  registradoPor: string
+): Promise<ServiceResult> {
+  const { error } = await supabase
+    .from('taxa_matricula')
+    .update({
+      status:          'pago',
+      data_pagamento:   new Date().toISOString().split('T')[0],
+      comprovante_url:  comprovanteUrl,
+      registrado_por:   registradoPor,
+    })
+    .eq('aluno_id', alunoId);
+
+  if (error) return { error: error.message };
+  return { error: null };
+}
+
+export async function getMensalidadesByAluno(alunoId: string): Promise<Mensalidade[]> {
+  const { data, error } = await supabase
+    .from('mensalidades')
+    .select('*')
+    .eq('aluno_id', alunoId)
+    .order('mes_referencia', { ascending: false });
+
+  if (error) return [];
+  return (data as Mensalidade[]) ?? [];
+}
+
+export async function registrarPagamentoMensalidade(
+  id: string,
+  dataPagamento: string,
+  comprovanteUrl: string,
+  registradoPor: string
+): Promise<ServiceResult> {
+  const { error } = await supabase
+    .from('mensalidades')
+    .update({
+      status:          'pago',
+      data_pagamento:   dataPagamento,
+      comprovante_url:  comprovanteUrl,
+      registrado_por:   registradoPor,
+    })
+    .eq('id', id);
+
+  if (error) return { error: error.message };
+  return { error: null };
+}
+
+export async function getInadimplentes(): Promise<Inadimplente[]> {
+  const { data, error } = await supabase
+    .from('mensalidades')
+    .select('aluno_id, valor, profile:profiles(full_name)')
+    .in('status', ['pendente', 'atrasado'])
+    .lt('data_vencimento', new Date().toISOString().split('T')[0]);
+
+  if (error || !data) return [];
+
+  // Agrega por aluno em JS
+  const porAluno = new Map<string, { nome: string; count: number; total: number }>();
+  for (const m of data as { aluno_id: string; valor: number; profile: { full_name: string } | null }[]) {
+    const entry = porAluno.get(m.aluno_id) ?? {
+      nome:  m.profile?.full_name ?? m.aluno_id,
+      count: 0,
+      total: 0,
+    };
+    entry.count++;
+    entry.total += m.valor;
+    porAluno.set(m.aluno_id, entry);
+  }
+
+  return Array.from(porAluno.entries())
+    .map(([aluno_id, { nome, count, total }]) => ({
+      aluno_id,
+      nome,
+      mensalidades_atrasadas: count,
+      valor_total:            Math.round(total * 100) / 100,
+    }))
+    .sort((a, b) => b.mensalidades_atrasadas - a.mensalidades_atrasadas);
+}
+
+export async function getResumoFinanceiroAluno(alunoId: string): Promise<ResumoFinanceiro> {
+  const mensalidades = await getMensalidadesByAluno(alunoId);
+
+  const hoje     = new Date().toISOString().split('T')[0];
+  const atrasadas = mensalidades.filter(
+    m => (m.status === 'pendente' || m.status === 'atrasado') && m.data_vencimento < hoje
+  );
+  const pendentes = mensalidades.filter(m => m.status === 'pendente' || m.status === 'atrasado');
+  const totalPendente = pendentes.reduce((s, m) => s + m.valor, 0);
+
+  const proxima = mensalidades
+    .filter(m => m.status === 'pendente' && m.data_vencimento >= hoje)
+    .sort((a, b) => a.data_vencimento.localeCompare(b.data_vencimento))[0] ?? null;
+
+  return {
+    em_dia:                  atrasadas.length === 0,
+    total_pendente:          Math.round(totalPendente * 100) / 100,
+    mensalidades_atrasadas:  atrasadas.length,
+    proxima_mensalidade:     proxima,
+  };
+}
+
+// Gera mensalidades para todos os alunos ativos no mês indicado
+export async function gerarMensalidadesMes(
+  mes: string,         // formato YYYY-MM-01
+  valor: number,
+  vencimento: string,  // formato YYYY-MM-DD
+  registradoPor: string
+): Promise<{ geradas: number; error: string | null }> {
+  // Busca alunos com matrícula ativa
+  const { data: matriculas, error: errMat } = await supabase
+    .from('matriculas')
+    .select('id, aluno_id')
+    .eq('status', 'ativa');
+
+  if (errMat || !matriculas) return { geradas: 0, error: errMat?.message ?? 'Erro ao buscar matrículas' };
+
+  const registros = matriculas.map(m => ({
+    aluno_id:        m.aluno_id,
+    matricula_id:    m.id,
+    valor,
+    mes_referencia:  mes,
+    data_vencimento: vencimento,
+    status:          'pendente' as const,
+    registrado_por:  registradoPor,
+  }));
+
+  const { error } = await supabase
+    .from('mensalidades')
+    .upsert(registros, { onConflict: 'aluno_id,mes_referencia' });
+
+  if (error) return { geradas: 0, error: error.message };
+  return { geradas: registros.length, error: null };
+}
