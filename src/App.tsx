@@ -47,6 +47,7 @@ const LancarFrequencia   = lazy(() => import("./pages/dashboard/LancarFrequencia
 const VerTurma           = lazy(() => import("./pages/dashboard/VerTurma"));
 const ContratoForm       = lazy(() => import("./pages/dashboard/ContratoForm"));
 import ProtectedRoute from '@/components/ProtectedRoute';
+import { AuthRedirect } from '@/components/AuthRedirect';
 
 const queryClient = new QueryClient();
 
@@ -66,6 +67,7 @@ const App = () => (
         <Toaster />
         <Sonner />
         <BrowserRouter>
+          <AuthRedirect />
           <Suspense fallback={<PageFallback />}>
           <Routes>
             {/* Public */}
