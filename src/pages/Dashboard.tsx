@@ -81,6 +81,7 @@ const menuByRole: Record<string, { icon: React.ElementType; label: string; href:
   ],
   admin: [
     { icon: LayoutDashboard, label: 'Dashboard',      href: '/dashboard',                tooltip: 'Painel geral',           end: true },
+    { icon: ShieldAlert,     label: 'Painel Admin',   href: '/dashboard/admin',           tooltip: 'Convalidações e exceções' },
     { icon: Users,           label: 'Usuários',       href: '/dashboard/usuarios',        tooltip: 'Todos os usuários' },
     { icon: Book,            label: 'Cursos',         href: '/dashboard/cursos-admin',    tooltip: 'Gerenciar cursos' },
     { icon: UserCheck,       label: 'Matrículas',     href: '/dashboard/matriculas',      tooltip: 'Aprovar matrículas' },
@@ -91,6 +92,7 @@ const menuByRole: Record<string, { icon: React.ElementType; label: string; href:
   ],
   superadmin: [
     { icon: LayoutDashboard, label: 'Dashboard',      href: '/dashboard',                tooltip: 'Painel geral',           end: true },
+    { icon: ShieldAlert,     label: 'Painel Admin',   href: '/dashboard/admin',           tooltip: 'Convalidações e exceções pré-req.' },
     { icon: Users,           label: 'Usuários',       href: '/dashboard/usuarios',        tooltip: 'Todos os usuários' },
     { icon: Book,            label: 'Cursos',         href: '/dashboard/cursos-admin',    tooltip: 'Gerenciar cursos' },
     { icon: UserCheck,       label: 'Matrículas',     href: '/dashboard/matriculas',      tooltip: 'Aprovar matrículas' },

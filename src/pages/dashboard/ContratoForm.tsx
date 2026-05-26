@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Save, Download, Edit2, Loader2, CheckCircle2 } from 'lucide-react';
+import { ArrowLeft, Save, Download, Edit2, Loader2, CheckCircle2, Printer } from 'lucide-react';
+import { PDFDownloadLink } from '@react-pdf/renderer';
+import { ContratoPDF } from '@/components/dashboard/ContratoPDF';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -217,13 +219,38 @@ export default function ContratoForm() {
         )}
       </div>
 
-      {/* Download — Sprint E gerará PDF real */}
-      {preenchido && contrato?.pdf_url && (
-        <a href={contrato.pdf_url} target="_blank" rel="noopener noreferrer">
-          <Button variant="outline" className="w-full border-border text-foreground">
-            <Download className="h-4 w-4 mr-2" /> Baixar PDF do contrato
-          </Button>
-        </a>
+      {/* Download PDF — geração real com @react-pdf/renderer */}
+      {preenchido && professor && disciplina && (
+        <PDFDownloadLink
+          document={
+            <ContratoPDF
+              professor={professor}
+              disciplina={disciplina}
+              dados={(contrato?.dados_preenchidos as Record<string, string>) ?? {}}
+            />
+          }
+          fileName={`contrato-${professor.nome_completo.replace(/\s+/g, '_')}-${disciplina.codigo}.pdf`}
+          onClick={async () => {
+            // Marca como impresso após o download
+            if (contrato && contrato.status === 'preenchido') {
+              await updateStatusContrato(contrato.id, 'impresso');
+              setContrato(c => c ? { ...c, status: 'impresso' } : c);
+            }
+          }}
+        >
+          {({ loading }) => (
+            <Button
+              variant="outline"
+              className="w-full border-primary/40 text-primary hover:bg-primary/5"
+              disabled={loading}
+            >
+              {loading
+                ? <><Loader2 className="h-4 w-4 animate-spin mr-2" /> Gerando PDF...</>
+                : <><Printer className="h-4 w-4 mr-2" /> Baixar Contrato PDF</>
+              }
+            </Button>
+          )}
+        </PDFDownloadLink>
       )}
     </div>
   );

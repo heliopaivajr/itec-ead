@@ -39,6 +39,7 @@ const CursosAdmin        = lazy(() => import("./pages/dashboard/CursosAdmin"));
 const Avisos             = lazy(() => import("./pages/dashboard/Avisos"));
 const ComingSoon         = lazy(() => import("./pages/dashboard/ComingSoon"));
 const NovaMatricula      = lazy(() => import("./pages/dashboard/NovaMatricula"));
+const PainelAdmin        = lazy(() => import("./pages/dashboard/PainelAdmin"));
 const FinanceiroPage     = lazy(() => import("./pages/dashboard/Financeiro"));
 const Convalidacoes      = lazy(() => import("./pages/dashboard/Convalidacoes"));
 const ProfessorHome      = lazy(() => import("./pages/dashboard/ProfessorHome"));
@@ -102,6 +103,9 @@ const App = () => (
               <Route path="materiais"   element={<ComingSoon title="Materiais" icon={BookOpen} description="Upload e gestão de apostilas, slides e materiais de aula em desenvolvimento." />} />
               <Route path="avaliacoes"  element={<ComingSoon title="Avaliações" icon={ClipboardList} description="Criação e gestão de provas e trabalhos em desenvolvimento." />} />
               <Route path="agenda"      element={<ComingSoon title="Agenda" icon={CalendarDays} description="Calendário de aulas e compromissos acadêmicos em desenvolvimento." />} />
+
+              {/* Admin */}
+              <Route path="admin"           element={<PainelAdmin />} />
 
               {/* Admin / Secretaria */}
               <Route path="nova-matricula"  element={<NovaMatricula />} />

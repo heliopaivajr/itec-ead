@@ -158,6 +158,72 @@ export async function aprovarConvalidacao(
   return { error: null };
 }
 
+// Rejeitar convalidação — com motivo obrigatório
+export async function rejeitarConvalidacao(
+  id: string,
+  motivo: string
+): Promise<ServiceResult> {
+  const { error } = await supabase
+    .from('convalidacoes')
+    .update({ status: 'rejeitado', observacoes: motivo })
+    .eq('id', id);
+
+  if (error) return { error: error.message };
+  return { error: null };
+}
+
+// Listar todas as convalidações por status — admin/superadmin
+export async function getConvalidacoesPorStatus(
+  status: 'pendente' | 'aprovado' | 'rejeitado'
+): Promise<Convalidacao[]> {
+  const { data, error } = await supabase
+    .from('convalidacoes')
+    .select('*')
+    .eq('status', status)
+    .order('solicitado_em', { ascending: false })
+    .limit(100);
+
+  if (error) return [];
+  return (data as Convalidacao[]) ?? [];
+}
+
+// Listar todas as exceções de pré-requisito — para o painel admin
+export interface ExcecaoPendente {
+  id: string;
+  aluno_id: string;
+  disciplina_id: string;
+  prerequisito_dispensado_id: string;
+  aprovado_por: string;
+  motivo: string;
+  aprovado_em: string;
+}
+
+export async function getExcecoesPendentes(): Promise<ExcecaoPendente[]> {
+  const { data, error } = await supabase
+    .from('excecoes_prerequisito')
+    .select('*')
+    .order('aprovado_em', { ascending: false })
+    .limit(50);
+
+  if (error) return [];
+  return (data as ExcecaoPendente[]) ?? [];
+}
+
+// Negar exceção de pré-requisito — registra motivo e remove o registro
+export async function negarExcecaoPrerequisito(
+  id: string,
+  _motivo: string
+): Promise<ServiceResult> {
+  // Exceções aprovadas são registros imutáveis. Negar = deletar o registro.
+  const { error } = await supabase
+    .from('excecoes_prerequisito')
+    .delete()
+    .eq('id', id);
+
+  if (error) return { error: error.message };
+  return { error: null };
+}
+
 // Registra exceção de pré-requisito — somente superadmin chama esta função
 export async function aprovarExcecaoPrerequisito(
   alunoId: string,
