@@ -1,100 +1,103 @@
-# CLAUDE.md
+# CLAUDE.md — ITEC-EAD
+# Lido automaticamente pelo Claude Code
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+## Projeto
+Plataforma EAD do Instituto de Teologia Cristã
+Site: https://www.itecedu.com
+Dev: Hélio Paiva Jr. (superadmin)
 
-## Commands
+## Comandos
 
 ```bash
-pnpm dev          # Dev server at http://localhost:8080
-pnpm build        # Production build
+pnpm dev          # Dev server http://localhost:8080
+pnpm build        # Build de produção
 pnpm lint         # ESLint
-pnpm tsc --noEmit # Type-check without building
+pnpm test:run     # 48 testes (one-shot)
+pnpm test         # modo watch
+pnpm test:coverage # relatório de cobertura
 ```
 
-**Always use `pnpm`** — this project uses `pnpm-lock.yaml`. Installing with `npm` or `yarn` will break the Vercel build with `ERR_PNPM_OUTDATED_LOCKFILE`.
+## Stack
+- React 18 + TypeScript + Vite + Tailwind CSS + Shadcn UI
+- Supabase (Auth + PostgreSQL + Storage + Realtime)
+- Vercel (deploy automático via GitHub)
+- pnpm (NUNCA usar npm — conflito no lockfile)
 
-## Architecture
+## Regras absolutas
+- NUNCA usar npm — sempre pnpm
+- NUNCA commitar .env ou .env.local
+- NUNCA `supabase.from()` direto em `pages/` ou `components/` → sempre usar `src/services/`
+- NUNCA magic strings de role — usar `UserRole` de `profile.service`
+- RLS obrigatório em toda tabela com dados de usuário
+- TypeScript strict — sem `any` implícito
 
-### Public site vs Dashboard
+## Arquitetura — Área Pública vs Dashboard
 
-The app has two distinct areas sharing the same React Router:
+Duas áreas distintas no mesmo React Router:
+- **Público** (`/`, `/cursos`, `/sobre`, `/reservar-vaga`, etc.) — sem auth
+- **Dashboard** (`/dashboard/*`) — protegido pelo `ProtectedRoute` em `App.tsx`
 
-- **Public pages** (`/`, `/cursos`, `/sobre`, `/blog`, `/reservar-vaga`, etc.) — marketing/institutional, no auth required
-- **Dashboard** (`/dashboard/*`) — protected by `ProtectedRoute` in `App.tsx`, requires Supabase session
+`ProtectedRoute` verifica sessão + role. Role `pendente` → `/aguardando`. Role desconhecido → `/login`.
 
-`App.tsx` is the single source of truth for all routes. Every page except `Index` is lazy-loaded with `React.lazy()`. Adding a new page requires both creating the file and registering the lazy import + route in `App.tsx`.
+## Services existentes (src/services/)
 
-### Auth and roles
+| Service | Responsabilidade |
+|---|---|
+| `auth.service.ts` | signIn, signOut, reset — erros em PT-BR |
+| `profile.service.ts` | getRole (fallback `'pendente'`), getProfile, upsert |
+| `leads.service.ts` | createLead + fallback localStorage |
+| `avisos.service.ts` | CRUD de avisos + noTable detection |
+| `dashboard.service.ts` | KPIs + listas paginadas |
+| `cursos.service.ts` | disciplinas + syncPrerequisitos (rollback) |
+| `usuarios.service.ts` | perfis admin — getUsuarios, updateRole, updatePerfil |
+| `matriculas.service.ts` | getMatriculas paginado, getMinhasMatriculas, updateStatus |
 
-Auth flows through Supabase. The `useProfile` hook (`src/hooks/use-profile.tsx`) is the canonical way to get the current user — it reads from the `profiles` Supabase table and returns a typed `Profile` with a `UserRole`.
-
-Roles: `aluno` | `professor` | `administracao` | `admin` | `superadmin`
-
-The Dashboard sidebar menu, available routes, and KPIs all change based on role. The mapping lives in `Dashboard.tsx` (`menuByRole` object). Role-check helpers (`isSuperAdmin`, `isAdministracao`, etc.) are exported from `Dashboard.tsx`.
-
-`heliopaiva@gmail.com` is always forced to `superadmin` regardless of the database value — hardcoded in `use-profile.tsx`.
-
-### Supabase
-
-- Client: `src/lib/supabase.ts` — reads `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` from `.env`
-- Tables currently active: `profiles`, `leads_cursos`, `matriculas`, `avisos`
-- Leads from the `/reservar-vaga` form are inserted into `leads_cursos` and appear in Dashboard → Leads
-
-### Theme system
-
-Three themes: `dark` | `light` | `sepia`. Managed by `ThemeProvider` (wraps the whole app in `App.tsx`) and toggled via `ThemeSwitcher` component. CSS variables in `src/index.css` drive all colors — use Tailwind semantic tokens (`bg-background`, `text-foreground`, `text-primary`, `border-border`) not raw colors.
-
-The primary color (`text-primary`, `bg-primary`) is blood red `#ea384c` (also available as `text-itec-bloodRed` / `bg-itec-bloodRed` in Tailwind config).
-
-### Custom Tailwind utilities
-
-Defined in `src/index.css`:
-- `container-custom` — centered container with horizontal padding
-- `font-merriweather` — serif font for headings
-- `animate-pulse-slow`, `animate-glow` — custom keyframe animations
-
-### Static assets
-
-- `public/videos/` — video files served directly (tracked in git, needed for site)
-- `public/logo_itec_transparent.png` — logo with transparent background (processed via sharp)
-- `/videos/` root folder — source/original videos, **gitignored** (large files)
-
-### VideoReel component
-
-`src/components/VideoReel.tsx` manages 5 vertical Instagram-format videos. The parent component holds refs to all `<video>` elements and controls playback directly — VideoCard children are purely presentational. Do not add `useEffect` playback logic inside VideoCard; route all play/pause/seek through the `playVideo()` function in the parent.
-
-### Hero component
-
-`src/components/Hero.tsx` uses `hero-bg.mp4` as a fullscreen video background with CSS animation classes (`hero-anim-*`) defined inline via a `<style>` tag. A backup of the previous static hero exists as `Hero.backup.tsx`.
-
-### Course data
-
-Static course definitions live in `src/data/courses.ts`. The three courses are: `teologia-livre`, `seteb`, `ministerial-mulheres`. Key facts:
-- SETEB: Terças-feiras 19h–20h (not quinta)
-- All courses: Modalidade Híbrida (Presencial e Online)
-- Turma 2026 starts August 2026
-
-### PRD and documentation
-
-`.prd/prd.md` contains the full project checklist — what's done, what's pending, known bugs, and next steps. Update it when completing significant features.
-
----
-
-## ⚠️ Contexto separado: `.ai-system/`
-
-A pasta `.ai-system/` **não faz parte desta plataforma web**. É um sistema completamente independente que roda no **Claude.ai (Projetos)** — não no Claude Code — para produção de documentos institucionais do ITEC.
-
+## Roles do sistema
 ```
-.ai-system/
-├── CLAUDE.md       ← regras globais do sistema documental
-├── SYSTEM.md       ← contexto do produto documental
-├── STACK.md        ← ferramentas: Word, Google Drive, python-docx
-├── ARCHITECTURE.md
-├── agents/         ← 18 agentes especializados (arquiteto, LGPD, etc.)
-├── runbooks/
-└── templates/
+pendente → aluno → professor → administracao → admin → superadmin
 ```
+Fallback seguro: `getRole()` retorna `'pendente'` se erro ou perfil não existir.
+Role `superadmin` definido diretamente no banco (migration 004) — sem env var.
 
-**O que esse sistema faz:** padroniza e gera documentos institucionais em `.docx` — manuais do professor (16 disciplinas, padrão NOVO3), contratos, apostilas, horários acadêmicos. Stack: Claude.ai + Microsoft Word + Google Drive.
+## Auth e perfil
+- `useProfile()` — hook canônico para obter perfil atual
+- `heliopaiva@gmail.com` — role superadmin garantido via banco, não hardcoded
 
-**Regra:** ao trabalhar neste repositório (Claude Code), ignore o conteúdo de `.ai-system/` — ele é lido pelo Claude.ai Projetos em outro contexto. Não misture as duas responsabilidades.
+## Tema
+Três temas: `dark` | `light` | `sepia` — gerenciado pelo `ThemeProvider`.
+Usar tokens semânticos Tailwind: `bg-background`, `text-foreground`, `text-primary`, `border-border`.
+Cor primária: `#ea384c` (blood red).
+
+## Testes
+```bash
+pnpm test:run   # deve sempre passar 48/48
+```
+- Vitest + Testing Library + jsdom
+- Mock global do Supabase em `src/test/setup.ts`
+- Testes em `src/test/` — services e componentes críticos
+
+## Migrations aplicadas (supabase/migrations/)
+- 001 — RLS leads_cursos
+- 002 — RLS matriculas
+- 003 — RLS avisos fix
+- 004 — superadmin role via banco
+- 005 — disciplinas + prerequisitos (schema retroativo + seed)
+- 006 — índices paginação (6 índices)
+
+## Score auditoria
+7.8/10 (pós-Sprint A+B+C) — relatório em `.ai-system/audit/`
+
+## ADRs
+- ADR-001: arquitetura geral
+- ADR-002: camada de serviços — **IMPLEMENTADO** (8 services)
+
+## Próximo sprint (D)
+Schema completo: cursos, módulos, disciplinas, professores,
+contratos, matrículas, frequência, financeiro, convalidações.
+Ver `.prd/prd.md` para especificação completa.
+
+## .ai-system/ — contexto separado
+A pasta `.ai-system/` é um sistema documental independente
+que roda no Claude.ai (Projetos), não no Claude Code.
+Contém agentes, specs, auditorias e ADRs do projeto.
+Não misturar com o código da plataforma web.
