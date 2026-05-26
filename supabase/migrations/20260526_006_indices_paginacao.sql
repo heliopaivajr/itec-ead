@@ -2,9 +2,9 @@
 -- Índices para queries de paginação — leads e matrículas.
 -- Todos idempotentes (IF NOT EXISTS).
 
--- Leads ordenados por data — query mais comum em Leads.tsx
-CREATE INDEX IF NOT EXISTS idx_leads_cursos_created_at
-  ON public.leads_cursos (created_at DESC);
+-- Leads ordenados por data — leads_cursos usa criado_em (não created_at)
+CREATE INDEX IF NOT EXISTS idx_leads_cursos_criado_em
+  ON public.leads_cursos (criado_em DESC);
 
 -- Busca por nome/email/telefone em Leads.tsx (ilike)
 -- Índices trigram requerem pg_trgm; usando índice funcional básico como alternativa

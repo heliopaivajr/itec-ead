@@ -64,7 +64,7 @@ export async function getLeadsPaginados(
   let query = supabase
     .from('leads_cursos')
     .select('*', { count: 'exact' })
-    .order('created_at', { ascending: false })
+    .order('criado_em', { ascending: false })
     .range(from, to);
 
   if (search.trim()) {
@@ -79,12 +79,12 @@ export async function getLeadsPaginados(
   return { data: (data as LeadRecente[]) ?? [], total: count ?? 0 };
 }
 
-// Leads recentes ordenados por created_at — usado no DashboardHome (sem paginação)
+// Leads recentes — usado no DashboardHome (sem paginação)
 export async function getLeadsRecentes(limit = 5): Promise<LeadRecente[]> {
   const { data } = await supabase
     .from('leads_cursos')
     .select('*')
-    .order('created_at', { ascending: false })
+    .order('criado_em', { ascending: false })
     .limit(limit);
   return (data as LeadRecente[]) ?? [];
 }
