@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { Check, X, Eye, Loader2, User, Book } from 'lucide-react';
+import React, { useEffect, useState, useCallback } from 'react';
+import { Check, X, Eye, Loader2, User, Book, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { StatusBadge } from '@/components/dashboard/StatusBadge';
@@ -29,23 +29,40 @@ const TABS = [
   { key: 'concluido', label: 'Concluídas' },
 ];
 
+const LIMIT = 20;
+
 export default function Matriculas() {
   const { toast } = useToast();
   const [matriculas, setMatriculas] = useState<Matricula[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('pendente');
-  const [search, setSearch] = useState('');
+  const [total, setTotal]           = useState(0);
+  const [loading, setLoading]       = useState(true);
+  const [activeTab, setActiveTab]   = useState('pendente');
+  const [search, setSearch]         = useState('');
+  const [page, setPage]             = useState(1);
   const [processing, setProcessing] = useState<string | null>(null);
-  const [detalhes, setDetalhes] = useState<Matricula | null>(null);
-  const [obsText, setObsText] = useState('');
+  const [detalhes, setDetalhes]     = useState<Matricula | null>(null);
+  const [obsText, setObsText]       = useState('');
 
-  const load = async () => {
+  const totalPages = Math.max(1, Math.ceil(total / LIMIT));
+
+  const load = useCallback(async (tab: string, p: number) => {
     setLoading(true);
-    setMatriculas(await getMatriculas());
+    const result = await getMatriculas(tab, LIMIT, p);
+    setMatriculas(result.data);
+    setTotal(result.total);
     setLoading(false);
-  };
+  }, []);
 
-  useEffect(() => { load(); }, []);
+  // Recarrega ao mudar tab (reseta página) ou ao mudar página
+  useEffect(() => {
+    setPage(1);
+    load(activeTab, 1);
+  }, [activeTab, load]);
+
+  useEffect(() => {
+    load(activeTab, page);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [page]);
 
   const updateStatus = async (id: string, novoStatus: string) => {
     setProcessing(id);
@@ -57,19 +74,19 @@ export default function Matriculas() {
       toast({ title: `Matrícula ${novoStatus === 'ativo' ? 'aprovada' : 'recusada'}!`, description: 'Status atualizado com sucesso.' });
       setDetalhes(null);
       setObsText('');
-      await load();
+      load(activeTab, page);
     }
     setProcessing(null);
   };
 
-  const filtered = matriculas
-    .filter(m => m.status === activeTab)
-    .filter(m =>
-      m.profile?.full_name?.toLowerCase().includes(search.toLowerCase()) ||
-      m.curso_id?.toLowerCase().includes(search.toLowerCase())
-    );
+  // Filtro de busca client-side sobre a página atual (20 itens)
+  const filtered = matriculas.filter(m =>
+    m.profile?.full_name?.toLowerCase().includes(search.toLowerCase()) ||
+    m.curso_id?.toLowerCase().includes(search.toLowerCase())
+  );
 
-  const countByTab = (tab: string) => matriculas.filter(m => m.status === tab).length;
+  // countByTab só é estimativa quando paginado — mostra total da tab atual
+  const countByTab = (tab: string) => tab === activeTab ? total : 0;
 
   return (
     <div className="p-6 space-y-6">
@@ -182,6 +199,25 @@ export default function Matriculas() {
           </div>
         )}
       </div>
+
+      {/* Paginação */}
+      {total > LIMIT && (
+        <div className="flex items-center justify-between text-sm">
+          <p className="text-xs text-muted-foreground">
+            Página {page} de {totalPages} · {total} matrículas nesta tab
+          </p>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={() => setPage(p => Math.max(1, p - 1))}
+              disabled={page === 1 || loading} className="border-border">
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+              disabled={page === totalPages || loading} className="border-border">
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      )}
 
       {/* Detail Modal */}
       {detalhes && (

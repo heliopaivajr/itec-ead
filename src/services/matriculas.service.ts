@@ -14,15 +14,32 @@ export interface ServiceResult {
   error: string | null;
 }
 
-// Todas as matrículas com dados do aluno — usado por admins em Matriculas.tsx
-export async function getMatriculas(): Promise<Matricula[]> {
-  const { data, error } = await supabase
-    .from('matriculas')
-    .select('*, profile:profiles(full_name, email)')
-    .order('created_at', { ascending: false });
+export interface PaginatedMatriculas {
+  data: Matricula[];
+  total: number;
+}
 
-  if (error) return [];
-  return (data as Matricula[]) ?? [];
+// Matrículas paginadas com filtro por status — usado em Matriculas.tsx
+export async function getMatriculas(
+  status?: string,
+  limit = 20,
+  page = 1
+): Promise<PaginatedMatriculas> {
+  const from = (page - 1) * limit;
+  const to   = from + limit - 1;
+
+  let query = supabase
+    .from('matriculas')
+    .select('*, profile:profiles(full_name, email)', { count: 'exact' })
+    .order('created_at', { ascending: false })
+    .range(from, to);
+
+  if (status) query = query.eq('status', status);
+
+  const { data, count, error } = await query;
+
+  if (error) return { data: [], total: 0 };
+  return { data: (data as Matricula[]) ?? [], total: count ?? 0 };
 }
 
 // Matrículas do próprio aluno — usado em MeusCursos.tsx

@@ -47,7 +47,39 @@ export async function getKpis(): Promise<DashboardKpis> {
   };
 }
 
-// Leads recentes ordenados por created_at
+export interface PaginatedLeads {
+  data: LeadRecente[];
+  total: number;
+}
+
+// Leads paginados com busca server-side — usado em Leads.tsx (admin)
+export async function getLeadsPaginados(
+  limit = 20,
+  page = 1,
+  search = ''
+): Promise<PaginatedLeads> {
+  const from = (page - 1) * limit;
+  const to   = from + limit - 1;
+
+  let query = supabase
+    .from('leads_cursos')
+    .select('*', { count: 'exact' })
+    .order('created_at', { ascending: false })
+    .range(from, to);
+
+  if (search.trim()) {
+    query = query.or(
+      `nome.ilike.%${search}%,email.ilike.%${search}%,telefone.ilike.%${search}%`
+    );
+  }
+
+  const { data, count, error } = await query;
+
+  if (error) return { data: [], total: 0 };
+  return { data: (data as LeadRecente[]) ?? [], total: count ?? 0 };
+}
+
+// Leads recentes ordenados por created_at — usado no DashboardHome (sem paginação)
 export async function getLeadsRecentes(limit = 5): Promise<LeadRecente[]> {
   const { data } = await supabase
     .from('leads_cursos')

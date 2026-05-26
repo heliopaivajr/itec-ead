@@ -1,8 +1,8 @@
-import React, { useEffect, useState } from 'react';
-import { Search, Download, Mail, Phone, User, Calendar } from 'lucide-react';
+import React, { useEffect, useState, useCallback } from 'react';
+import { Search, Download, Mail, Phone, User, Calendar, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
-import { getLeadsRecentes } from '@/services/dashboard.service';
+import { Button } from '@/components/ui/button';
+import { getLeadsPaginados } from '@/services/dashboard.service';
 
 interface Lead {
   id: string;
@@ -13,6 +13,8 @@ interface Lead {
   interesse: string;
   created_at: string;
 }
+
+const LIMIT = 20;
 
 const courseLabel: Record<string, string> = {
   'teologia-livre': 'Teologia Livre',
@@ -33,22 +35,35 @@ const interesseLabel: Record<string, string> = {
 };
 
 export default function Leads() {
-  const [leads, setLeads] = useState<Lead[]>([]);
+  const [leads, setLeads]   = useState<Lead[]>([]);
+  const [total, setTotal]   = useState(0);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const [page, setPage]     = useState(1);
 
-  useEffect(() => {
-    getLeadsRecentes(1000).then(data => {
-      setLeads(data as Lead[]);
-      setLoading(false);
-    });
+  const totalPages = Math.max(1, Math.ceil(total / LIMIT));
+
+  const load = useCallback(async (p: number, s: string) => {
+    setLoading(true);
+    const result = await getLeadsPaginados(LIMIT, p, s);
+    setLeads(result.data as Lead[]);
+    setTotal(result.total);
+    setLoading(false);
   }, []);
 
-  const filtered = leads.filter(l =>
-    l.nome?.toLowerCase().includes(search.toLowerCase()) ||
-    l.email?.toLowerCase().includes(search.toLowerCase()) ||
-    l.telefone?.includes(search)
-  );
+  // Busca com debounce simples — reseta para página 1 ao mudar search
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setPage(1);
+      load(1, search);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [search, load]);
+
+  useEffect(() => {
+    load(page, search);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [page]);
 
   const exportCsv = () => {
     const header = 'Nome,E-mail,Telefone,Curso,Interesse,Data\n';
@@ -69,29 +84,16 @@ export default function Leads() {
       <div className="flex items-center justify-between flex-wrap gap-4">
         <div>
           <h1 className="text-2xl font-merriweather font-bold text-primary">Leads de Cursos</h1>
-          <p className="text-muted-foreground mt-1">Interessados que baixaram a grade curricular</p>
+          <p className="text-muted-foreground mt-1">
+            {total > 0 ? `${total} leads cadastrados` : 'Interessados que solicitaram informações'}
+          </p>
         </div>
         <button
           onClick={exportCsv}
           className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-border text-sm text-foreground/70 hover:text-primary hover:border-primary/40 transition-all"
         >
-          <Download className="h-4 w-4" /> Exportar CSV
+          <Download className="h-4 w-4" /> Exportar página
         </button>
-      </div>
-
-      {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        {[
-          { label: 'Total de leads', value: leads.length },
-          { label: 'Candidatos', value: leads.filter(l => l.interesse === 'candidato').length },
-          { label: 'Teologia Livre', value: leads.filter(l => l.curso_interesse === 'teologia-livre').length },
-          { label: 'SETEB', value: leads.filter(l => l.curso_interesse === 'seteb').length },
-        ].map(stat => (
-          <div key={stat.label} className="bg-card border border-border rounded-xl p-4">
-            <p className="text-2xl font-bold text-foreground">{stat.value}</p>
-            <p className="text-xs text-muted-foreground mt-0.5">{stat.label}</p>
-          </div>
-        ))}
       </div>
 
       {/* Search */}
@@ -111,7 +113,7 @@ export default function Leads() {
           <div className="flex items-center justify-center p-12 text-muted-foreground animate-pulse">
             Carregando leads...
           </div>
-        ) : filtered.length === 0 ? (
+        ) : leads.length === 0 ? (
           <div className="flex flex-col items-center justify-center p-12 text-muted-foreground gap-2">
             <User className="h-10 w-10 opacity-30" />
             <p>{search ? 'Nenhum resultado para a busca.' : 'Nenhum lead cadastrado ainda.'}</p>
@@ -129,7 +131,7 @@ export default function Leads() {
                 </tr>
               </thead>
               <tbody>
-                {filtered.map((lead, i) => (
+                {leads.map((lead, i) => (
                   <tr key={lead.id} className={`border-b border-border last:border-0 hover:bg-muted/20 transition-colors ${i % 2 === 0 ? '' : 'bg-muted/5'}`}>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2">
@@ -175,10 +177,33 @@ export default function Leads() {
         )}
       </div>
 
-      {filtered.length > 0 && (
-        <p className="text-xs text-muted-foreground text-right">
-          Exibindo {filtered.length} de {leads.length} leads
-        </p>
+      {/* Paginação */}
+      {total > LIMIT && (
+        <div className="flex items-center justify-between text-sm">
+          <p className="text-xs text-muted-foreground">
+            Página {page} de {totalPages} · {total} leads
+          </p>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setPage(p => Math.max(1, p - 1))}
+              disabled={page === 1 || loading}
+              className="border-border"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+              disabled={page === totalPages || loading}
+              className="border-border"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
       )}
     </div>
   );
