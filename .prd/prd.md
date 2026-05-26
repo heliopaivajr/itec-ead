@@ -1,7 +1,82 @@
 # PRD — Product Requirements Document
 # ITEC-EAD — Plataforma de Ensino a Distância
 # Instituto de Teologia Cristã — Janga, Paulista/PE
-# Versão: 2.0 | Atualizado: 2026-05-26
+# Versão: 2.1 | Atualizado: 2026-05-26
+
+---
+
+## STATUS ATUAL — 2026-05-26
+
+**Score auditoria:** 7.8/10 🟢
+**Última auditoria:** 2026-05-26 (pós-Sprint D)
+**Relatório:** `.ai-system/audit/2026-05-pos-sprint-d/report.md`
+
+### ✅ Concluído e em produção
+
+**INFRAESTRUTURA**
+- React 18 + TypeScript + Vite + Tailwind + Shadcn UI
+- Deploy GitHub → Vercel (itecedu.com)
+- 8 headers de segurança (CSP atualizado)
+- Code splitting + paginação server-side
+
+**BANCO DE DADOS — 19 tabelas com RLS**
+- `profiles`, `leads_cursos`, `matriculas`, `avisos`
+- `equipe_itec`
+- `cursos`, `modulos`, `disciplinas_v2`
+- `prerequisitos_v2`, `excecoes_prerequisito`
+- `professores`, `contratos_professor`
+- `documentos_aluno`, `matriculas_disciplina`
+- `frequencia`, `materiais`, `progresso_aluno`
+- `taxa_matricula`, `mensalidades`, `convalidacoes`
+- Seed: Graduação em Teologia, 6 módulos, 40 disciplinas, 22 pré-requisitos reais
+
+**SERVICES — 14 (zero `supabase.from` em pages/components)**
+- auth, profile, leads, avisos
+- dashboard, cursos, usuarios, matriculas
+- academico, professor, frequencia
+- matricula-academica, financeiro, material
+
+**TESTES**
+- 48 testes passando (Vitest + Testing Library)
+- Cobertura: ProtectedRoute, ReservarVaga, leads, auth, profile, avisos, dashboard, cursos
+
+**LANDING PAGE — 8.5/10**
+- `/reservar-vaga` com LGPD
+- `/privacidade` com conteúdo real
+- Zero 404s, zero botões sem função
+
+**DASHBOARD — ALUNO**
+- MeusCursos: disciplinas, frequência, materiais, alertas, eletivas
+
+**DASHBOARD — PROFESSOR**
+- ProfessorHome: disciplinas ativas + alunos em risco
+- LancarFrequencia: chamada por data, nome real do aluno
+- VerTurma: tabela com filtros + exportar CSV
+- ContratoForm: preenchimento + status
+
+**DASHBOARD — SECRETARIA**
+- NovaMatricula: stepper 3 etapas + upload docs
+- Matriculas: aba pendentes + aprovar/rejeitar
+- Financeiro: inadimplentes, pagamentos, mensalidades
+- Convalidacoes: listar, encaminhar, nova solicitação
+
+**SEGURANÇA**
+- RLS em todas as tabelas
+- ProtectedRoute bloqueia role `pendente`
+- `VITE_SUPERADMIN_EMAIL` removido do bundle
+- CSP sem domínios de prototipagem
+
+### 🔲 Pendente (próximos sprints)
+- Testes dos 6 novos services (Sprint T3)
+- Encapsular `supabase.from` em NovaMatricula.tsx e Convalidacoes.tsx
+- LIMIT em 3 services (academico, professor, material)
+- Geração de PDF do contrato do professor
+- Painel admin: aprovar convalidações e exceções de pré-requisito
+- E-mail automático (cobrança, alertas, confirmação de matrícula)
+- Financeiro automático (PIX/boleto via Asaas)
+- Certificado de conclusão em PDF com QR Code
+- Vídeos EAD com progresso real
+- SETEB e Ministerial para Mulheres
 
 ---
 
