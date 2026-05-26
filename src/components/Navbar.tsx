@@ -47,16 +47,15 @@ const Navbar = () => {
 
           {/* Desktop Navigation */}
           <div className="hidden md:flex items-center space-x-5 flex-1">
-            <Link to="/cursos" className={navLink}>Cursos</Link>
+            <Link to="/cursos"      className={navLink}>Cursos</Link>
             <Link to="/professores" className={navLink}>Professores</Link>
             <div className="relative group">
               <button className={`flex items-center ${navLink}`}>
                 Sobre <ChevronDown className="ml-1 h-3.5 w-3.5" />
               </button>
               <div className="absolute left-0 mt-2 w-48 bg-popover border border-border shadow-lg rounded-md overflow-hidden scale-0 group-hover:scale-100 opacity-0 group-hover:opacity-100 transition-all origin-top">
-                <Link to="/sobre"    className="block px-4 py-2 text-sm text-popover-foreground hover:bg-accent">Nossa Missão</Link>
-                <Link to="/docentes" className="block px-4 py-2 text-sm text-popover-foreground hover:bg-accent">Corpo Docente</Link>
-                <Link to="/contato"  className="block px-4 py-2 text-sm text-popover-foreground hover:bg-accent">Contato</Link>
+                <Link to="/sobre"   className="block px-4 py-2 text-sm text-popover-foreground hover:bg-accent">Nossa Missão</Link>
+                <Link to="/contato" className="block px-4 py-2 text-sm text-popover-foreground hover:bg-accent">Contato</Link>
               </div>
             </div>
             <Link to="/comunidade" className={navLink}>Comunidade</Link>
@@ -103,12 +102,12 @@ const Navbar = () => {
         {mobileMenuOpen && (
           <div className="md:hidden mt-3 pb-3 border-t border-border">
             <div className="flex flex-col space-y-3 mt-3">
-              <Link to="/cursos"     className={navLink} onClick={() => setMobileMenuOpen(false)}>Cursos</Link>
-              <Link to="/sobre"      className={navLink} onClick={() => setMobileMenuOpen(false)}>Nossa Missão</Link>
-              <Link to="/docentes"   className={navLink} onClick={() => setMobileMenuOpen(false)}>Corpo Docente</Link>
-              <Link to="/contato"    className={navLink} onClick={() => setMobileMenuOpen(false)}>Contato</Link>
-              <Link to="/comunidade" className={navLink} onClick={() => setMobileMenuOpen(false)}>Comunidade</Link>
-              <Link to="/blog"       className={navLink} onClick={() => setMobileMenuOpen(false)}>Blog</Link>
+              <Link to="/cursos"      className={navLink} onClick={() => setMobileMenuOpen(false)}>Cursos</Link>
+              <Link to="/professores" className={navLink} onClick={() => setMobileMenuOpen(false)}>Professores</Link>
+              <Link to="/sobre"       className={navLink} onClick={() => setMobileMenuOpen(false)}>Nossa Missão</Link>
+              <Link to="/contato"     className={navLink} onClick={() => setMobileMenuOpen(false)}>Contato</Link>
+              <Link to="/comunidade"  className={navLink} onClick={() => setMobileMenuOpen(false)}>Comunidade</Link>
+              <Link to="/blog"        className={navLink} onClick={() => setMobileMenuOpen(false)}>Blog</Link>
               <div className="flex items-center gap-3 mt-3 pt-3 border-t border-border">
                 {user ? (
                   <>

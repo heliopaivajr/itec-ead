@@ -20,7 +20,6 @@ const Cadastro       = lazy(() => import("./pages/Cadastro"));
 const Professores    = lazy(() => import("./pages/Professores"));
 const Cursos         = lazy(() => import("./pages/Cursos"));
 const Sobre          = lazy(() => import("./pages/Sobre"));
-const Docentes       = lazy(() => import("./pages/Docentes"));
 const Contato        = lazy(() => import("./pages/Contato"));
 const Comunidade     = lazy(() => import("./pages/Comunidade"));
 const Blog           = lazy(() => import("./pages/Blog"));
@@ -92,7 +91,7 @@ const App = () => (
             <Route path="/cursos"        element={<Cursos />} />
             <Route path="/professores"   element={<Professores />} />
             <Route path="/sobre"         element={<Sobre />} />
-            <Route path="/docentes"      element={<Docentes />} />
+            <Route path="/docentes"      element={<Navigate to="/professores" replace />} />
             <Route path="/contato"       element={<Contato />} />
             <Route path="/comunidade"    element={<Comunidade />} />
             <Route path="/blog"          element={<Blog />} />
