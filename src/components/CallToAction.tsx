@@ -16,20 +16,14 @@ const CallToAction = () => (
           Inicie Sua Jornada Teológica Hoje
         </h2>
         <p className="text-muted-foreground mb-8">
-          Dê o primeiro passo para uma formação teológica transformadora. Inscreva-se agora e receba nosso e-book gratuito "O que é Teologia Cristã?" para começar sua jornada de aprendizado.
+          Dê o primeiro passo para uma formação teológica transformadora.
+          Reserve sua vaga agora e nossa secretaria entrará em contato para confirmar sua inscrição.
         </p>
-        <form className="max-w-md mx-auto flex flex-col sm:flex-row gap-3">
-          <input
-            type="email"
-            placeholder="Seu melhor e-mail"
-            className={`flex-1 px-4 py-3 rounded-md bg-background border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary`}
-          />
-          <Button className="bg-primary hover:bg-primary/80 text-primary-foreground whitespace-nowrap">
-            Baixar E-book Grátis
-          </Button>
-        </form>
-        <p className="text-sm text-muted-foreground mt-3">
-          Ao se inscrever, você concorda com nossa{' '}
+        <Button asChild size="lg" className="bg-primary hover:bg-primary/80 text-primary-foreground px-10">
+          <Link to="/reservar-vaga">Reservar minha vaga</Link>
+        </Button>
+        <p className="text-sm text-muted-foreground mt-4">
+          Ao enviar seus dados, você concorda com nossa{' '}
           <Link to="/privacidade" className="text-primary hover:underline">Política de Privacidade</Link>.
         </p>
       </div>
