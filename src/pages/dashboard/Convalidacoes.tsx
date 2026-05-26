@@ -10,9 +10,10 @@ import {
   getConvalidacoesByAluno,
   solicitarConvalidacao,
   aprovarConvalidacao,
+  getAlunoPorEmail,
+  getDisciplinaPorCodigo,
   type Convalidacao,
 } from '@/services/matricula-academica.service';
-import { supabase } from '@/lib/supabase';
 import type { DashboardContext } from '../Dashboard';
 
 type Filtro = 'pendente' | 'aprovado' | 'rejeitado';
@@ -51,26 +52,26 @@ function ModalNova({ onClose, onSaved, registradoPor }: ModalNovaProps) {
     }
     setSalvando(true);
 
-    // Resolve aluno e disciplina pelo email/código
-    const [alunoRes, discRes] = await Promise.all([
-      supabase.from('profiles').select('id').eq('email', form.aluno_email).single(),
-      supabase.from('disciplinas_v2').select('id').eq('codigo', form.disciplina_codigo.toUpperCase()).single(),
+    // Resolve aluno e disciplina pelo email/código via services
+    const [aluno, disc] = await Promise.all([
+      getAlunoPorEmail(form.aluno_email),
+      getDisciplinaPorCodigo(form.disciplina_codigo),
     ]);
 
-    if (!alunoRes.data) {
+    if (!aluno) {
       toast({ title: 'Aluno não encontrado', description: `E-mail: ${form.aluno_email}`, variant: 'destructive' });
       setSalvando(false);
       return;
     }
-    if (!discRes.data) {
+    if (!disc) {
       toast({ title: 'Disciplina não encontrada', description: `Código: ${form.disciplina_codigo}`, variant: 'destructive' });
       setSalvando(false);
       return;
     }
 
     const { error } = await solicitarConvalidacao({
-      aluno_id:               alunoRes.data.id,
-      disciplina_id:          discRes.data.id,
+      aluno_id:               aluno.id,
+      disciplina_id:          disc.id,
       instituicao_origem:     form.instituicao_origem,
       disciplina_origem:      form.disciplina_origem,
       carga_horaria_origem:   form.carga_horaria_origem ? parseInt(form.carga_horaria_origem) : null,

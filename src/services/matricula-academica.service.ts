@@ -42,6 +42,34 @@ export interface ServiceResult {
   error: string | null;
 }
 
+// Resolve aluno pelo e-mail — usado em Convalidacoes.tsx para criar solicitação
+export async function getAlunoPorEmail(
+  email: string
+): Promise<{ id: string; full_name: string } | null> {
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('id, full_name')
+    .eq('email', email)
+    .single();
+
+  if (error || !data) return null;
+  return data as { id: string; full_name: string };
+}
+
+// Resolve disciplina pelo código — usado em Convalidacoes.tsx para criar solicitação
+export async function getDisciplinaPorCodigo(
+  codigo: string
+): Promise<{ id: string; codigo: string; nome: string } | null> {
+  const { data, error } = await supabase
+    .from('disciplinas_v2')
+    .select('id, codigo, nome')
+    .eq('codigo', codigo.toUpperCase())
+    .single();
+
+  if (error || !data) return null;
+  return data as { id: string; codigo: string; nome: string };
+}
+
 export async function getMatriculasDisciplinaByAluno(
   alunoId: string
 ): Promise<MatriculaDisciplina[]> {
