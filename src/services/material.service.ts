@@ -35,7 +35,7 @@ export async function getMateriaisByDisciplina(
 
   if (apenasVisiveis) query = query.eq('visivel', true);
 
-  const { data, error } = await query;
+  const { data, error } = await query.limit(100); // máx. realista: 10-30 materiais/disciplina
   if (error) return [];
   return (data as Material[]) ?? [];
 }

@@ -72,7 +72,8 @@ export async function getModulosByCurso(cursoId: string): Promise<Modulo[]> {
     .from('modulos')
     .select('*')
     .eq('curso_id', cursoId)
-    .order('ordem', { ascending: true });
+    .order('ordem', { ascending: true })
+    .limit(12); // máx. realista: 6 módulos/curso, proteção 2×
 
   if (error) return [];
   return (data as Modulo[]) ?? [];
@@ -83,7 +84,8 @@ export async function getDisciplinasByModulo(moduloId: string): Promise<Discipli
     .from('disciplinas_v2')
     .select('*')
     .eq('modulo_id', moduloId)
-    .order('codigo', { ascending: true });
+    .order('codigo', { ascending: true })
+    .limit(50); // máx. realista: 8-10 disciplinas/módulo, proteção 5×
 
   if (error) return [];
   return (data as Disciplina[]) ?? [];
@@ -104,7 +106,8 @@ export async function getPrerequisitos(disciplinaId: string): Promise<Prerequisi
   const { data, error } = await supabase
     .from('prerequisitos_v2')
     .select('*')
-    .eq('disciplina_id', disciplinaId);
+    .eq('disciplina_id', disciplinaId)
+    .limit(20); // máx. realista: 3-5 pré-requisitos/disciplina, proteção 4×
 
   if (error) return [];
   return (data as Prerequisito[]) ?? [];

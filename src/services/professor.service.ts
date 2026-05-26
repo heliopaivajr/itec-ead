@@ -40,14 +40,28 @@ export interface ServiceResult {
   error: string | null;
 }
 
-export async function getProfessores(): Promise<Professor[]> {
-  const { data, error } = await supabase
-    .from('professores')
-    .select('*')
-    .order('nome_completo', { ascending: true });
+export interface PaginatedProfessores {
+  data: Professor[];
+  total: number;
+}
 
-  if (error) return [];
-  return (data as Professor[]) ?? [];
+// Paginação real — professores podem crescer indefinidamente com o tempo
+export async function getProfessores(
+  page = 1,
+  limit = 20
+): Promise<PaginatedProfessores> {
+  const from = (page - 1) * limit;
+  const to   = from + limit - 1;
+
+  const { data, count, error } = await supabase
+    .from('professores')
+    .select('*', { count: 'exact' })
+    .eq('ativo', true)
+    .order('nome_completo', { ascending: true })
+    .range(from, to);
+
+  if (error) return { data: [], total: 0 };
+  return { data: (data as Professor[]) ?? [], total: count ?? 0 };
 }
 
 export async function getProfessorById(id: string): Promise<Professor | null> {
@@ -105,7 +119,8 @@ export async function getContratosByProfessor(
     .from('contratos_professor')
     .select('*')
     .eq('professor_id', professorId)
-    .order('criado_em', { ascending: false });
+    .order('criado_em', { ascending: false })
+    .limit(50); // máx. realista: 1-6 contratos/professor/ano, proteção ampla
 
   if (error) return [];
   return (data as ContratoProfessor[]) ?? [];

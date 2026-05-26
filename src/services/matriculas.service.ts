@@ -53,6 +53,64 @@ export async function getMinhasMatriculas(alunoId: string): Promise<Matricula[]>
   return (data as Matricula[]) ?? [];
 }
 
+// Busca aluno por email — para NovaMatricula verificar se aluno existe
+export async function getAlunoByEmail(
+  email: string
+): Promise<{ id: string; full_name: string } | null> {
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('id, full_name')
+    .eq('email', email)
+    .single();
+
+  if (error || !data) return null;
+  return data as { id: string; full_name: string };
+}
+
+export interface CreateMatriculaPayload {
+  aluno_id: string;
+  status: 'pendente';
+  curso_id?: string;
+  observacoes?: string;
+}
+
+// Cria nova matrícula — retorna id gerado
+export async function createMatricula(
+  payload: CreateMatriculaPayload
+): Promise<{ data: { id: string } | null; error: string | null }> {
+  const { data, error } = await supabase
+    .from('matriculas')
+    .insert(payload)
+    .select('id')
+    .single();
+
+  if (error) return { data: null, error: error.message };
+  return { data: data as { id: string }, error: null };
+}
+
+// Cria taxa de matrícula vinculada — valor definido pela secretaria
+export async function createTaxaMatricula(
+  alunoId: string,
+  matriculaId: string,
+  registradoPor: string,
+  valor = 0,
+  vencimento?: string
+): Promise<ServiceResult> {
+  const { error } = await supabase
+    .from('taxa_matricula')
+    .insert({
+      aluno_id:        alunoId,
+      matricula_id:    matriculaId,
+      valor,
+      status:          'pendente',
+      data_vencimento: vencimento ?? null,
+      registrado_por:  registradoPor,
+    });
+
+  if (error) return { error: error.message };
+  return { error: null };
+}
+
 // Atualização de status — aprovação, recusa, trancamento
 export async function updateStatusMatricula(
   matriculaId: string,

@@ -7,6 +7,11 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/lib/supabase';
+import {
+  getAlunoByEmail,
+  createMatricula,
+  createTaxaMatricula,
+} from '@/services/matriculas.service';
 import type { DashboardContext } from '../Dashboard';
 
 // ─── Tipos ────────────────────────────────────────────────────
@@ -99,37 +104,24 @@ export default function NovaMatricula() {
   const confirmar = async () => {
     setSalvando(true);
     try {
-      // 1. Cria/busca perfil do aluno via email
-      const { data: existente } = await supabase
-        .from('profiles')
-        .select('id')
-        .eq('email', dados.email)
-        .single();
-
-      const alunoId = existente?.id;
-      if (!alunoId) {
+      // 1. Verifica se aluno existe pelo e-mail
+      const aluno = await getAlunoByEmail(dados.email);
+      if (!aluno) {
         toast({ title: 'Aluno não encontrado', description: 'O aluno deve criar conta antes da matrícula.', variant: 'destructive' });
         setSalvando(false);
         return;
       }
 
       // 2. Cria matrícula com status pendente
-      const { data: mat, error: errMat } = await supabase
-        .from('matriculas')
-        .insert({ aluno_id: alunoId, status: 'pendente' })
-        .select('id')
-        .single();
+      const { data: mat, error: errMat } = await createMatricula({
+        aluno_id: aluno.id,
+        status:   'pendente',
+      });
 
-      if (errMat || !mat) throw new Error(errMat?.message ?? 'Erro ao criar matrícula');
+      if (errMat || !mat) throw new Error(errMat ?? 'Erro ao criar matrícula');
 
       // 3. Cria taxa de matrícula pendente
-      await supabase.from('taxa_matricula').insert({
-        aluno_id:     alunoId,
-        matricula_id: mat.id,
-        valor:        0, // valor definido pela secretaria
-        status:       'pendente',
-        registrado_por: profile.id,
-      });
+      await createTaxaMatricula(aluno.id, mat.id, profile.id);
 
       setMatriculaId(mat.id);
       setEtapa(2);

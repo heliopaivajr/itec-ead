@@ -29,7 +29,8 @@ pnpm test:coverage # relatório de cobertura
 - NUNCA usar npm — sempre pnpm
 - NUNCA commitar .env ou .env.local
 - NUNCA `supabase.from()` em `pages/` ou `components/` → SEMPRE usar `src/services/`
-  ⚠️ EXCEÇÃO CONHECIDA: `NovaMatricula.tsx` e `Convalidacoes.tsx` (encapsular — Sprint F)
+  ⚠️ EXCEÇÃO REMANESCENTE: `Convalidacoes.tsx` — 2 lookups por email/código (encapsular — Sprint F)
+  ✅ NovaMatricula.tsx migrado para matriculas.service (getAlunoByEmail, createMatricula, createTaxaMatricula)
 - NUNCA magic strings de role — usar `UserRole` de `profile.service`
 - RLS obrigatório em toda tabela com dados de usuário
 - TypeScript strict — sem `any` implícito
@@ -114,6 +115,7 @@ pnpm test:run   # deve sempre passar 48/48
 - Mock global do Supabase em `src/test/setup.ts`
 - Testes em `src/test/` — services e componentes críticos
 - ⚠️ 6 services Sprint D sem cobertura — ver Sprint T3
+- ✅ DT-03 resolvido: LIMIT em academico, professor (paginado), material services
 
 ## ADRs
 - ADR-001: decisões iniciais de arquitetura
