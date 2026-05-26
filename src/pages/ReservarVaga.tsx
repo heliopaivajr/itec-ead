@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { Flame, CheckCircle2, ArrowLeft, ShieldCheck, Send, Loader2 } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
-import { supabase } from '@/lib/supabase';
+import { createLead } from '@/services/leads.service';
 
 const cursos = [
   { value: 'teologia-livre', label: 'Graduação em Teologia (Teologia Livre)' },
@@ -32,20 +32,18 @@ export default function ReservarVaga() {
     setErro('');
     setLoading(true);
 
-    const { error } = await supabase.from('leads_cursos').insert({
+    const result = await createLead({
       nome:            form.nome,
       email:           form.email,
       telefone:        form.telefone,
-      cidade:          form.cidade || null,
+      cidade:          form.cidade || undefined,
       curso_interesse: form.curso_interesse,
-      como_conheceu:   form.como_conheceu || null,
-      mensagem:        form.mensagem || null,
-      interesse:       'candidato',
-      lgpd_aceite:     true,
+      como_conheceu:   form.como_conheceu || undefined,
+      mensagem:        form.mensagem || undefined,
     });
 
     setLoading(false);
-    if (error) {
+    if (!result.success) {
       setErro('Erro ao enviar. Tente novamente ou entre em contato pelo WhatsApp.');
     } else {
       setEnviado(true);

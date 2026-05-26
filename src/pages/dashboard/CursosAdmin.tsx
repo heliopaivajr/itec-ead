@@ -12,7 +12,12 @@ import {
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from '@/components/ui/dialog';
-import { supabase } from '@/lib/supabase';
+import {
+  getDisciplinas as fetchDisciplinas,
+  getPrerequisitos as fetchPrerequisitos,
+  updateDisciplina,
+  syncPrerequisitos,
+} from '@/services/cursos.service';
 import type { DashboardContext } from '../Dashboard';
 import {
   disciplinas as localDisciplinas,
@@ -129,7 +134,8 @@ function EditModal({ disciplina, prereqs, allDisciplinas, onClose, onSaved }: Ed
   const handleSave = async () => {
     setSaving(true);
     setError('');
-    const { error: err } = await supabase.from('disciplinas').update({
+
+    const { error: updateErr } = await updateDisciplina(disciplina.codigo, {
       nome: form.nome,
       carga_horaria: form.carga_horaria,
       horas_presencial: form.horas_presencial,
@@ -137,15 +143,12 @@ function EditModal({ disciplina, prereqs, allDisciplinas, onClose, onSaved }: Ed
       tipo: form.tipo,
       area: form.area,
       ativo: form.ativo,
-    }).eq('codigo', disciplina.codigo);
+    });
 
-    if (err) { setError(err.message); setSaving(false); return; }
+    if (updateErr) { setError(updateErr); setSaving(false); return; }
 
-    // Sync pre-requisites: delete all then re-insert
-    await supabase.from('prerequisitos_disciplinas').delete().eq('disciplina_codigo', disciplina.codigo);
-    if (localPrereqs.length > 0) {
-      await supabase.from('prerequisitos_disciplinas').insert(localPrereqs);
-    }
+    const { error: syncErr } = await syncPrerequisitos(disciplina.codigo, localPrereqs);
+    if (syncErr) { setError(syncErr); setSaving(false); return; }
 
     setSaving(false);
     onSaved();
@@ -328,17 +331,16 @@ export default function CursosAdmin() {
 
   const load = async () => {
     setLoading(true);
-    const { data: discs, error: e1 } = await supabase.from('disciplinas').select('*').order('modulo').order('nome');
-    const { data: preqs, error: e2 } = await supabase.from('prerequisitos_disciplinas').select('*');
+    const [discs, preqs] = await Promise.all([fetchDisciplinas(), fetchPrerequisitos()]);
 
-    if (e1 || !discs || discs.length === 0) {
+    if (discs.length === 0) {
       // Table not yet migrated — fall back to local data
       setDisciplinasDb(localDisciplinas as unknown as DbDisciplina[]);
       setPrereqsDb(localPrerequisitos as DbPrerequisito[]);
       setUsingLocal(true);
     } else {
       setDisciplinasDb(discs as DbDisciplina[]);
-      setPrereqsDb((preqs ?? []) as DbPrerequisito[]);
+      setPrereqsDb(preqs as DbPrerequisito[]);
       setUsingLocal(false);
     }
     setLoading(false);

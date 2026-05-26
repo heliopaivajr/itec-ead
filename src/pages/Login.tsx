@@ -2,8 +2,8 @@ import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { Eye, EyeOff, Loader2, ShieldCheck, Building2, BookOpen, GraduationCap, ArrowLeft } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { supabase } from '@/lib/supabase';
-import { env } from '@/config/env';
+import { signInWithGoogle, signInWithPassword, signOut, getSession } from '@/services/auth.service';
+import { getProfile } from '@/services/profile.service';
 
 const GoogleIcon = () => (
   <svg viewBox="0 0 24 24" className="h-4 w-4" aria-hidden="true">
@@ -37,14 +37,9 @@ export default function Login() {
 
   const handleGoogleLogin = async () => {
     setGoogleLoading(true);
-    try {
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: { redirectTo: `${window.location.origin}/dashboard` },
-      });
-      if (error) throw new Error(error.message);
-    } catch (err: any) {
-      toast({ title: 'Erro ao entrar com Google', description: err.message, variant: 'destructive' });
+    const result = await signInWithGoogle();
+    if (result.error) {
+      toast({ title: 'Erro ao entrar com Google', description: result.error, variant: 'destructive' });
       setGoogleLoading(false);
     }
   };
@@ -63,29 +58,24 @@ export default function Login() {
     if (!email || !password) return;
     setLoading(true);
     try {
-      const { data: authData, error } = await supabase.auth.signInWithPassword({ email, password });
-      if (error) throw new Error(error.message === 'Invalid login credentials' ? 'E-mail ou senha incorretos.' : error.message);
+      const result = await signInWithPassword(email, password);
+      if (result.error) throw new Error(result.error);
 
-      if (authData.user) {
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('role, full_name')
-          .eq('id', authData.user.id)
-          .single();
+      const session = await getSession();
+      const user = session?.user;
+      if (user) {
+        const profile = await getProfile(user.id, user.email ?? '', user.user_metadata);
 
-          if (remember) {
-            const userRole = (email === env.superadminEmail && profile?.role !== 'superadmin')
-              ? 'superadmin'
-              : profile?.role;
-            localStorage.setItem('user', JSON.stringify({ id: authData.user.id, email: authData.user.email, role: userRole, name: profile?.full_name }));
-          }
+        if (remember) {
+          localStorage.setItem('user', JSON.stringify({ id: user.id, email: user.email, role: profile.role, name: profile.full_name }));
+        }
 
-        toast({ title: `Bem-vindo, ${profile?.full_name || 'Usuário'}!`, description: 'Login realizado com sucesso.' });
+        toast({ title: `Bem-vindo, ${profile.full_name || 'Usuário'}!`, description: 'Login realizado com sucesso.' });
         navigate('/dashboard');
       }
     } catch (err: any) {
       toast({ title: 'Erro no login', description: err.message, variant: 'destructive' });
-      await supabase.auth.signOut();
+      await signOut();
     } finally {
       setLoading(false);
     }

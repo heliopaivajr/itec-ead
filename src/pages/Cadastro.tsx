@@ -7,7 +7,7 @@ import { toast } from "sonner";
 import { Lock, User, Mail, ArrowLeft, Loader2 } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
-import { supabase } from '@/lib/supabase';
+import { signInWithGoogle, signUpWithEmail } from '@/services/auth.service';
 
 const GoogleIcon = () => (
   <svg viewBox="0 0 24 24" className="h-4 w-4" aria-hidden="true">
@@ -27,11 +27,8 @@ const Cadastro = () => {
   const handleGoogleSignUp = async () => {
     setGoogleLoading(true);
     try {
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: { redirectTo: `${window.location.origin}/dashboard` },
-      });
-      if (error) throw error;
+      const result = await signInWithGoogle();
+      if (result.error) throw new Error(result.error);
     } catch (error: any) {
       toast.error(error.message || 'Erro ao entrar com Google.');
       setGoogleLoading(false);
@@ -46,12 +43,8 @@ const Cadastro = () => {
     }
     setLoading(true);
     try {
-      const { error } = await supabase.auth.signUp({
-        email: formData.email,
-        password: formData.password,
-        options: { data: { full_name: formData.name, role: 'aluno' } }
-      });
-      if (error) throw error;
+      const result = await signUpWithEmail(formData.email, formData.password, formData.name);
+      if (result.error) throw new Error(result.error);
       toast.success("Cadastro realizado com sucesso! Você já pode navegar.");
       navigate('/dashboard');
     } catch (error: any) {

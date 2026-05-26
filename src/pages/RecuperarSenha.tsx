@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import { Mail, ArrowLeft } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
-import { supabase } from '@/lib/supabase';
+import { resetPasswordForEmail } from '@/services/auth.service';
 
 const RecuperarSenha = () => {
   const [email, setEmail] = useState('');
@@ -21,11 +21,8 @@ const RecuperarSenha = () => {
     }
     setLoading(true);
     try {
-      const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/resetar-senha`, 
-      });
-
-      if (error) throw error;
+      const result = await resetPasswordForEmail(email);
+      if (result.error) throw new Error(result.error);
       setSent(true);
       toast.success("Link de recuperação enviado! Verifique seu e-mail.");
     } catch (error: any) {

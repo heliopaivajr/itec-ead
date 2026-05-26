@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/components/ui/use-toast';
-import { saveLead } from '@/lib/saveLead';
+import { createLead } from '@/services/leads.service';
 import { generateCoursePdf } from '@/lib/generateCoursePdf';
 import type { Course } from '@/data/courses';
 
@@ -42,7 +42,7 @@ export function LeadCaptureModal({ course, onClose }: LeadCaptureModalProps) {
 
     setLoading(true);
     try {
-      await saveLead({ ...form, curso_interesse: course.id });
+      await createLead({ ...form, curso_interesse: course.id });
       generateCoursePdf(course.id);
       toast({ title: 'Grade baixada com sucesso!', description: `A grade do curso ${course.nome} foi gerada.`, duration: 4000 });
       onClose();

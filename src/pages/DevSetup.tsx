@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { supabase } from '@/lib/supabase';
+import { upsertProfile } from '@/services/profile.service';
 import { Button } from '@/components/ui/button';
 import { CheckCircle, XCircle, Loader2, AlertTriangle, Copy, ExternalLink } from 'lucide-react';
 
@@ -58,13 +59,13 @@ const DevSetup = () => {
         // Aguarda trigger e faz upsert do perfil manualmente como fallback
         if (data.user) {
           await new Promise(r => setTimeout(r, 1000));
-          const { error: profileError } = await supabase.from('profiles').upsert({
+          const { error: profileError } = await upsertProfile({
             id: data.user.id,
             full_name: user.full_name,
-            role: user.role,
+            role: user.role as any,
           });
           if (profileError) {
-            updateResult(user.email, { status: 'ok', message: `Criado (perfil: ${profileError.message})` });
+            updateResult(user.email, { status: 'ok', message: `Criado (perfil: ${profileError})` });
           } else {
             updateResult(user.email, { status: 'ok', message: 'Criado com sucesso ✓' });
           }

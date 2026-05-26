@@ -14,7 +14,7 @@ import { Button } from '@/components/ui/button';
 import { NavLink, Link, Outlet, useNavigate } from 'react-router-dom';
 import { useProfile } from '@/hooks/use-profile';
 import type { Profile, UserRole } from '@/hooks/use-profile';
-import { supabase } from '@/lib/supabase';
+import { signOut } from '@/services/auth.service';
 import { ThemeSwitcher } from '@/components/ThemeSwitcher';
 
 // ─── Context type exported for sub-pages ─────────────────────
@@ -115,8 +115,7 @@ const Dashboard = () => {
   }, [profile, loading, navigate]);
 
   const handleLogout = async () => {
-    await supabase.auth.signOut();
-    localStorage.removeItem('user');
+    await signOut();
     navigate('/');
   };
 

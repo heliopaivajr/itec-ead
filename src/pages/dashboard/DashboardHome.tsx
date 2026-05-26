@@ -10,7 +10,7 @@ import {
 } from 'recharts';
 import { KpiCard } from '@/components/dashboard/KpiCard';
 import { StatusBadge } from '@/components/dashboard/StatusBadge';
-import { supabase } from '@/lib/supabase';
+import { getKpis, getLeadsRecentes, getMatriculasRecentes, getLeadsPorCurso } from '@/services/dashboard.service';
 import type { DashboardContext } from '../Dashboard';
 
 // ─── Admin ───────────────────────────────────────────────────
@@ -33,38 +33,26 @@ function AdminView({ name }: { name: string }) {
   const [matriculasRecentes, setMatriculasRecentes] = useState<any[]>([]);
 
   useEffect(() => {
-    Promise.all([
-      supabase.from('profiles').select('role', { count: 'exact' }).eq('role', 'aluno'),
-      supabase.from('profiles').select('role', { count: 'exact' }).eq('role', 'professor'),
-      supabase.from('leads_cursos').select('*', { count: 'exact' }),
-      supabase.from('matriculas').select('*', { count: 'exact' }),
-    ]).then(([alunos, profs, leads, mats]) => {
-      setKpis({
-        alunos: alunos.count ?? 0,
-        professores: profs.count ?? 0,
-        leads: leads.count ?? 0,
-        matriculas: mats.count ?? 0,
-      });
-    });
+    async function carregarDados() {
+      const [kpisData, leadsRecentes, matsRecentes, leadsCurso] = await Promise.all([
+        getKpis(),
+        getLeadsRecentes(5),
+        getMatriculasRecentes(5),
+        getLeadsPorCurso(),
+      ]);
 
-    supabase.from('leads_cursos').select('curso_interesse').then(({ data }) => {
-      if (!data) return;
-      const counts: Record<string, number> = {};
-      data.forEach(r => { counts[r.curso_interesse] = (counts[r.curso_interesse] ?? 0) + 1; });
+      setKpis(kpisData);
+      setUltimosLeads(leadsRecentes);
+      setMatriculasRecentes(matsRecentes);
       setLeadsPorCurso(
-        Object.entries(counts).map(([key, val]) => ({
-          name: COURSE_LABELS[key] ?? key,
-          value: val,
-          color: COURSE_COLORS[key] ?? '#6b7280',
+        leadsCurso.map(({ curso, total }) => ({
+          name:  COURSE_LABELS[curso] ?? curso,
+          value: total,
+          color: COURSE_COLORS[curso] ?? '#6b7280',
         }))
       );
-    });
-
-    supabase.from('leads_cursos').select('*').order('created_at', { ascending: false }).limit(5)
-      .then(({ data }) => setUltimosLeads(data ?? []));
-
-    supabase.from('matriculas').select('*').order('created_at', { ascending: false }).limit(5)
-      .then(({ data }) => setMatriculasRecentes(data ?? []));
+    }
+    carregarDados();
   }, []);
 
   return (

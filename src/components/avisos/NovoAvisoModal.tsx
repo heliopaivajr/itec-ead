@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { X, Pin, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { supabase } from '@/lib/supabase';
+import { createAviso } from '@/services/avisos.service';
 import { useToast } from '@/hooks/use-toast';
 
 interface NovoAvisoModalProps {
@@ -32,13 +32,13 @@ export function NovoAvisoModal({ autorId, onClose, onCreated }: NovoAvisoModalPr
     if (!titulo.trim()) return;
 
     setSaving(true);
-    const { error } = await supabase.from('avisos').insert({
-      titulo:        titulo.trim(),
-      conteudo:      conteudo.trim() || null,
-      autor_id:      autorId,
-      role_destino:  destino,
+    const { error } = await createAviso({
+      titulo:       titulo.trim(),
+      conteudo:     conteudo.trim() || null,
+      autor_id:     autorId,
+      role_destino: destino,
       fixado,
-      expira_em:     expira || null,
+      expira_em:    expira || null,
     });
 
     setSaving(false);

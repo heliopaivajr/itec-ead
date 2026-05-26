@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { AvisoCard, type Aviso } from '@/components/avisos/AvisoCard';
 import { NovoAvisoModal } from '@/components/avisos/NovoAvisoModal';
-import { supabase } from '@/lib/supabase';
+import { getAvisos, deleteAviso } from '@/services/avisos.service';
 import { isSuperAdmin, isProfessor, isAdministracao } from '../Dashboard';
 import type { DashboardContext } from '../Dashboard';
 
@@ -30,28 +30,20 @@ export default function Avisos() {
 
   const load = useCallback(async () => {
     setLoading(true);
-    const { data, error } = await supabase
-      .from('avisos')
-      .select('*, autor:profiles(full_name, role)')
-      .order('fixado', { ascending: false })
-      .order('criado_em', { ascending: false });
-
+    const { data, error, noTable: missing } = await getAvisos();
     if (error) {
-      if (error.message.includes('does not exist') || error.code === '42P01') {
-        setNoTable(true);
-      }
+      if (missing) setNoTable(true);
       setLoading(false);
       return;
     }
-
-    setAvisos((data ?? []) as Aviso[]);
+    setAvisos(data);
     setLoading(false);
   }, []);
 
   useEffect(() => { load(); }, [load]);
 
   const handleDelete = async (id: string) => {
-    await supabase.from('avisos').delete().eq('id', id);
+    await deleteAviso(id);
     setAvisos(prev => prev.filter(a => a.id !== id));
   };
 
