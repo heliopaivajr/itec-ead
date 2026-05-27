@@ -23,6 +23,7 @@ function renderProtectedRoute() {
 }
 
 // Mocka sessão + role para cada teste
+// Quando session=null, simula o INITIAL_SESSION com null que o Supabase real sempre dispara.
 function mockAuth(session: any, role: string | null) {
   const mockSingle = vi.fn().mockResolvedValue({ data: role ? { role } : null, error: null });
   const mockEq     = vi.fn().mockReturnValue({ single: mockSingle });
@@ -32,6 +33,14 @@ function mockAuth(session: any, role: string | null) {
     data: { session },
     error: null,
   } as any);
+
+  // Simula o comportamento real do Supabase: onAuthStateChange sempre dispara
+  // INITIAL_SESSION (com session ou null) logo após o registro do listener.
+  vi.mocked(supabase.auth.onAuthStateChange).mockImplementation((handler) => {
+    const event = session ? 'SIGNED_IN' : 'INITIAL_SESSION';
+    setTimeout(() => handler(event as any, session), 0);
+    return { data: { subscription: { unsubscribe: vi.fn() } } } as any;
+  });
 
   vi.mocked(supabase.from).mockReturnValue({
     select: mockSelect,

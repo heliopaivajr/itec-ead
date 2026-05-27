@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Navigate } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
 import { getRole } from '@/services/profile.service';
+import type { Session } from '@supabase/supabase-js';
 
 export const ROLES_COM_ACESSO: string[] = [
   'aluno', 'professor', 'administracao', 'admin', 'superadmin',
@@ -9,40 +10,63 @@ export const ROLES_COM_ACESSO: string[] = [
 
 // pendente   → /aguardando (conta criada, aguarda aprovação)
 // sem-sessao → /login
-// bloqueado  → /login  (role desconhecido — falha segura por padrão)
+// bloqueado  → /login (role desconhecido — falha segura)
 type Estado = 'carregando' | 'autorizado' | 'pendente' | 'sem-sessao' | 'bloqueado';
 
 export default function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const [estado, setEstado] = useState<Estado>('carregando');
 
+  // Timeout de segurança: se ficar carregando por mais de 8s sem sessão → /login
+  useEffect(() => {
+    if (estado !== 'carregando') return;
+    const timer = setTimeout(() => {
+      setEstado(prev => prev === 'carregando' ? 'sem-sessao' : prev);
+    }, 8000);
+    return () => clearTimeout(timer);
+  }, [estado]);
+
   useEffect(() => {
     let montado = true;
 
-    async function verificar() {
-      const { data: { session } } = await supabase.auth.getSession();
-
+    async function verificar(session: Session | null) {
       if (!session) {
         if (montado) setEstado('sem-sessao');
         return;
       }
-
       const role = await getRole(session.user.id);
       if (!montado) return;
-
       if (ROLES_COM_ACESSO.includes(role)) {
         setEstado('autorizado');
       } else if (role === 'pendente') {
         setEstado('pendente');
       } else {
-        setEstado('bloqueado'); // role desconhecido → /login (seguro por padrão)
+        setEstado('bloqueado');
       }
     }
 
-    verificar();
+    // 1. Registrar listener PRIMEIRO — captura SIGNED_IN do PKCE callback
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        if (!montado) return;
+        if (
+          event === 'SIGNED_IN' ||
+          event === 'TOKEN_REFRESHED' ||
+          event === 'INITIAL_SESSION'
+        ) {
+          await verificar(session);
+        }
+        if (event === 'SIGNED_OUT') {
+          if (montado) setEstado('sem-sessao');
+        }
+      }
+    );
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
-      if (event === 'SIGNED_OUT' && montado) setEstado('sem-sessao');
-      if (event === 'SIGNED_IN')             verificar();
+    // 2. Verificar sessão já existente (ex: usuário que voltou à aba)
+    // Se null: NÃO redirecionar — aguardar SIGNED_IN do onAuthStateChange
+    // O timeout de 8s garante que nunca ficará preso para sempre
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) verificar(session);
+      // Se null e o PKCE ainda está processando: onAuthStateChange vai disparar
     });
 
     return () => { montado = false; subscription.unsubscribe(); };
