@@ -4,16 +4,24 @@ import type { UserRole, Profile } from '@/hooks/use-profile';
 export type { UserRole, Profile };
 
 // Leitura de role apenas — hot path do ProtectedRoute.
-// Retorna 'pendente' como fallback seguro se o perfil não existir.
+// Timeout de 5s: RLS com query lenta não pode travar o login indefinidamente.
+// Retorna 'pendente' como fallback seguro se erro ou timeout.
 export async function getRole(userId: string): Promise<UserRole> {
-  const { data, error } = await supabase
+  const queryPromise = supabase
     .from('profiles')
     .select('role')
     .eq('id', userId)
     .single();
 
-  if (error || !data) return 'pendente';
-  return (data.role as UserRole) ?? 'pendente';
+  const timeoutPromise = new Promise<null>(resolve =>
+    setTimeout(() => resolve(null), 5000)
+  );
+
+  const resultado = await Promise.race([queryPromise, timeoutPromise]);
+
+  if (!resultado || 'error' in resultado && resultado.error) return 'pendente';
+  if (!('data' in resultado) || !resultado.data) return 'pendente';
+  return (resultado.data.role as UserRole) ?? 'pendente';
 }
 
 // Leitura completa do perfil com fallback para usuário novo.
