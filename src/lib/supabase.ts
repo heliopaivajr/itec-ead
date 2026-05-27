@@ -7,4 +7,11 @@ if (!supabaseUrl || !supabaseAnonKey) {
   console.warn('Variáveis de ambiente do Supabase não encontradas. Verifique o arquivo .env');
 }
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+  auth: {
+    flowType:          'pkce',
+    autoRefreshToken:  true,
+    persistSession:    true,
+    detectSessionInUrl: true, // processa #access_token e ?code da URL
+  },
+});
