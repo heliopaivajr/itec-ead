@@ -17,15 +17,55 @@ export interface ServiceResult {
   error: string | null;
 }
 
-// Listagem de todos os usuários — sem LIMIT (admin vê todos)
-export async function getUsuarios(): Promise<UserRow[]> {
+export interface UsuariosPage {
+  data: UserRow[];
+  total: number;
+}
+
+export interface UsuariosStats {
+  total: number;
+  alunos: number;
+  professores: number;
+  equipe: number;
+}
+
+// Listagem paginada com busca opcional por nome/email
+export async function getUsuarios(
+  page = 1,
+  limit = 20,
+  search = ''
+): Promise<UsuariosPage> {
+  let query = supabase
+    .from('profiles')
+    .select('*', { count: 'exact' })
+    .order('full_name', { ascending: true })
+    .range((page - 1) * limit, page * limit - 1);
+
+  if (search.trim()) {
+    query = query.or(
+      `full_name.ilike.%${search.trim()}%,email.ilike.%${search.trim()}%`
+    );
+  }
+
+  const { data, count, error } = await query;
+  if (error) return { data: [], total: 0 };
+  return { data: (data as UserRow[]) ?? [], total: count ?? 0 };
+}
+
+// Contagens para os cards KPI — busca apenas a coluna role (leve)
+export async function getUsuariosStats(): Promise<UsuariosStats> {
   const { data, error } = await supabase
     .from('profiles')
-    .select('*')
-    .order('created_at', { ascending: false });
+    .select('role');
 
-  if (error) return [];
-  return (data as UserRow[]) ?? [];
+  if (error || !data) return { total: 0, alunos: 0, professores: 0, equipe: 0 };
+
+  return {
+    total: data.length,
+    alunos: data.filter(u => u.role === 'aluno').length,
+    professores: data.filter(u => u.role === 'professor').length,
+    equipe: data.filter(u => ['administracao', 'admin'].includes(u.role)).length,
+  };
 }
 
 // Atualização de role — usado pelo admin em Usuarios.tsx

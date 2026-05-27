@@ -1,70 +1,79 @@
-import React, { useEffect, useState } from 'react';
-import { Search, User, Shield, GraduationCap, BookOpen, Loader2, Users, Edit } from 'lucide-react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { ChevronLeft, ChevronRight, Search, User, Shield, GraduationCap, BookOpen, Loader2, Users, Edit } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { getUsuarios, updateRole, updateUsuario } from '@/services/usuarios.service';
+import { getUsuarios, getUsuariosStats, updateRole, updateUsuario } from '@/services/usuarios.service';
+import type { UserRow, UsuariosStats } from '@/services/usuarios.service';
 import { useToast } from '@/hooks/use-toast';
 
-interface UserRow {
-  id: string;
-  full_name: string;
-  email?: string;
-  role: 'aluno' | 'professor' | 'administracao' | 'admin' | 'superadmin';
-  telefone?: string;
-  created_at: string;
-}
+const PAGE_SIZE = 20;
 
 const roleConfig: Record<string, { label: string; color: string; icon: React.ElementType }> = {
-  aluno:         { label: 'Aluno',          color: 'bg-blue-500/20 text-blue-400 border-blue-500/30',   icon: GraduationCap },
-  professor:     { label: 'Professor',      color: 'bg-green-500/20 text-green-400 border-green-500/30', icon: BookOpen },
-  administracao: { label: 'Secretaria',     color: 'bg-orange-500/20 text-orange-400 border-orange-500/30', icon: Users },
-  admin:         { label: 'Diretoria',      color: 'bg-red-500/20 text-red-400 border-red-500/30',      icon: Shield },
-  superadmin:    { label: 'SuperAdmin',     color: 'bg-gray-800 text-white border-gray-600',            icon: Shield },
+  aluno:         { label: 'Aluno',      color: 'bg-blue-500/20 text-blue-400 border-blue-500/30',       icon: GraduationCap },
+  professor:     { label: 'Professor',  color: 'bg-green-500/20 text-green-400 border-green-500/30',    icon: BookOpen },
+  administracao: { label: 'Secretaria', color: 'bg-orange-500/20 text-orange-400 border-orange-500/30', icon: Users },
+  admin:         { label: 'Diretoria',  color: 'bg-red-500/20 text-red-400 border-red-500/30',          icon: Shield },
+  superadmin:    { label: 'SuperAdmin', color: 'bg-gray-800 text-white border-gray-600',                icon: Shield },
 };
 
 export default function Usuarios() {
   const { toast } = useToast();
-  const [users, setUsers] = useState<UserRow[]>([]);
+
+  // Paginação + busca
+  const [page, setPage]       = useState(1);
+  const [search, setSearch]   = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+
+  // Dados
+  const [users, setUsers]     = useState<UserRow[]>([]);
+  const [total, setTotal]     = useState(0);
+  const [stats, setStats]     = useState<UsuariosStats>({ total: 0, alunos: 0, professores: 0, equipe: 0 });
   const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState('');
   const [updating, setUpdating] = useState<string | null>(null);
-  
-  // Modal Edit State
+
+  // Modal edição
   const [editUser, setEditUser] = useState<UserRow | null>(null);
   const [editForm, setEditForm] = useState({ full_name: '', telefone: '', role: 'aluno' });
 
-  const load = async () => {
-    setLoading(true);
-    setUsers(await getUsuarios());
-    setLoading(false);
+  // Debounce 300ms na busca
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const handleSearch = (value: string) => {
+    setSearch(value);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      setDebouncedSearch(value);
+      setPage(1); // volta pra página 1 ao buscar
+    }, 300);
   };
 
-  useEffect(() => { load(); }, []);
+  // Carrega stats uma vez (KPI cards refletem o banco todo)
+  useEffect(() => {
+    getUsuariosStats().then(setStats);
+  }, []);
+
+  // Carrega página ao mudar page ou busca
+  const loadPage = useCallback(async () => {
+    setLoading(true);
+    const { data, total: t } = await getUsuarios(page, PAGE_SIZE, debouncedSearch);
+    setUsers(data as UserRow[]);
+    setTotal(t);
+    setLoading(false);
+  }, [page, debouncedSearch]);
+
+  useEffect(() => { loadPage(); }, [loadPage]);
+
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
   const changeRole = async (userId: string, newRole: UserRow['role']) => {
     setUpdating(userId);
     const { error } = await updateRole(userId, newRole);
-
     if (error) {
       toast({ title: 'Erro ao atualizar role', description: error, variant: 'destructive' });
     } else {
       setUsers(prev => prev.map(u => u.id === userId ? { ...u, role: newRole } : u));
       toast({ title: 'Role atualizado!', description: 'Permissão do usuário alterada com sucesso.' });
-    }
-    setUpdating(null);
-  };
-
-  const handleEditSave = async () => {
-    if (!editUser) return;
-    setUpdating(editUser.id);
-    const { error } = await updateUsuario(editUser.id, editForm);
-
-    if (error) {
-      toast({ title: 'Erro ao salvar', description: error, variant: 'destructive' });
-    } else {
-      toast({ title: 'Usuário atualizado!', description: 'Dados salvos com sucesso.' });
-      await load();
-      setEditUser(null);
+      // Atualiza stats após mudança de role
+      getUsuariosStats().then(setStats);
     }
     setUpdating(null);
   };
@@ -74,12 +83,23 @@ export default function Usuarios() {
     setEditUser(user);
   };
 
-  const filtered = users.filter(u =>
-    u.full_name?.toLowerCase().includes(search.toLowerCase()) ||
-    u.email?.toLowerCase().includes(search.toLowerCase())
-  );
+  const handleEditSave = async () => {
+    if (!editUser) return;
+    setUpdating(editUser.id);
+    const { error } = await updateUsuario(editUser.id, editForm);
+    if (error) {
+      toast({ title: 'Erro ao salvar', description: error, variant: 'destructive' });
+    } else {
+      toast({ title: 'Usuário atualizado!', description: 'Dados salvos com sucesso.' });
+      setEditUser(null);
+      await loadPage();
+      getUsuariosStats().then(setStats);
+    }
+    setUpdating(null);
+  };
 
-  const roleCount = (roles: string[]) => users.filter(u => roles.includes(u.role)).length;
+  const pageStart = (page - 1) * PAGE_SIZE + 1;
+  const pageEnd   = Math.min(page * PAGE_SIZE, total);
 
   return (
     <div className="p-6 space-y-6 relative">
@@ -88,13 +108,13 @@ export default function Usuarios() {
         <p className="text-muted-foreground mt-1">Gestão de alunos, professores e equipe do ITEC</p>
       </div>
 
-      {/* Stats */}
+      {/* Stats KPI */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[
-          { label: 'Total', value: users.length, icon: User },
-          { label: 'Alunos', value: roleCount(['aluno']), icon: GraduationCap },
-          { label: 'Professores', value: roleCount(['professor']), icon: BookOpen },
-          { label: 'Equipe', value: roleCount(['administracao', 'admin']), icon: Shield },
+          { label: 'Total',      value: stats.total,       icon: User },
+          { label: 'Alunos',     value: stats.alunos,      icon: GraduationCap },
+          { label: 'Professores',value: stats.professores,  icon: BookOpen },
+          { label: 'Equipe',     value: stats.equipe,       icon: Shield },
         ].map(stat => (
           <div key={stat.label} className="bg-card border border-border rounded-xl p-4 shadow-sm">
             <div className="flex items-center gap-2 mb-1">
@@ -106,27 +126,27 @@ export default function Usuarios() {
         ))}
       </div>
 
-      {/* Search */}
+      {/* Busca */}
       <div className="relative max-w-sm">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
         <Input
           value={search}
-          onChange={e => setSearch(e.target.value)}
+          onChange={e => handleSearch(e.target.value)}
           placeholder="Buscar por nome ou e-mail..."
           className="pl-9 bg-background border-border text-foreground shadow-sm"
         />
       </div>
 
-      {/* Table */}
+      {/* Tabela */}
       <div className="bg-card border border-border rounded-xl overflow-hidden shadow-sm">
         {loading ? (
           <div className="flex items-center justify-center gap-2 p-12 text-muted-foreground animate-pulse">
             <Loader2 className="h-4 w-4 animate-spin" /> Carregando usuários...
           </div>
-        ) : filtered.length === 0 ? (
+        ) : users.length === 0 ? (
           <div className="flex flex-col items-center justify-center p-12 text-muted-foreground gap-2">
             <User className="h-10 w-10 opacity-30" />
-            <p>{search ? 'Nenhum resultado.' : 'Nenhum usuário cadastrado.'}</p>
+            <p>{debouncedSearch ? 'Nenhum resultado encontrado.' : 'Nenhum usuário cadastrado.'}</p>
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -141,11 +161,11 @@ export default function Usuarios() {
                 </tr>
               </thead>
               <tbody>
-                {filtered.map((user, i) => {
+                {users.map((user, i) => {
                   const rc = roleConfig[user.role] || roleConfig['aluno'];
                   const RoleIcon = rc.icon;
                   return (
-                    <tr key={user.id} className={`border-b border-border last:border-0 hover:bg-muted/20 transition-colors ${i % 2 === 0 ? '' : 'bg-muted/5'}`}>
+                    <tr key={user.id} className={`border-b border-border last:border-0 hover:bg-muted/20 transition-colors ${i % 2 !== 0 ? 'bg-muted/5' : ''}`}>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-3">
                           <div className="h-8 w-8 rounded-full bg-primary/20 flex items-center justify-center shrink-0">
@@ -182,7 +202,7 @@ export default function Usuarios() {
                                 <option value="administracao">Secretaria</option>
                                 <option value="admin">Diretoria</option>
                               </select>
-                              <button 
+                              <button
                                 onClick={() => openEdit(user)}
                                 className="p-1 hover:bg-muted rounded text-muted-foreground hover:text-primary transition-colors"
                                 title="Editar Usuário"
@@ -202,13 +222,40 @@ export default function Usuarios() {
         )}
       </div>
 
-      {filtered.length > 0 && (
-        <p className="text-xs text-muted-foreground text-right">
-          Exibindo {filtered.length} de {users.length} usuários
-        </p>
+      {/* Paginação */}
+      {total > 0 && (
+        <div className="flex items-center justify-between text-xs text-muted-foreground">
+          <span>
+            Exibindo {pageStart}–{pageEnd} de {total} usuário{total !== 1 ? 's' : ''}
+            {debouncedSearch && <span className="ml-1">(filtrado)</span>}
+          </span>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setPage(p => Math.max(1, p - 1))}
+              disabled={page <= 1 || loading}
+              className="h-7 px-2"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <span className="px-2">
+              Página {page} de {totalPages}
+            </span>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+              disabled={page >= totalPages || loading}
+              className="h-7 px-2"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
       )}
 
-      {/* Edit Modal */}
+      {/* Modal Edição */}
       {editUser && (
         <div className="fixed inset-0 bg-background/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-card border border-border rounded-xl p-6 w-full max-w-md shadow-lg space-y-4">
@@ -216,17 +263,17 @@ export default function Usuarios() {
             <div className="space-y-3">
               <div>
                 <label className="text-xs text-muted-foreground font-medium mb-1 block">Nome Completo</label>
-                <Input 
-                  value={editForm.full_name} 
-                  onChange={e => setEditForm(prev => ({...prev, full_name: e.target.value}))} 
+                <Input
+                  value={editForm.full_name}
+                  onChange={e => setEditForm(prev => ({ ...prev, full_name: e.target.value }))}
                   className="bg-background"
                 />
               </div>
               <div>
                 <label className="text-xs text-muted-foreground font-medium mb-1 block">Telefone</label>
-                <Input 
-                  value={editForm.telefone} 
-                  onChange={e => setEditForm(prev => ({...prev, telefone: e.target.value}))} 
+                <Input
+                  value={editForm.telefone}
+                  onChange={e => setEditForm(prev => ({ ...prev, telefone: e.target.value }))}
                   placeholder="(00) 00000-0000"
                   className="bg-background"
                 />
@@ -235,7 +282,7 @@ export default function Usuarios() {
                 <label className="text-xs text-muted-foreground font-medium mb-1 block">Role</label>
                 <select
                   value={editForm.role}
-                  onChange={e => setEditForm(prev => ({...prev, role: e.target.value}))}
+                  onChange={e => setEditForm(prev => ({ ...prev, role: e.target.value }))}
                   className="w-full bg-background border border-border rounded-md px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
                 >
                   <option value="aluno">Aluno</option>
@@ -246,16 +293,16 @@ export default function Usuarios() {
               </div>
             </div>
             <div className="flex gap-2 pt-2">
-              <Button 
-                onClick={handleEditSave} 
+              <Button
+                onClick={handleEditSave}
                 className="flex-1"
                 disabled={updating === editUser.id}
               >
                 {updating === editUser.id ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Salvar'}
               </Button>
-              <Button 
-                variant="outline" 
-                onClick={() => setEditUser(null)} 
+              <Button
+                variant="outline"
+                onClick={() => setEditUser(null)}
                 className="flex-1"
               >
                 Cancelar
