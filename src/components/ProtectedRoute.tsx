@@ -16,17 +16,20 @@ type Estado = 'carregando' | 'autorizado' | 'pendente' | 'sem-sessao' | 'bloquea
 export default function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const [estado, setEstado] = useState<Estado>('carregando');
 
-  // Timeout de segurança: se ficar carregando por mais de 8s sem sessão → /login
+  // Timeout de segurança: 15s aguardando PKCE exchange → fallback /login
   useEffect(() => {
     if (estado !== 'carregando') return;
     const timer = setTimeout(() => {
+      console.log('[ProtectedRoute] Timeout — redirecionando para /login');
       setEstado(prev => prev === 'carregando' ? 'sem-sessao' : prev);
-    }, 8000);
+    }, 15000);
     return () => clearTimeout(timer);
   }, [estado]);
 
   useEffect(() => {
     let montado = true;
+
+    console.log('[ProtectedRoute] Aguardando sessão...');
 
     async function verificar(session: Session | null) {
       if (!session) {
@@ -44,7 +47,7 @@ export default function ProtectedRoute({ children }: { children: React.ReactNode
       }
     }
 
-    // 1. Registrar listener PRIMEIRO — captura SIGNED_IN do PKCE callback
+    // 1. Registrar listener PRIMEIRO — captura INITIAL_SESSION e SIGNED_IN do PKCE callback
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         if (!montado) return;
@@ -53,6 +56,7 @@ export default function ProtectedRoute({ children }: { children: React.ReactNode
           event === 'TOKEN_REFRESHED' ||
           event === 'INITIAL_SESSION'
         ) {
+          console.log(`[ProtectedRoute] ${event} recebido, verificando role...`);
           await verificar(session);
         }
         if (event === 'SIGNED_OUT') {
@@ -62,11 +66,11 @@ export default function ProtectedRoute({ children }: { children: React.ReactNode
     );
 
     // 2. Verificar sessão já existente (ex: usuário que voltou à aba)
-    // Se null: NÃO redirecionar — aguardar SIGNED_IN do onAuthStateChange
-    // O timeout de 8s garante que nunca ficará preso para sempre
+    // Se null: NÃO redirecionar — aguardar INITIAL_SESSION/SIGNED_IN do onAuthStateChange
+    // O timeout de 15s garante que nunca ficará preso para sempre
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session) verificar(session);
-      // Se null e o PKCE ainda está processando: onAuthStateChange vai disparar
+      // Se null e PKCE em andamento: onAuthStateChange vai disparar INITIAL_SESSION/SIGNED_IN
     });
 
     return () => { montado = false; subscription.unsubscribe(); };
