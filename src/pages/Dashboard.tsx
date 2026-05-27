@@ -63,7 +63,7 @@ const menuByRole: Record<string, { icon: React.ElementType; label: string; href:
     { icon: BookOpen,        label: 'Minhas Disciplinas', href: '/dashboard/professor',               tooltip: 'Disciplinas ativas' },
     { icon: ClipboardList,   label: 'Lançar Frequência', href: '/dashboard/professor/frequencia',    tooltip: 'Chamada por aula' },
     { icon: Users,           label: 'Ver Turma',         href: '/dashboard/professor/turma',         tooltip: 'Frequência da turma' },
-    { icon: FileText,        label: 'Meus Contratos',    href: '/dashboard/professor/contrato',      tooltip: 'Contratos por disciplina' },
+    { icon: FileText,        label: 'Meus Contratos',    href: '/dashboard/professor/contratos',     tooltip: 'Contratos por disciplina' },
     { icon: Megaphone,        label: 'Avisos',         href: '/dashboard/avisos',          tooltip: 'Mural de avisos' },
     { icon: Bell,            label: 'Notificações',   href: '/dashboard/notificacoes',    tooltip: 'Avisos e mensagens' },
     { icon: Settings,        label: 'Configurações',  href: '/dashboard/perfil',          tooltip: 'Perfil e preferências' },

@@ -126,6 +126,19 @@ export async function getContratosByProfessor(
   return (data as ContratoProfessor[]) ?? [];
 }
 
+export async function getContratoById(
+  id: string
+): Promise<ContratoProfessor | null> {
+  const { data, error } = await supabase
+    .from('contratos_professor')
+    .select('*')
+    .eq('id', id)
+    .single();
+
+  if (error || !data) return null;
+  return data as ContratoProfessor;
+}
+
 export async function getContratoByDisciplina(
   professorId: string,
   disciplinaId: string

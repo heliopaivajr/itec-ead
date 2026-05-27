@@ -46,6 +46,7 @@ const ProfessorHome      = lazy(() => import("./pages/dashboard/ProfessorHome"))
 const LancarFrequencia   = lazy(() => import("./pages/dashboard/LancarFrequencia"));
 const VerTurma           = lazy(() => import("./pages/dashboard/VerTurma"));
 const ContratoForm       = lazy(() => import("./pages/dashboard/ContratoForm"));
+const MeusContratos      = lazy(() => import("./pages/dashboard/MeusContratos"));
 import ProtectedRoute from '@/components/ProtectedRoute';
 
 const queryClient = new QueryClient();
@@ -124,6 +125,7 @@ const App = () => (
               <Route path="professor"                              element={<ProfessorHome />} />
               <Route path="professor/frequencia/:disciplinaId"    element={<LancarFrequencia />} />
               <Route path="professor/turma/:disciplinaId"         element={<VerTurma />} />
+              <Route path="professor/contratos"                    element={<MeusContratos />} />
               <Route path="professor/contrato/:contratoId"        element={<ContratoForm />} />
 
               {/* All roles */}
