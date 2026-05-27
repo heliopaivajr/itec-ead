@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { StatusBadge } from '@/components/dashboard/StatusBadge';
 import { getMatriculas, updateStatusMatricula } from '@/services/matriculas.service';
+import { updateRole } from '@/services/usuarios.service';
 import { useToast } from '@/hooks/use-toast';
 
 interface Matricula {
@@ -64,14 +65,23 @@ export default function Matriculas() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page]);
 
-  const updateStatus = async (id: string, novoStatus: string) => {
+  const updateStatus = async (id: string, novoStatus: string, alunoId?: string) => {
     setProcessing(id);
     const { error } = await updateStatusMatricula(id, novoStatus, obsText);
 
     if (error) {
       toast({ title: 'Erro', description: error, variant: 'destructive' });
     } else {
-      toast({ title: `Matrícula ${novoStatus === 'ativo' ? 'aprovada' : 'recusada'}!`, description: 'Status atualizado com sucesso.' });
+      if (novoStatus === 'ativo' && alunoId) {
+        const { error: roleError } = await updateRole(alunoId, 'aluno');
+        if (roleError) {
+          toast({ title: 'Matrícula aprovada, mas erro ao liberar acesso', description: roleError, variant: 'destructive' });
+        } else {
+          toast({ title: 'Matrícula aprovada — acesso liberado!', description: 'O aluno já pode acessar o dashboard.' });
+        }
+      } else {
+        toast({ title: 'Matrícula recusada', description: 'Status atualizado com sucesso.' });
+      }
       setDetalhes(null);
       setObsText('');
       load(activeTab, page);
@@ -177,7 +187,7 @@ export default function Matriculas() {
                         {m.status === 'pendente' && (
                           <>
                             <button
-                              onClick={() => updateStatus(m.id, 'ativo')}
+                              onClick={() => updateStatus(m.id, 'ativo', m.aluno_id)}
                               disabled={processing === m.id}
                               className="h-7 w-7 rounded-lg bg-green-500/10 border border-green-500/30 flex items-center justify-center hover:bg-green-500/20 transition-all text-green-500">
                               {processing === m.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
@@ -262,7 +272,7 @@ export default function Matriculas() {
             <div className="flex gap-2 pt-1">
               {detalhes.status === 'pendente' && (
                 <>
-                  <Button onClick={() => updateStatus(detalhes.id, 'ativo')}
+                  <Button onClick={() => updateStatus(detalhes.id, 'ativo', detalhes.aluno_id)}
                     disabled={!!processing} className="flex-1 bg-green-600 hover:bg-green-700 text-white gap-2">
                     <Check className="h-4 w-4" /> Aprovar
                   </Button>
