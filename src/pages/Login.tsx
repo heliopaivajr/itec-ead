@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { supabase } from '@/lib/supabase';
 import { useNavigate, Link } from 'react-router-dom';
 import { Eye, EyeOff, Loader2, ShieldCheck, Building2, BookOpen, GraduationCap, ArrowLeft } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
@@ -33,9 +34,15 @@ export default function Login() {
   const [password, setPassword] = useState('');
   const [showPwd, setShowPwd] = useState(false);
   const [remember, setRemember] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading]             = useState(false);
+  const [loginDemorado, setLoginDemorado] = useState(false);
   // TODO: reabilitar quando migrar para Supabase Pro
   // const [googleLoading, setGoogleLoading] = useState(false);
+
+  // Warmup silencioso: acorda o Supabase Free tier ao abrir a página de login
+  useEffect(() => {
+    supabase.auth.getSession().catch(() => {});
+  }, []);
 
   const fillDemo = (user: typeof DEMO_USERS[0]) => {
     if (!user.email) {
@@ -50,6 +57,11 @@ export default function Login() {
     e.preventDefault();
     if (!email || !password) return;
     setLoading(true);
+    setLoginDemorado(false);
+
+    // Após 5s sem resposta, mostrar aviso de servidor iniciando
+    const timerDemorado = setTimeout(() => setLoginDemorado(true), 5000);
+
     try {
       const result = await signInWithPassword(email, password);
       if (result.error) throw new Error(result.error);
@@ -70,7 +82,9 @@ export default function Login() {
       toast({ title: 'Erro no login', description: err.message, variant: 'destructive' });
       await signOut();
     } finally {
+      clearTimeout(timerDemorado);
       setLoading(false);
+      setLoginDemorado(false);
     }
   };
 
@@ -194,6 +208,14 @@ export default function Login() {
               {loading ? 'Autenticando...' : 'Fazer login'}
             </button>
           </form>
+
+          {/* Aviso de demora — aparece após 5s sem resposta */}
+          {loginDemorado && (
+            <p className="text-sm text-muted-foreground text-center animate-pulse">
+              Aguarde... o servidor está sendo iniciado.
+              Isso pode levar até 30 segundos na primeira vez.
+            </p>
+          )}
 
           {/* TODO: Google OAuth — reabilitar quando migrar para Supabase Pro */}
 
