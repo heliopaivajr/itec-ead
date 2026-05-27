@@ -16,13 +16,13 @@ type Estado = 'carregando' | 'autorizado' | 'pendente' | 'sem-sessao' | 'bloquea
 export default function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const [estado, setEstado] = useState<Estado>('carregando');
 
-  // Timeout de segurança: 15s aguardando PKCE exchange → fallback /login
+  // Timeout de segurança: 30s — Supabase free tier pode pausar e levar 10-30s para acordar
   useEffect(() => {
     if (estado !== 'carregando') return;
     const timer = setTimeout(() => {
       console.log('[ProtectedRoute] Timeout — redirecionando para /login');
       setEstado(prev => prev === 'carregando' ? 'sem-sessao' : prev);
-    }, 15000);
+    }, 30000);
     return () => clearTimeout(timer);
   }, [estado]);
 
