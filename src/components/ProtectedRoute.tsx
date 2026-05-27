@@ -3,36 +3,52 @@ import { Navigate } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
 import { getRole } from '@/services/profile.service';
 
-// Roles allowed to access the dashboard.
-// 'pendente' is intentionally excluded — redirected to /aguardando.
-// Unknown/missing roles redirect to /login (secure by default).
 export const ROLES_COM_ACESSO: string[] = [
   'aluno', 'professor', 'administracao', 'admin', 'superadmin',
 ];
 
-const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
-  const [session, setSession] = useState<any>(undefined);
-  const [role, setRole]       = useState<string | null | undefined>(undefined);
+// pendente   → /aguardando (conta criada, aguarda aprovação)
+// sem-sessao → /login
+// bloqueado  → /login  (role desconhecido — falha segura por padrão)
+type Estado = 'carregando' | 'autorizado' | 'pendente' | 'sem-sessao' | 'bloqueado';
+
+export default function ProtectedRoute({ children }: { children: React.ReactNode }) {
+  const [estado, setEstado] = useState<Estado>('carregando');
 
   useEffect(() => {
-    async function check() {
-      // Token já foi renovado pelo AuthRedirect antes da navegação.
-      // Aqui apenas lemos a sessão e o role do banco — sem refreshSession()
-      // para evitar loop com TOKEN_REFRESHED → onAuthStateChange → check().
-      const { data: { session: s } } = await supabase.auth.getSession();
-      setSession(s ?? null);
-      if (!s?.user) { setRole(null); return; }
+    let montado = true;
 
-      // getRole sempre busca do banco (tabela profiles), nunca do JWT
-      setRole(await getRole(s.user.id));
+    async function verificar() {
+      const { data: { session } } = await supabase.auth.getSession();
+
+      if (!session) {
+        if (montado) setEstado('sem-sessao');
+        return;
+      }
+
+      const role = await getRole(session.user.id);
+      if (!montado) return;
+
+      if (ROLES_COM_ACESSO.includes(role)) {
+        setEstado('autorizado');
+      } else if (role === 'pendente') {
+        setEstado('pendente');
+      } else {
+        setEstado('bloqueado'); // role desconhecido → /login (seguro por padrão)
+      }
     }
 
-    check();
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(check);
-    return () => subscription.unsubscribe();
+    verificar();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+      if (event === 'SIGNED_OUT' && montado) setEstado('sem-sessao');
+      if (event === 'SIGNED_IN')             verificar();
+    });
+
+    return () => { montado = false; subscription.unsubscribe(); };
   }, []);
 
-  if (session === undefined || role === undefined) {
+  if (estado === 'carregando') {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="flex flex-col items-center gap-3 text-muted-foreground animate-pulse">
@@ -43,11 +59,9 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
     );
   }
 
-  if (!session)                         return <Navigate to="/login"     replace />;
-  if (role === 'pendente')              return <Navigate to="/aguardando" replace />;
-  if (!ROLES_COM_ACESSO.includes(role)) return <Navigate to="/login"     replace />;
+  if (estado === 'sem-sessao') return <Navigate to="/login"     replace />;
+  if (estado === 'pendente')   return <Navigate to="/aguardando" replace />;
+  if (estado === 'bloqueado')  return <Navigate to="/login"     replace />;
 
-  return children;
-};
-
-export default ProtectedRoute;
+  return <>{children}</>;
+}
