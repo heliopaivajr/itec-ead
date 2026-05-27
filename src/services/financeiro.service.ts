@@ -39,6 +39,7 @@ export interface ResumoFinanceiro {
 export interface Inadimplente {
   aluno_id: string;
   nome: string;
+  email: string;
   mensalidades_atrasadas: number;
   valor_total: number;
 }
@@ -111,17 +112,18 @@ export async function registrarPagamentoMensalidade(
 export async function getInadimplentes(): Promise<Inadimplente[]> {
   const { data, error } = await supabase
     .from('mensalidades')
-    .select('aluno_id, valor, profile:profiles(full_name)')
+    .select('aluno_id, valor, profile:profiles(full_name, email)')
     .in('status', ['pendente', 'atrasado'])
     .lt('data_vencimento', new Date().toISOString().split('T')[0]);
 
   if (error || !data) return [];
 
   // Agrega por aluno em JS
-  const porAluno = new Map<string, { nome: string; count: number; total: number }>();
-  for (const m of data as { aluno_id: string; valor: number; profile: { full_name: string } | null }[]) {
+  const porAluno = new Map<string, { nome: string; email: string; count: number; total: number }>();
+  for (const m of data as { aluno_id: string; valor: number; profile: { full_name: string; email: string } | null }[]) {
     const entry = porAluno.get(m.aluno_id) ?? {
       nome:  m.profile?.full_name ?? m.aluno_id,
+      email: m.profile?.email ?? '',
       count: 0,
       total: 0,
     };
@@ -131,9 +133,10 @@ export async function getInadimplentes(): Promise<Inadimplente[]> {
   }
 
   return Array.from(porAluno.entries())
-    .map(([aluno_id, { nome, count, total }]) => ({
+    .map(([aluno_id, { nome, email, count, total }]) => ({
       aluno_id,
       nome,
+      email,
       mensalidades_atrasadas: count,
       valor_total:            Math.round(total * 100) / 100,
     }))

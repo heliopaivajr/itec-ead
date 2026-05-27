@@ -121,6 +121,22 @@ export default function Financeiro() {
   const [alunoMensalidades, setAlunoMensalidades] = useState<Record<string, Mensalidade[]>>({});
   const [expandido, setExpandido]         = useState<string | null>(null);
 
+  const handleEnviarEmail = (aluno: Inadimplente) => {
+    const assunto = encodeURIComponent('ITEC-EAD — Mensalidade em atraso');
+    const corpo = encodeURIComponent(
+      `Olá, ${aluno.nome}!\n\n` +
+      `Identificamos ${aluno.mensalidades_atrasadas} ` +
+      `mensalidade${aluno.mensalidades_atrasadas > 1 ? 's' : ''} em atraso ` +
+      `totalizando R$ ${aluno.valor_total.toFixed(2)}.\n\n` +
+      `Por favor, entre em contato com a secretaria para regularizar sua situação:\n` +
+      `secretaria@itecedu.com\n` +
+      `WhatsApp: (81) 99116-1448\n\n` +
+      `Atenciosamente,\n` +
+      `Secretaria ITEC-EAD`
+    );
+    window.open(`mailto:${aluno.email}?subject=${assunto}&body=${corpo}`, '_blank');
+  };
+
   // Geração de mensalidades
   const [mesGerar, setMesGerar]         = useState('');
   const [valorGerar, setValorGerar]     = useState('');
@@ -222,7 +238,16 @@ export default function Financeiro() {
                       className="border-border text-muted-foreground text-xs">
                       {expandido === aluno.aluno_id ? 'Fechar' : 'Ver mensalidades'}
                     </Button>
-                    <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-primary text-xs">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-muted-foreground hover:text-primary text-xs"
+                      onClick={() => handleEnviarEmail(aluno)}
+                      disabled={!aluno.email}
+                      title={aluno.email
+                        ? 'Abre seu cliente de e-mail com mensagem pré-preenchida'
+                        : 'E-mail não cadastrado'}
+                    >
                       <Mail className="h-3.5 w-3.5 mr-1" /> E-mail
                     </Button>
                   </div>
