@@ -15,13 +15,10 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const [role, setRole]       = useState<string | null | undefined>(undefined);
 
   useEffect(() => {
-    async function check(fromAuthChange = false) {
-      // Após evento de auth (OAuth callback), forçar refresh do token
-      // para garantir que a sessão reflete o estado atual do banco.
-      if (fromAuthChange) {
-        await supabase.auth.refreshSession();
-      }
-
+    async function check() {
+      // Token já foi renovado pelo AuthRedirect antes da navegação.
+      // Aqui apenas lemos a sessão e o role do banco — sem refreshSession()
+      // para evitar loop com TOKEN_REFRESHED → onAuthStateChange → check().
       const { data: { session: s } } = await supabase.auth.getSession();
       setSession(s ?? null);
       if (!s?.user) { setRole(null); return; }
@@ -31,9 +28,7 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
     }
 
     check();
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (_event, _session) => check(true)
-    );
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(check);
     return () => subscription.unsubscribe();
   }, []);
 

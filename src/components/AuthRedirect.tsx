@@ -31,9 +31,12 @@ export function AuthRedirect() {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         if (event === 'SIGNED_IN' && session) {
-          // Forçar refresh do token garante que o ProtectedRoute
-          // lerá o role mais recente do banco (não o JWT cacheado).
-          await supabase.auth.refreshSession();
+          // Refresh único com timeout — garante token fresco sem bloquear.
+          // ProtectedRoute NÃO faz outro refresh para evitar loop.
+          await Promise.race([
+            supabase.auth.refreshSession(),
+            new Promise(resolve => setTimeout(resolve, 3000)),
+          ]);
 
           if (isPublicPath(location.pathname)) {
             navigate('/dashboard', { replace: true });
