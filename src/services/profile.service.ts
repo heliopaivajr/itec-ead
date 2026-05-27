@@ -3,25 +3,38 @@ import type { UserRole, Profile } from '@/hooks/use-profile';
 
 export type { UserRole, Profile };
 
-// Leitura de role apenas — hot path do ProtectedRoute.
-// Timeout de 5s: RLS com query lenta não pode travar o login indefinidamente.
-// Retorna 'pendente' como fallback seguro se erro ou timeout.
+// Leitura de role — hot path do ProtectedRoute.
+// Logs detalhados para diagnóstico de auth issues.
 export async function getRole(userId: string): Promise<UserRole> {
-  const queryPromise = supabase
-    .from('profiles')
-    .select('role')
-    .eq('id', userId)
-    .single();
+  console.log('[getRole] iniciando para userId:', userId);
 
-  const timeoutPromise = new Promise<null>(resolve =>
-    setTimeout(() => resolve(null), 5000)
-  );
+  if (!userId) {
+    console.log('[getRole] userId vazio — retornando pendente');
+    return 'pendente';
+  }
 
-  const resultado = await Promise.race([queryPromise, timeoutPromise]);
+  try {
+    console.log('[getRole] fazendo query no banco...');
 
-  if (!resultado || 'error' in resultado && resultado.error) return 'pendente';
-  if (!('data' in resultado) || !resultado.data) return 'pendente';
-  return (resultado.data.role as UserRole) ?? 'pendente';
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', userId)
+      .single();
+
+    console.log('[getRole] resultado:', { data, error });
+
+    if (error || !data) {
+      console.log('[getRole] erro ou sem dados — retornando pendente');
+      return 'pendente';
+    }
+
+    console.log('[getRole] role encontrado:', data.role);
+    return (data.role as UserRole) ?? 'pendente';
+  } catch (e) {
+    console.log('[getRole] exception:', e);
+    return 'pendente';
+  }
 }
 
 // Leitura completa do perfil com fallback para usuário novo.
