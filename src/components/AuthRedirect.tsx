@@ -29,8 +29,12 @@ export function AuthRedirect() {
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
+      async (event, session) => {
         if (event === 'SIGNED_IN' && session) {
+          // Forçar refresh do token garante que o ProtectedRoute
+          // lerá o role mais recente do banco (não o JWT cacheado).
+          await supabase.auth.refreshSession();
+
           if (isPublicPath(location.pathname)) {
             navigate('/dashboard', { replace: true });
           }

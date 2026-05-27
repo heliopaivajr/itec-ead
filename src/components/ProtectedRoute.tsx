@@ -15,16 +15,25 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const [role, setRole]       = useState<string | null | undefined>(undefined);
 
   useEffect(() => {
-    async function check() {
+    async function check(fromAuthChange = false) {
+      // Após evento de auth (OAuth callback), forçar refresh do token
+      // para garantir que a sessão reflete o estado atual do banco.
+      if (fromAuthChange) {
+        await supabase.auth.refreshSession();
+      }
+
       const { data: { session: s } } = await supabase.auth.getSession();
       setSession(s ?? null);
       if (!s?.user) { setRole(null); return; }
 
+      // getRole sempre busca do banco (tabela profiles), nunca do JWT
       setRole(await getRole(s.user.id));
     }
 
     check();
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(() => check());
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (_event, _session) => check(true)
+    );
     return () => subscription.unsubscribe();
   }, []);
 
