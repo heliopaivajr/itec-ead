@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
 
 // Rotas públicas que não requerem auth
@@ -24,8 +24,7 @@ function isPublicPath(pathname: string): boolean {
  * pode chamar getSession() antes da troca completar e ver sessão null.
  */
 export function AuthRedirect() {
-  const navigate  = useNavigate();
-  const location  = useLocation();
+  const navigate = useNavigate();
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
@@ -38,13 +37,13 @@ export function AuthRedirect() {
             new Promise(resolve => setTimeout(resolve, 3000)),
           ]);
 
-          if (isPublicPath(location.pathname)) {
+          if (isPublicPath(window.location.pathname)) {
             navigate('/dashboard', { replace: true });
           }
         }
 
         if (event === 'SIGNED_OUT') {
-          if (!isPublicPath(location.pathname)) {
+          if (!isPublicPath(window.location.pathname)) {
             navigate('/login', { replace: true });
           }
         }
@@ -52,9 +51,6 @@ export function AuthRedirect() {
     );
 
     return () => subscription.unsubscribe();
-  // Intencionalmente sem location.pathname nas deps:
-  // queremos capturar o pathname no momento do evento, não re-subscrever.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [navigate]);
 
   return null;
