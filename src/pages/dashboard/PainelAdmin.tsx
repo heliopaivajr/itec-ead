@@ -188,7 +188,14 @@ export default function PainelAdmin() {
               <div key={conv.id} className="bg-card border border-border rounded-xl p-5 space-y-3">
                 <div className="flex items-start justify-between gap-3 flex-wrap">
                   <div className="space-y-0.5">
-                    <p className="text-sm font-semibold text-foreground">Disciplina ITEC: <span className="font-mono text-primary">{conv.disciplina_id}</span></p>
+                    <p className="text-sm font-semibold text-foreground">
+                      Disciplina ITEC:{' '}
+                      <span className="text-primary">
+                        {conv.disciplina
+                          ? `${conv.disciplina.codigo} — ${conv.disciplina.nome}`
+                          : conv.disciplina_id}
+                      </span>
+                    </p>
                     <p className="text-xs text-muted-foreground">
                       Origem: {conv.instituicao_origem} — {conv.disciplina_origem}
                       {conv.carga_horaria_origem ? ` · ${conv.carga_horaria_origem}h` : ''}
@@ -247,10 +254,20 @@ export default function PainelAdmin() {
                       Aluno: <span className="font-mono text-primary text-xs">{exc.aluno_id}</span>
                     </p>
                     <p className="text-xs text-muted-foreground">
-                      Quer cursar: <span className="font-mono">{exc.disciplina_id}</span>
+                      Quer cursar:{' '}
+                      <span className="font-medium text-foreground">
+                        {exc.disciplina
+                          ? `${exc.disciplina.codigo} — ${exc.disciplina.nome}`
+                          : exc.disciplina_id}
+                      </span>
                     </p>
                     <p className="text-xs text-muted-foreground">
-                      Pré-req. dispensado: <span className="font-mono">{exc.prerequisito_dispensado_id}</span>
+                      Pré-req. dispensado:{' '}
+                      <span className="font-medium text-foreground">
+                        {exc.prerequisito
+                          ? `${exc.prerequisito.codigo} — ${exc.prerequisito.nome}`
+                          : exc.prerequisito_dispensado_id}
+                      </span>
                     </p>
                     {exc.motivo && (
                       <p className="text-xs text-muted-foreground italic">Motivo: "{exc.motivo}"</p>

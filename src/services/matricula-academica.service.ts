@@ -14,6 +14,7 @@ export interface Convalidacao {
   id: string;
   aluno_id: string;
   disciplina_id: string;
+  disciplina?: { codigo: string; nome: string } | null;
   instituicao_origem: string;
   disciplina_origem: string;
   carga_horaria_origem: number | null;
@@ -178,7 +179,7 @@ export async function getConvalidacoesPorStatus(
 ): Promise<Convalidacao[]> {
   const { data, error } = await supabase
     .from('convalidacoes')
-    .select('*')
+    .select('*, disciplina:disciplinas_v2(codigo, nome)')
     .eq('status', status)
     .order('solicitado_em', { ascending: false })
     .limit(100);
@@ -192,7 +193,9 @@ export interface ExcecaoPendente {
   id: string;
   aluno_id: string;
   disciplina_id: string;
+  disciplina?: { codigo: string; nome: string } | null;
   prerequisito_dispensado_id: string;
+  prerequisito?: { codigo: string; nome: string } | null;
   aprovado_por: string;
   motivo: string;
   aprovado_em: string;
@@ -201,7 +204,11 @@ export interface ExcecaoPendente {
 export async function getExcecoesPendentes(): Promise<ExcecaoPendente[]> {
   const { data, error } = await supabase
     .from('excecoes_prerequisito')
-    .select('*')
+    .select(`
+      *,
+      disciplina:disciplinas_v2!disciplina_id(codigo, nome),
+      prerequisito:disciplinas_v2!prerequisito_dispensado_id(codigo, nome)
+    `)
     .order('aprovado_em', { ascending: false })
     .limit(50);
 
