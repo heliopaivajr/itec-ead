@@ -47,6 +47,33 @@ export async function getProfile(
   };
 }
 
+// Upload de foto de perfil → Storage 'avatars' → salva URL no profiles
+export async function uploadAvatar(
+  userId: string,
+  file: File
+): Promise<{ url: string | null; error: string | null }> {
+  const ext  = file.name.split('.').pop() ?? 'jpg';
+  const path = `avatars/${userId}.${ext}`;
+
+  const { error: uploadError } = await supabase
+    .storage
+    .from('avatars')
+    .upload(path, file, { upsert: true });
+
+  if (uploadError) return { url: null, error: uploadError.message };
+
+  const { data } = supabase.storage.from('avatars').getPublicUrl(path);
+  const url = data.publicUrl;
+
+  const { error: updateError } = await supabase
+    .from('profiles')
+    .update({ avatar_url: url })
+    .eq('id', userId);
+
+  if (updateError) return { url: null, error: updateError.message };
+  return { url, error: null };
+}
+
 // Upsert de perfil — usado pelo DevSetup para criar usuários de teste.
 export async function upsertProfile(
   profile: Partial<Profile> & { id: string }

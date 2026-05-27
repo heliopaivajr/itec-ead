@@ -10,7 +10,7 @@ export interface Profile {
   full_name: string;
   role: UserRole;
   telefone?: string;
-  foto_url?: string;
+  avatar_url?: string;
   bio?: string;
   email?: string;
 }
