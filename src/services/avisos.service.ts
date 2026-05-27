@@ -53,6 +53,24 @@ export async function createAviso(payload: CreateAvisoPayload): Promise<{ error:
   return { error: null };
 }
 
+// Edição
+export interface UpdateAvisoPayload {
+  titulo?: string;
+  conteudo?: string | null;
+  role_destino?: string;
+  fixado?: boolean;
+  expira_em?: string | null;
+}
+
+export async function updateAviso(
+  id: string,
+  dados: UpdateAvisoPayload
+): Promise<{ error: string | null }> {
+  const { error } = await supabase.from('avisos').update(dados).eq('id', id);
+  if (error) return { error: error.message };
+  return { error: null };
+}
+
 // Exclusão
 export async function deleteAviso(id: string): Promise<{ error: string | null }> {
   const { error } = await supabase.from('avisos').delete().eq('id', id);

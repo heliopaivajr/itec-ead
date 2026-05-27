@@ -2,13 +2,16 @@ import React, { useState } from 'react';
 import { X, Pin, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { createAviso } from '@/services/avisos.service';
+import { createAviso, updateAviso } from '@/services/avisos.service';
+import type { Aviso } from '@/components/avisos/AvisoCard';
 import { useToast } from '@/hooks/use-toast';
 
 interface NovoAvisoModalProps {
   autorId: string;
   onClose: () => void;
   onCreated: () => void;
+  /** Quando fornecido, o modal entra em modo edição */
+  avisoInicial?: Aviso;
 }
 
 const DESTINOS = [
@@ -18,36 +21,56 @@ const DESTINOS = [
   { value: 'admin',       label: 'Administração' },
 ];
 
-export function NovoAvisoModal({ autorId, onClose, onCreated }: NovoAvisoModalProps) {
+export function NovoAvisoModal({ autorId, onClose, onCreated, avisoInicial }: NovoAvisoModalProps) {
   const { toast } = useToast();
-  const [titulo, setTitulo]     = useState('');
-  const [conteudo, setConteudo] = useState('');
-  const [destino, setDestino]   = useState('todos');
-  const [fixado, setFixado]     = useState(false);
-  const [expira, setExpira]     = useState('');
-  const [saving, setSaving]     = useState(false);
+  const modoEdicao = !!avisoInicial;
+
+  const [titulo, setTitulo]     = useState(avisoInicial?.titulo ?? '');
+  const [conteudo, setConteudo] = useState(avisoInicial?.conteudo ?? '');
+  const [destino, setDestino]   = useState(avisoInicial?.role_destino ?? 'todos');
+  const [fixado, setFixado]     = useState(avisoInicial?.fixado ?? false);
+  const [expira, setExpira]     = useState(
+    avisoInicial?.expira_em ? avisoInicial.expira_em.split('T')[0] : ''
+  );
+  const [saving, setSaving] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!titulo.trim()) return;
 
     setSaving(true);
-    const { error } = await createAviso({
-      titulo:       titulo.trim(),
-      conteudo:     conteudo.trim() || null,
-      autor_id:     autorId,
-      role_destino: destino,
-      fixado,
-      expira_em:    expira || null,
-    });
 
-    setSaving(false);
-
-    if (error) {
-      toast({ title: 'Erro ao criar aviso', description: error.message, variant: 'destructive' });
+    if (modoEdicao && avisoInicial) {
+      const { error } = await updateAviso(avisoInicial.id, {
+        titulo:       titulo.trim(),
+        conteudo:     conteudo.trim() || null,
+        role_destino: destino,
+        fixado,
+        expira_em:    expira || null,
+      });
+      setSaving(false);
+      if (error) {
+        toast({ title: 'Erro ao editar aviso', description: error, variant: 'destructive' });
+      } else {
+        toast({ title: 'Aviso atualizado!', description: 'As alterações foram salvas.' });
+        onCreated();
+      }
     } else {
-      toast({ title: 'Aviso publicado!', description: 'O aviso foi enviado para os destinatários.' });
-      onCreated();
+      const { error } = await createAviso({
+        titulo:       titulo.trim(),
+        conteudo:     conteudo.trim() || null,
+        autor_id:     autorId,
+        role_destino: destino,
+        fixado,
+        expira_em:    expira || null,
+      });
+      setSaving(false);
+      if (error) {
+        toast({ title: 'Erro ao criar aviso', description: error, variant: 'destructive' });
+      } else {
+        toast({ title: 'Aviso publicado!', description: 'O aviso foi enviado para os destinatários.' });
+        onCreated();
+      }
     }
   };
 
@@ -55,8 +78,13 @@ export function NovoAvisoModal({ autorId, onClose, onCreated }: NovoAvisoModalPr
     <div className="fixed inset-0 bg-background/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
       <div className="bg-card border border-border rounded-2xl p-6 w-full max-w-lg space-y-5 shadow-2xl">
         <div className="flex items-center justify-between">
-          <h2 className="text-lg font-merriweather font-bold text-foreground">Novo Aviso</h2>
-          <button onClick={onClose} className="h-8 w-8 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-all">
+          <h2 className="text-lg font-merriweather font-bold text-foreground">
+            {modoEdicao ? 'Editar Aviso' : 'Novo Aviso'}
+          </h2>
+          <button
+            onClick={onClose}
+            className="h-8 w-8 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-all"
+          >
             <X className="h-4 w-4" />
           </button>
         </div>
@@ -125,7 +153,7 @@ export function NovoAvisoModal({ autorId, onClose, onCreated }: NovoAvisoModalPr
           <div className="flex gap-2 pt-1">
             <Button type="submit" disabled={saving || !titulo.trim()} className="flex-1 gap-2">
               {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-              Publicar Aviso
+              {modoEdicao ? 'Salvar alterações' : 'Publicar Aviso'}
             </Button>
             <Button type="button" variant="outline" onClick={onClose} className="border-border text-foreground">
               Cancelar

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Pin, Clock, Users, BookOpen, Trash2 } from 'lucide-react';
+import { Pin, Clock, Users, BookOpen, Trash2, Pencil } from 'lucide-react';
 
 export interface Aviso {
   id: string;
@@ -46,9 +46,11 @@ interface AvisoCardProps {
   aviso: Aviso;
   canDelete?: boolean;
   onDelete?: (id: string) => void;
+  canEdit?: boolean;
+  onEdit?: (aviso: Aviso) => void;
 }
 
-export function AvisoCard({ aviso, canDelete, onDelete }: AvisoCardProps) {
+export function AvisoCard({ aviso, canDelete, onDelete, canEdit, onEdit }: AvisoCardProps) {
   const destinoClass = DESTINO_COLORS[aviso.role_destino] ?? DESTINO_COLORS.todos;
 
   return (
@@ -62,9 +64,19 @@ export function AvisoCard({ aviso, canDelete, onDelete }: AvisoCardProps) {
           <span className={`text-xs font-medium px-2 py-0.5 rounded-full border ${destinoClass}`}>
             {DESTINO_LABELS[aviso.role_destino] ?? aviso.role_destino}
           </span>
+          {canEdit && onEdit && (
+            <button
+              onClick={() => onEdit(aviso)}
+              title="Editar aviso"
+              className="h-7 w-7 rounded-lg flex items-center justify-center text-muted-foreground hover:text-primary hover:bg-primary/10 transition-all"
+            >
+              <Pencil className="h-3.5 w-3.5" />
+            </button>
+          )}
           {canDelete && onDelete && (
             <button
               onClick={() => onDelete(aviso.id)}
+              title="Excluir aviso"
               className="h-7 w-7 rounded-lg flex items-center justify-center text-muted-foreground hover:text-red-400 hover:bg-red-500/10 transition-all"
             >
               <Trash2 className="h-3.5 w-3.5" />

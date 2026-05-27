@@ -21,12 +21,14 @@ export default function Avisos() {
   const [avisos, setAvisos]       = useState<Aviso[]>([]);
   const [loading, setLoading]     = useState(true);
   const [noTable, setNoTable]     = useState(false);
-  const [showModal, setShowModal] = useState(false);
+  const [showModal, setShowModal]         = useState(false);
+  const [avisoEditando, setAvisoEditando] = useState<Aviso | null>(null);
   const [filtro, setFiltro]       = useState('todos');
   const [busca, setBusca]         = useState('');
 
   const canPublish = isSuperAdmin(profile.role) || isAdministracao(profile.role) || isProfessor(profile.role);
   const canDelete  = isSuperAdmin(profile.role) || isAdministracao(profile.role);
+  const canEdit    = isSuperAdmin(profile.role) || isAdministracao(profile.role);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -147,6 +149,8 @@ export default function Avisos() {
               aviso={aviso}
               canDelete={canDelete}
               onDelete={handleDelete}
+              canEdit={canEdit}
+              onEdit={setAvisoEditando}
             />
           ))}
         </div>
@@ -157,6 +161,15 @@ export default function Avisos() {
           autorId={profile.id}
           onClose={() => setShowModal(false)}
           onCreated={() => { setShowModal(false); load(); }}
+        />
+      )}
+
+      {avisoEditando && (
+        <NovoAvisoModal
+          autorId={profile.id}
+          avisoInicial={avisoEditando}
+          onClose={() => setAvisoEditando(null)}
+          onCreated={() => { setAvisoEditando(null); load(); }}
         />
       )}
     </div>
