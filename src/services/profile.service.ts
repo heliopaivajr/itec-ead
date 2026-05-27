@@ -4,35 +4,20 @@ import type { UserRole, Profile } from '@/hooks/use-profile';
 export type { UserRole, Profile };
 
 // Leitura de role — hot path do ProtectedRoute.
-// Logs detalhados para diagnóstico de auth issues.
+// Retorna 'pendente' como fallback seguro se o perfil não existir.
 export async function getRole(userId: string): Promise<UserRole> {
-  console.log('[getRole] iniciando para userId:', userId);
-
-  if (!userId) {
-    console.log('[getRole] userId vazio — retornando pendente');
-    return 'pendente';
-  }
+  if (!userId) return 'pendente';
 
   try {
-    console.log('[getRole] fazendo query no banco...');
-
     const { data, error } = await supabase
       .from('profiles')
       .select('role')
       .eq('id', userId)
       .single();
 
-    console.log('[getRole] resultado:', { data, error });
-
-    if (error || !data) {
-      console.log('[getRole] erro ou sem dados — retornando pendente');
-      return 'pendente';
-    }
-
-    console.log('[getRole] role encontrado:', data.role);
+    if (error || !data) return 'pendente';
     return (data.role as UserRole) ?? 'pendente';
-  } catch (e) {
-    console.log('[getRole] exception:', e);
+  } catch {
     return 'pendente';
   }
 }

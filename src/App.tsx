@@ -1,5 +1,4 @@
-import { lazy, Suspense, useEffect } from 'react';
-import { supabase } from '@/lib/supabase';
+import { lazy, Suspense } from 'react';
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -60,15 +59,7 @@ const PageFallback = () => (
   </div>
 );
 
-const App = () => {
-  // Warmup: acorda o Supabase free tier se estiver pausado por inatividade
-  useEffect(() => {
-    supabase.from('profiles').select('count', { count: 'exact', head: true })
-      .then(() => console.log('[App] Supabase aquecido'))
-      .catch(() => {});
-  }, []);
-
-  return (
+const App = () => (
   <QueryClientProvider client={queryClient}>
     <ThemeProvider>
       <TooltipProvider>
@@ -147,7 +138,6 @@ const App = () => {
       </TooltipProvider>
     </ThemeProvider>
   </QueryClientProvider>
-  );
-};
+);
 
 export default App;

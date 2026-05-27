@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { Eye, EyeOff, Loader2, ShieldCheck, Building2, BookOpen, GraduationCap, ArrowLeft } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { signInWithGoogle, signInWithPassword, signOut, getSession } from '@/services/auth.service';
+import { signInWithPassword, signOut, getSession } from '@/services/auth.service';
+// TODO: reabilitar signInWithGoogle quando migrar para Supabase Pro
 import { getProfile } from '@/services/profile.service';
 
 const GoogleIcon = () => (
@@ -33,16 +34,8 @@ export default function Login() {
   const [showPwd, setShowPwd] = useState(false);
   const [remember, setRemember] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [googleLoading, setGoogleLoading] = useState(false);
-
-  const handleGoogleLogin = async () => {
-    setGoogleLoading(true);
-    const result = await signInWithGoogle();
-    if (result.error) {
-      toast({ title: 'Erro ao entrar com Google', description: result.error, variant: 'destructive' });
-      setGoogleLoading(false);
-    }
-  };
+  // TODO: reabilitar quando migrar para Supabase Pro
+  // const [googleLoading, setGoogleLoading] = useState(false);
 
   const fillDemo = (user: typeof DEMO_USERS[0]) => {
     if (!user.email) {
@@ -202,23 +195,7 @@ export default function Login() {
             </button>
           </form>
 
-          {/* Google OAuth */}
-          <div className="space-y-3">
-            <div className="flex items-center gap-3">
-              <div className="flex-1 h-px bg-border" />
-              <span className="text-xs text-muted-foreground whitespace-nowrap">ou continue com</span>
-              <div className="flex-1 h-px bg-border" />
-            </div>
-            <button
-              type="button"
-              onClick={handleGoogleLogin}
-              disabled={googleLoading || loading}
-              className="w-full flex items-center justify-center gap-3 rounded-lg border border-border bg-background hover:bg-muted text-foreground font-medium py-2.5 text-sm transition-all disabled:opacity-60"
-            >
-              {googleLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <GoogleIcon />}
-              {googleLoading ? 'Redirecionando...' : 'Entrar com Google'}
-            </button>
-          </div>
+          {/* TODO: Google OAuth — reabilitar quando migrar para Supabase Pro */}
 
           {/* Demo quick-login — dev only */}
           {isDev && (

@@ -20,7 +20,6 @@ export default function ProtectedRoute({ children }: { children: React.ReactNode
   useEffect(() => {
     if (estado !== 'carregando') return;
     const timer = setTimeout(() => {
-      console.log('[ProtectedRoute] Timeout — redirecionando para /login');
       setEstado(prev => prev === 'carregando' ? 'sem-sessao' : prev);
     }, 30000);
     return () => clearTimeout(timer);
@@ -28,8 +27,6 @@ export default function ProtectedRoute({ children }: { children: React.ReactNode
 
   useEffect(() => {
     let montado = true;
-
-    console.log('[ProtectedRoute] Aguardando sessão...');
 
     async function verificar(session: Session | null) {
       if (!session) {
@@ -56,7 +53,6 @@ export default function ProtectedRoute({ children }: { children: React.ReactNode
           event === 'TOKEN_REFRESHED' ||
           event === 'INITIAL_SESSION'
         ) {
-          console.log(`[ProtectedRoute] ${event} recebido, verificando role...`);
           await verificar(session);
         }
         if (event === 'SIGNED_OUT') {
@@ -67,10 +63,9 @@ export default function ProtectedRoute({ children }: { children: React.ReactNode
 
     // 2. Verificar sessão já existente (ex: usuário que voltou à aba)
     // Se null: NÃO redirecionar — aguardar INITIAL_SESSION/SIGNED_IN do onAuthStateChange
-    // O timeout de 15s garante que nunca ficará preso para sempre
+    // O timeout de 30s garante que nunca ficará preso para sempre
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session) verificar(session);
-      // Se null e PKCE em andamento: onAuthStateChange vai disparar INITIAL_SESSION/SIGNED_IN
     });
 
     return () => { montado = false; subscription.unsubscribe(); };
