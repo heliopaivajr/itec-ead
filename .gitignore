@@ -30,9 +30,6 @@ lighthouse-report.json
 # Esta pasta /videos/ são os arquivos originais/brutos — não commitar (pesados).
 /videos/
 
-# ── Sistema de agentes IA (contexto documental — não faz parte do deploy) ─────
-.ai-system/
-
 # ── Editor ────────────────────────────────────────────────────────────────────
 .vscode/*
 !.vscode/extensions.json
