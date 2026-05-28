@@ -160,3 +160,56 @@ export async function verificarPrerequisitos(
     faltam: (faltamDiscs as Disciplina[]) ?? [],
   };
 }
+
+// Batch: pré-requisitos para múltiplas disciplinas de um aluno (2 queries)
+export async function verificarPrerequisitoBatch(
+  alunoId: string,
+  disciplinaIds: string[],
+  todasDisciplinas: Disciplina[]
+): Promise<Map<string, VerificacaoPrerequisitos>> {
+  if (disciplinaIds.length === 0) return new Map();
+
+  const discMap = new Map(todasDisciplinas.map(d => [d.id, d]));
+
+  const [prereqRes, matriculaRes] = await Promise.all([
+    supabase
+      .from('prerequisitos_v2')
+      .select('disciplina_id, prerequisito_id, tipo')
+      .in('disciplina_id', disciplinaIds)
+      .limit(disciplinaIds.length * 10),
+    supabase
+      .from('matriculas_disciplina')
+      .select('disciplina_id')
+      .in('status', ['aprovado', 'convalidado'])
+      .eq('aluno_id', alunoId)
+      .limit(200),
+  ]);
+
+  type PreqRow = { disciplina_id: string; prerequisito_id: string; tipo: string };
+  const prereqs = (prereqRes.data ?? []) as PreqRow[];
+  const cursadas = new Set(
+    ((matriculaRes.data ?? []) as { disciplina_id: string }[]).map(r => r.disciplina_id)
+  );
+
+  const byDisc = new Map<string, PreqRow[]>();
+  for (const p of prereqs) {
+    const arr = byDisc.get(p.disciplina_id) ?? [];
+    arr.push(p);
+    byDisc.set(p.disciplina_id, arr);
+  }
+
+  const result = new Map<string, VerificacaoPrerequisitos>();
+  for (const id of disciplinaIds) {
+    const reqs = byDisc.get(id) ?? [];
+    if (reqs.length === 0) {
+      result.set(id, { aprovado: true, faltam: [] });
+      continue;
+    }
+    const faltam = reqs
+      .filter(p => p.tipo === 'prerequisito' && !cursadas.has(p.prerequisito_id))
+      .map(p => discMap.get(p.prerequisito_id))
+      .filter((d): d is Disciplina => d !== undefined);
+    result.set(id, { aprovado: faltam.length === 0, faltam });
+  }
+  return result;
+}

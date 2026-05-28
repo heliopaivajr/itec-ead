@@ -110,3 +110,53 @@ export async function uploadManualDisciplina(
 
   return { url: data.publicUrl, error: null };
 }
+
+// Batch: materiais e progresso para múltiplas disciplinas (2 queries)
+export async function getMateriaiseProgressoBatch(
+  alunoId: string,
+  disciplinaIds: string[],
+  apenasVisiveis = true
+): Promise<Map<string, { count: number; percentual: number }>> {
+  if (disciplinaIds.length === 0) return new Map();
+
+  let matQuery = supabase
+    .from('materiais')
+    .select('id, disciplina_id')
+    .in('disciplina_id', disciplinaIds)
+    .limit(disciplinaIds.length * 50);
+
+  if (apenasVisiveis) matQuery = matQuery.eq('visivel', true);
+
+  const [matRes, progRes] = await Promise.all([
+    matQuery,
+    supabase
+      .from('progresso_aluno')
+      .select('material_id, disciplina_id')
+      .eq('aluno_id', alunoId)
+      .in('disciplina_id', disciplinaIds)
+      .limit(disciplinaIds.length * 50),
+  ]);
+
+  type MatRow  = { id: string; disciplina_id: string };
+  type ProgRow = { material_id: string; disciplina_id: string };
+
+  const materiais  = (matRes.data  ?? []) as MatRow[];
+  const progresso  = (progRes.data ?? []) as ProgRow[];
+  const progIds    = new Set(progresso.map(p => p.material_id));
+
+  const result = new Map<string, { count: number; percentual: number }>();
+  const byDisc = new Map<string, MatRow[]>();
+  for (const m of materiais) {
+    const arr = byDisc.get(m.disciplina_id) ?? [];
+    arr.push(m);
+    byDisc.set(m.disciplina_id, arr);
+  }
+
+  for (const id of disciplinaIds) {
+    const mats = byDisc.get(id) ?? [];
+    const visualizados = mats.filter(m => progIds.has(m.id)).length;
+    const percentual = mats.length === 0 ? 100 : Math.min(Math.round((visualizados / mats.length) * 100), 100);
+    result.set(id, { count: mats.length, percentual });
+  }
+  return result;
+}

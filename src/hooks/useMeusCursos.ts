@@ -3,7 +3,7 @@ import {
   getCursoAtivo,
   getModulosByCurso,
   getDisciplinasByModulo,
-  verificarPrerequisitos,
+  verificarPrerequisitoBatch,
   type Curso,
   type Modulo,
   type Disciplina,
@@ -13,12 +13,11 @@ import {
   type MatriculaDisciplina,
 } from '@/services/matricula-academica.service';
 import {
-  getResumoFrequencia,
+  getResumoFrequenciaBatch,
   type ResumoFrequencia,
 } from '@/services/frequencia.service';
 import {
-  getMateriaisByDisciplina,
-  getPercentualProgresso,
+  getMateriaiseProgressoBatch,
 } from '@/services/material.service';
 
 export interface DisciplinaComProgresso {
@@ -46,7 +45,6 @@ function moduloAtual(modulos: Modulo[]): Modulo | null {
     m => m.data_inicio && m.data_fim && m.data_inicio <= hoje && m.data_fim >= hoje
   );
   if (ativo) return ativo;
-  // Se nenhum ativo, retorna o próximo futuro
   return modulos
     .filter(m => m.data_inicio && m.data_inicio > hoje)
     .sort((a, b) => (a.data_inicio ?? '').localeCompare(b.data_inicio ?? ''))[0] ?? null;
@@ -90,38 +88,33 @@ export function useMeusCursos(alunoId: string): MeusCursosData {
         const regulares = todasDisciplinas.filter(d => d.tipo !== 'eletiva');
         const eletivas  = todasDisciplinas.filter(d => d.tipo === 'eletiva');
 
-        // Carrega frequência, materiais e pré-requisitos em paralelo por disciplina
-        const disciplinasComProgresso = await Promise.all(
-          regulares.map(async (disc): Promise<DisciplinaComProgresso> => {
-            const matricula = matriculas.find(m => m.disciplina_id === disc.id) ?? null;
+        const ids = regulares.map(d => d.id);
 
-            const [frequencia, materiais, prereqs, percentualMat] = await Promise.all([
-              matricula ? getResumoFrequencia(alunoId, disc.id) : Promise.resolve(null),
-              getMateriaisByDisciplina(disc.id, true),
-              verificarPrerequisitos(alunoId, disc.id),
-              matricula ? getPercentualProgresso(alunoId, disc.id) : Promise.resolve(0),
-            ]);
+        // 3 queries batch em paralelo — eram 32–40 queries individuais
+        const [freqMap, materialMap, prereqMap] = await Promise.all([
+          getResumoFrequenciaBatch(alunoId, ids),
+          getMateriaiseProgressoBatch(alunoId, ids, true),
+          verificarPrerequisitoBatch(alunoId, ids, todasDisciplinas),
+        ]);
 
-            return {
-              disciplina:           disc,
-              matricula,
-              frequencia,
-              percentual_materiais: percentualMat,
-              materiais_count:      materiais.length,
-              prereqs_ok:           prereqs.aprovado,
-              prereqs_faltam:       prereqs.faltam,
-            };
-          })
-        );
+        const disciplinas: DisciplinaComProgresso[] = regulares.map(disc => {
+          const matricula = matriculas.find(m => m.disciplina_id === disc.id) ?? null;
+          const freq      = freqMap.get(disc.id) ?? null;
+          const mat       = materialMap.get(disc.id) ?? { count: 0, percentual: 100 };
+          const prereq    = prereqMap.get(disc.id) ?? { aprovado: true, faltam: [] };
 
-        setState({
-          curso,
-          modulo_atual:  modulo,
-          disciplinas:   disciplinasComProgresso,
-          eletivas,
-          loading:       false,
-          error:         null,
+          return {
+            disciplina:           disc,
+            matricula,
+            frequencia:           matricula ? freq : null,
+            percentual_materiais: mat.percentual,
+            materiais_count:      mat.count,
+            prereqs_ok:           prereq.aprovado,
+            prereqs_faltam:       prereq.faltam,
+          };
         });
+
+        setState({ curso, modulo_atual: modulo, disciplinas, eletivas, loading: false, error: null });
       } catch (err) {
         setState(s => ({
           ...s,
