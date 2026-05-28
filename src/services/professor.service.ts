@@ -45,18 +45,28 @@ export interface PaginatedProfessores {
   total: number;
 }
 
-// Paginação real — professores podem crescer indefinidamente com o tempo
+// Paginação + busca + filtro ativo/todos
 export async function getProfessores(
   page = 1,
-  limit = 20
+  limit = 20,
+  search = '',
+  apenasAtivos = true
 ): Promise<PaginatedProfessores> {
   const from = (page - 1) * limit;
   const to   = from + limit - 1;
 
-  const { data, count, error } = await supabase
+  let query = supabase
     .from('professores')
-    .select('*', { count: 'exact' })
-    .eq('ativo', true)
+    .select('*', { count: 'exact' });
+
+  if (apenasAtivos) query = query.eq('ativo', true);
+  if (search.trim()) {
+    query = query.or(
+      `nome_completo.ilike.%${search.trim()}%,email.ilike.%${search.trim()}%`
+    );
+  }
+
+  const { data, count, error } = await query
     .order('nome_completo', { ascending: true })
     .range(from, to);
 
@@ -175,6 +185,35 @@ export async function updateStatusContrato(
 
   if (error) return { error: error.message };
   return { error: null };
+}
+
+export async function desativarProfessor(id: string): Promise<ServiceResult> {
+  const { error } = await supabase
+    .from('professores')
+    .update({ ativo: false, atualizado_em: new Date().toISOString() })
+    .eq('id', id);
+  if (error) return { error: error.message };
+  return { error: null };
+}
+
+export async function vincularDisciplina(
+  professorId: string,
+  disciplinaId: string,
+  geradoPor: string
+): Promise<{ data: ContratoProfessor | null; error: string | null }> {
+  const { data, error } = await supabase
+    .from('contratos_professor')
+    .insert({
+      professor_id: professorId,
+      disciplina_id: disciplinaId,
+      status: 'pendente',
+      gerado_por: geradoPor,
+      gerado_em: new Date().toISOString(),
+    })
+    .select()
+    .single();
+  if (error) return { data: null, error: error.message };
+  return { data: data as ContratoProfessor, error: null };
 }
 
 export async function preencherContrato(

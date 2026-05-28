@@ -91,6 +91,17 @@ export async function getDisciplinasByModulo(moduloId: string): Promise<Discipli
   return (data as Disciplina[]) ?? [];
 }
 
+export async function getAllDisciplinas(): Promise<Disciplina[]> {
+  const { data, error } = await supabase
+    .from('disciplinas_v2')
+    .select('*')
+    .order('codigo', { ascending: true })
+    .limit(200); // máx. realista para o ITEC
+
+  if (error) return [];
+  return (data as Disciplina[]) ?? [];
+}
+
 export async function getDisciplinaById(id: string): Promise<Disciplina | null> {
   const { data, error } = await supabase
     .from('disciplinas_v2')

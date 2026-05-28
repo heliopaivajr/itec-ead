@@ -9,6 +9,7 @@ export * from './usuarios.service';
 export * from './matriculas.service';
 
 // Services Sprint D
+// equipe.service — importar diretamente (evita conflito de ServiceResult no barrel)
 export * from './academico.service';
 export * from './professor.service';
 export * from './frequencia.service';
