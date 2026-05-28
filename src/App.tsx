@@ -47,6 +47,8 @@ const LancarFrequencia   = lazy(() => import("./pages/dashboard/LancarFrequencia
 const VerTurma           = lazy(() => import("./pages/dashboard/VerTurma"));
 const ContratoForm       = lazy(() => import("./pages/dashboard/ContratoForm"));
 const MeusContratos      = lazy(() => import("./pages/dashboard/MeusContratos"));
+const ProfessoresAdmin   = lazy(() => import("./pages/dashboard/ProfessoresAdmin"));
+const EquipeITEC         = lazy(() => import("./pages/dashboard/EquipeITEC"));
 import ProtectedRoute from '@/components/ProtectedRoute';
 
 const queryClient = new QueryClient();
@@ -127,6 +129,10 @@ const App = () => (
               <Route path="professor/turma/:disciplinaId"         element={<VerTurma />} />
               <Route path="professor/contratos"                    element={<MeusContratos />} />
               <Route path="professor/contrato/:contratoId"        element={<ContratoForm />} />
+
+              {/* Admin — Professores e Equipe */}
+              <Route path="professores-admin" element={<ProfessoresAdmin />} />
+              <Route path="equipe-itec"       element={<EquipeITEC />} />
 
               {/* All roles */}
               <Route path="perfil" element={<Perfil />} />
