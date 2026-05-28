@@ -19,7 +19,9 @@ function mockSelectEq(result: { data: any; error: any }) {
   vi.mocked(supabase.from).mockReturnValue({
     select: vi.fn().mockReturnValue({
       eq: vi.fn().mockReturnValue({
-        eq: vi.fn().mockResolvedValue(result),
+        eq: vi.fn().mockReturnValue({
+          limit: vi.fn().mockResolvedValue(result),
+        }),
       }),
     }),
   } as any);
@@ -110,24 +112,30 @@ describe('frequencia.service', () => {
     it('retorna apenas alunos abaixo do limite com nome (não UUID)', async () => {
       vi.mocked(supabase.from).mockReset();
       // 3 alunos: A=80%, B=60%, C=50% — apenas B e C abaixo de 75%
+      // Supabase retorna join como array — aluno: [{ full_name, email }]
+      const makeRow = (aluno_id: string, presente: boolean, nome: string, email: string) => ({
+        aluno_id, presente, aluno: [{ full_name: nome, email }],
+      });
       vi.mocked(supabase.from).mockReturnValue({
         select: vi.fn().mockReturnValue({
-          eq: vi.fn().mockResolvedValue({
-            data: [
-              // aluno-A: 4 presenças / 5 aulas = 80%
-              { aluno_id: 'aluno-A', presente: true,  aluno: { full_name: 'Ana Silva', email: 'ana@itec.com' } },
-              { aluno_id: 'aluno-A', presente: true,  aluno: { full_name: 'Ana Silva', email: 'ana@itec.com' } },
-              { aluno_id: 'aluno-A', presente: true,  aluno: { full_name: 'Ana Silva', email: 'ana@itec.com' } },
-              { aluno_id: 'aluno-A', presente: true,  aluno: { full_name: 'Ana Silva', email: 'ana@itec.com' } },
-              { aluno_id: 'aluno-A', presente: false, aluno: { full_name: 'Ana Silva', email: 'ana@itec.com' } },
-              // aluno-B: 3 presenças / 5 aulas = 60%
-              { aluno_id: 'aluno-B', presente: true,  aluno: { full_name: 'Bruno Costa', email: 'b@itec.com' } },
-              { aluno_id: 'aluno-B', presente: true,  aluno: { full_name: 'Bruno Costa', email: 'b@itec.com' } },
-              { aluno_id: 'aluno-B', presente: true,  aluno: { full_name: 'Bruno Costa', email: 'b@itec.com' } },
-              { aluno_id: 'aluno-B', presente: false, aluno: { full_name: 'Bruno Costa', email: 'b@itec.com' } },
-              { aluno_id: 'aluno-B', presente: false, aluno: { full_name: 'Bruno Costa', email: 'b@itec.com' } },
-            ],
-            error: null,
+          eq: vi.fn().mockReturnValue({
+            limit: vi.fn().mockResolvedValue({
+              data: [
+                // aluno-A: 4 presenças / 5 aulas = 80%
+                makeRow('aluno-A', true,  'Ana Silva',   'ana@itec.com'),
+                makeRow('aluno-A', true,  'Ana Silva',   'ana@itec.com'),
+                makeRow('aluno-A', true,  'Ana Silva',   'ana@itec.com'),
+                makeRow('aluno-A', true,  'Ana Silva',   'ana@itec.com'),
+                makeRow('aluno-A', false, 'Ana Silva',   'ana@itec.com'),
+                // aluno-B: 3 presenças / 5 aulas = 60%
+                makeRow('aluno-B', true,  'Bruno Costa', 'b@itec.com'),
+                makeRow('aluno-B', true,  'Bruno Costa', 'b@itec.com'),
+                makeRow('aluno-B', true,  'Bruno Costa', 'b@itec.com'),
+                makeRow('aluno-B', false, 'Bruno Costa', 'b@itec.com'),
+                makeRow('aluno-B', false, 'Bruno Costa', 'b@itec.com'),
+              ],
+              error: null,
+            }),
           }),
         }),
       } as any);

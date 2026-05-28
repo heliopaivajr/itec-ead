@@ -59,7 +59,7 @@ export async function getFrequenciaByDisciplina(
 
   if (alunoId) query = query.eq('aluno_id', alunoId);
 
-  const { data, error } = await query;
+  const { data, error } = await query.limit(120); // 2 anos × aulas semanais
   if (error) return [];
   return (data as RegistroFrequencia[]) ?? [];
 }
@@ -86,7 +86,8 @@ export async function getResumoFrequencia(
     .from('frequencia')
     .select('presente, justificada')
     .eq('disciplina_id', disciplinaId)
-    .eq('aluno_id', alunoId);
+    .eq('aluno_id', alunoId)
+    .limit(60); // ~2 anos de aulas semanais
 
   if (error || !data) {
     return { total_aulas: 0, presencas: 0, faltas: 0, faltas_justificadas: 0, percentual_presenca: 0, status: 'ok' };
@@ -129,19 +130,21 @@ export async function getAlunosAbaixoLimite(
   const { data, error } = await supabase
     .from('frequencia')
     .select('aluno_id, presente, aluno:profiles!frequencia_aluno_id_fkey(full_name, email)')
-    .eq('disciplina_id', disciplinaId);
+    .eq('disciplina_id', disciplinaId)
+    .limit(120); // proteção: max alunos × aulas
 
   if (error || !data) return [];
 
-  type Row = { aluno_id: string; presente: boolean; aluno: { full_name: string; email: string } | null };
+  type Row = { aluno_id: string; presente: boolean; aluno: { full_name: string; email: string }[] | null };
 
   // Agrega por aluno em JS
   const porAluno = new Map<string, { total: number; presencas: number; nome: string; email: string }>();
-  for (const r of data as Row[]) {
+  for (const r of data as unknown as Row[]) {
+    const aluno = Array.isArray(r.aluno) ? r.aluno[0] : r.aluno;
     const entry = porAluno.get(r.aluno_id) ?? {
       total: 0, presencas: 0,
-      nome:  r.aluno?.full_name ?? r.aluno_id,
-      email: r.aluno?.email ?? '',
+      nome:  aluno?.full_name ?? r.aluno_id,
+      email: aluno?.email ?? '',
     };
     entry.total++;
     if (r.presente) entry.presencas++;
@@ -157,4 +160,46 @@ export async function getAlunosAbaixoLimite(
     }))
     .filter(a => a.percentual < limite)
     .sort((a, b) => a.percentual - b.percentual);
+}
+
+// Batch: resumo de frequência para múltiplas disciplinas de um aluno (1 query)
+export async function getResumoFrequenciaBatch(
+  alunoId: string,
+  disciplinaIds: string[]
+): Promise<Map<string, ResumoFrequencia>> {
+  if (disciplinaIds.length === 0) return new Map();
+
+  const { data, error } = await supabase
+    .from('frequencia')
+    .select('disciplina_id, presente, justificada')
+    .eq('aluno_id', alunoId)
+    .in('disciplina_id', disciplinaIds)
+    .limit(disciplinaIds.length * 60);
+
+  const result = new Map<string, ResumoFrequencia>();
+  if (error || !data) return result;
+
+  type RawRow = { disciplina_id: string; presente: boolean; justificada: boolean };
+  const byDisc = new Map<string, RawRow[]>();
+  for (const r of data as RawRow[]) {
+    const arr = byDisc.get(r.disciplina_id) ?? [];
+    arr.push(r);
+    byDisc.set(r.disciplina_id, arr);
+  }
+
+  for (const id of disciplinaIds) {
+    const rows = byDisc.get(id) ?? [];
+    const total      = rows.length;
+    const presencas  = rows.filter(r => r.presente).length;
+    const faltas     = total - presencas;
+    const justificadas = rows.filter(r => !r.presente && r.justificada).length;
+    const percentual = total > 0 ? Math.round((presencas / total) * 100) : 100;
+    result.set(id, {
+      total_aulas: total, presencas, faltas,
+      faltas_justificadas: justificadas,
+      percentual_presenca: percentual,
+      status: calcularStatus(percentual),
+    });
+  }
+  return result;
 }

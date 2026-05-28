@@ -2,9 +2,10 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { supabase } from '@/lib/supabase';
 import { getAvisos, createAviso } from '@/services/avisos.service';
 
-// chain: from().select().order().order() → resolves
+// chain: from().select().order().order().limit() → resolves
 function mockSelectOrders(result: { data: any; error: any }) {
-  const finalOrder = vi.fn().mockResolvedValue(result);
+  const limitFn    = vi.fn().mockResolvedValue(result);
+  const finalOrder = vi.fn().mockReturnValue({ limit: limitFn });
   const firstOrder = vi.fn().mockReturnValue({ order: finalOrder });
   const selectFn   = vi.fn().mockReturnValue({ order: firstOrder });
   vi.mocked(supabase.from).mockReturnValue({ select: selectFn } as any);

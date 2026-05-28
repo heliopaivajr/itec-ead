@@ -9,13 +9,15 @@ import {
 const ONTEM = new Date(Date.now() - 86_400_000).toISOString().split('T')[0];
 const AMANHA = new Date(Date.now() + 86_400_000).toISOString().split('T')[0];
 
-// Mock de getMensalidadesByAluno (chain: from().select().eq().order())
+// Mock de getMensalidadesByAluno (chain: from().select().eq().order().limit())
 function mockMensalidades(data: any[]) {
   vi.mocked(supabase.from).mockReset();
   vi.mocked(supabase.from).mockReturnValue({
     select: vi.fn().mockReturnValue({
       eq: vi.fn().mockReturnValue({
-        order: vi.fn().mockResolvedValue({ data, error: null }),
+        order: vi.fn().mockReturnValue({
+          limit: vi.fn().mockResolvedValue({ data, error: null }),
+        }),
       }),
     }),
   } as any);

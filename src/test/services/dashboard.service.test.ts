@@ -72,13 +72,15 @@ describe('dashboard.service', () => {
   describe('getLeadsPorCurso', () => {
     it('agrupa leads por curso com totais corretos', async () => {
       vi.mocked(supabase.from).mockReturnValue({
-        select: vi.fn().mockResolvedValue({
-          data: [
-            { curso_interesse: 'Teologia' },
-            { curso_interesse: 'Teologia' },
-            { curso_interesse: 'SETEB' },
-          ],
-          error: null,
+        select: vi.fn().mockReturnValue({
+          limit: vi.fn().mockResolvedValue({
+            data: [
+              { curso_interesse: 'Teologia' },
+              { curso_interesse: 'Teologia' },
+              { curso_interesse: 'SETEB' },
+            ],
+            error: null,
+          }),
         }),
       } as any);
 
@@ -96,7 +98,9 @@ describe('dashboard.service', () => {
 
     it('retorna array vazio quando Supabase retorna data=null', async () => {
       vi.mocked(supabase.from).mockReturnValue({
-        select: vi.fn().mockResolvedValue({ data: null, error: { message: 'error' } }),
+        select: vi.fn().mockReturnValue({
+          limit: vi.fn().mockResolvedValue({ data: null, error: { message: 'error' } }),
+        }),
       } as any);
 
       const resultado = await getLeadsPorCurso();

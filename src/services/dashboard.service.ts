@@ -101,7 +101,7 @@ export async function getMatriculasRecentes(limit = 5): Promise<MatriculaRecente
 
 // Leads agrupados por curso — agregação em JS (intencional, não migrar para SQL ainda)
 export async function getLeadsPorCurso(): Promise<LeadPorCurso[]> {
-  const { data } = await supabase.from('leads_cursos').select('curso_interesse');
+  const { data } = await supabase.from('leads_cursos').select('curso_interesse').limit(500);
   if (!data) return [];
 
   const counts: Record<string, number> = {};

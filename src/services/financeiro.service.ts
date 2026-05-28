@@ -83,7 +83,8 @@ export async function getMensalidadesByAluno(alunoId: string): Promise<Mensalida
     .from('mensalidades')
     .select('*')
     .eq('aluno_id', alunoId)
-    .order('mes_referencia', { ascending: false });
+    .order('mes_referencia', { ascending: false })
+    .limit(60); // 5 anos × 12 meses
 
   if (error) return [];
   return (data as Mensalidade[]) ?? [];
@@ -112,18 +113,22 @@ export async function registrarPagamentoMensalidade(
 export async function getInadimplentes(): Promise<Inadimplente[]> {
   const { data, error } = await supabase
     .from('mensalidades')
-    .select('aluno_id, valor, profile:profiles(full_name, email)')
+    .select('aluno_id, valor, profile:profiles!mensalidades_aluno_id_fkey(full_name, email)')
     .in('status', ['pendente', 'atrasado'])
-    .lt('data_vencimento', new Date().toISOString().split('T')[0]);
+    .lt('data_vencimento', new Date().toISOString().split('T')[0])
+    .limit(200);
 
   if (error || !data) return [];
 
+  type Row = { aluno_id: string; valor: number; profile: { full_name: string; email: string }[] };
+
   // Agrega por aluno em JS
   const porAluno = new Map<string, { nome: string; email: string; count: number; total: number }>();
-  for (const m of data as { aluno_id: string; valor: number; profile: { full_name: string; email: string } | null }[]) {
+  for (const m of data as unknown as Row[]) {
+    const prof = Array.isArray(m.profile) ? m.profile[0] : m.profile;
     const entry = porAluno.get(m.aluno_id) ?? {
-      nome:  m.profile?.full_name ?? m.aluno_id,
-      email: m.profile?.email ?? '',
+      nome:  prof?.full_name ?? m.aluno_id,
+      email: prof?.email ?? '',
       count: 0,
       total: 0,
     };

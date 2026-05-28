@@ -36,7 +36,8 @@ export async function getAvisos(): Promise<AvisosResult> {
     .from('avisos')
     .select('*, autor:profiles(full_name, role)')
     .order('fixado', { ascending: false })
-    .order('criado_em', { ascending: false });
+    .order('criado_em', { ascending: false })
+    .limit(50);
 
   if (error) {
     const noTable = error.message.includes('does not exist') || error.code === '42P01';
