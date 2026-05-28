@@ -258,3 +258,35 @@ Conteúdo do certificado:
 Verificação pública:
 itecedu.com/verificar/[codigo]
 → Mostra nome, curso, data, "Certificado válido ✅"
+
+## Agentes Estratégicos (19 e 20)
+
+### Quando usar
+
+Use Agente 19 (product-analyst) quando:
+- "O que está faltando na plataforma?"
+- "O fluxo está correto para o ITEC?"
+- "Quais campos preciso neste formulário?"
+- Qualquer pergunta sobre O QUÊ e POR QUÊ
+
+Use Agente 20 (project-manager) quando:
+- "Como implementar isso sem bagunçar?"
+- "Por onde começo?"
+- "Qual a ordem das tarefas?"
+- Qualquer pergunta sobre COMO e EM QUE ORDEM
+
+### Fluxo padrão
+
+1. Agente 20 classifica a demanda
+2. Agente 19 analisa o negócio (se funcional)
+3. Hélio aprova o plano
+4. Agentes técnicos executam
+5. Agente 19 valida o resultado
+6. Agente 18 documenta
+7. Push + deploy
+
+### Regra de ouro
+
+Agente 19 = O QUÊ e POR QUÊ
+Agente 20 = COMO e EM QUE ORDEM
+Hélio = decisão final sempre
