@@ -70,7 +70,9 @@ const menuByRole: Record<string, { icon: React.ElementType; label: string; href:
   ],
   administracao: [
     { icon: LayoutDashboard, label: 'Dashboard',       href: '/dashboard',                 tooltip: 'Painel geral',             end: true },
-    { icon: Users,           label: 'Usuários',        href: '/dashboard/usuarios',         tooltip: 'Ver alunos e professores' },
+    { icon: User,            label: 'Alunos',          href: '/dashboard/alunos',           tooltip: 'Ficha e dados dos alunos' },
+    { icon: BookOpen,        label: 'Professores',     href: '/dashboard/professores-admin', tooltip: 'Corpo docente' },
+    { icon: Users,           label: 'Usuários',        href: '/dashboard/usuarios',         tooltip: 'Ver todos os usuários' },
     { icon: UserCheck,       label: 'Matrículas',      href: '/dashboard/matriculas',       tooltip: 'Aprovar matrículas' },
     { icon: Shield,          label: 'Nova Matrícula',  href: '/dashboard/nova-matricula',   tooltip: 'Cadastrar novo aluno' },
     { icon: GraduationCap,   label: 'Turmas',          href: '/dashboard/turmas-admin',     tooltip: 'Gestão de turmas' },

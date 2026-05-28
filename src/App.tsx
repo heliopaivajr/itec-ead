@@ -51,6 +51,7 @@ const ProfessoresAdmin   = lazy(() => import("./pages/dashboard/ProfessoresAdmin
 const EquipeITEC         = lazy(() => import("./pages/dashboard/EquipeITEC"));
 const GestaoTurmas       = lazy(() => import("./pages/dashboard/GestaoTurmas"));
 const FichaAluno         = lazy(() => import("./pages/dashboard/FichaAluno"));
+const Alunos             = lazy(() => import("./pages/dashboard/Alunos"));
 import ProtectedRoute from '@/components/ProtectedRoute';
 
 const queryClient = new QueryClient();
@@ -139,7 +140,8 @@ const App = () => (
               {/* Admin — Turmas */}
               <Route path="turmas-admin"      element={<GestaoTurmas />} />
 
-              {/* Secretaria/Admin — Ficha do aluno */}
+              {/* Secretaria/Admin — Lista e ficha do aluno */}
+              <Route path="alunos"            element={<Alunos />} />
               <Route path="aluno/:alunoId"    element={<FichaAluno />} />
 
               {/* All roles */}

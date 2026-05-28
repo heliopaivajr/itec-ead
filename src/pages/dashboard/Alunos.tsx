@@ -1,0 +1,328 @@
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import {
+  ChevronLeft, ChevronRight, Search, User, GraduationCap,
+  Loader2, Edit, Eye, Lock, CheckCircle, Clock,
+} from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
+import { getUsuarios, updateRole, updateUsuario } from '@/services/usuarios.service';
+import type { UserRow } from '@/services/usuarios.service';
+import { useToast } from '@/hooks/use-toast';
+
+const PAGE_SIZE = 20;
+
+const statusConfig: Record<string, { label: string; color: string; icon: React.ElementType }> = {
+  aluno:   { label: 'Aluno ativo',  color: 'bg-blue-500/20 text-blue-400 border-blue-500/30',   icon: GraduationCap },
+  pendente:{ label: 'Pendente',     color: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30', icon: Clock },
+};
+
+// ─── Modal editar aluno ───────────────────────────────────────────────────────
+
+interface AlunoModalProps {
+  aluno: UserRow;
+  salvando: boolean;
+  onSave: (dados: { full_name: string; telefone: string; role: string }) => void;
+  onClose: () => void;
+}
+
+function AlunoModal({ aluno, salvando, onSave, onClose }: AlunoModalProps) {
+  const [form, setForm] = useState({
+    full_name: aluno.full_name ?? '',
+    telefone:  aluno.telefone ?? '',
+    role:      aluno.role,
+  });
+
+  return (
+    <div className="fixed inset-0 bg-background/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+      <div className="bg-card border border-border rounded-xl p-6 w-full max-w-md shadow-lg space-y-4">
+        <div className="flex items-center gap-3">
+          <div className="h-10 w-10 rounded-full bg-primary/20 flex items-center justify-center">
+            <User className="h-5 w-5 text-primary" />
+          </div>
+          <div>
+            <h2 className="text-lg font-bold">Editar Aluno</h2>
+            <p className="text-xs text-muted-foreground">{aluno.email}</p>
+          </div>
+        </div>
+
+        <div className="space-y-3">
+          <div>
+            <label className="text-xs text-muted-foreground font-medium mb-1 block">Nome Completo</label>
+            <Input
+              value={form.full_name}
+              onChange={e => setForm(p => ({ ...p, full_name: e.target.value }))}
+              className="bg-background"
+            />
+          </div>
+          <div>
+            <label className="text-xs text-muted-foreground font-medium mb-1 block">Telefone</label>
+            <Input
+              value={form.telefone}
+              onChange={e => setForm(p => ({ ...p, telefone: e.target.value }))}
+              placeholder="(00) 00000-0000"
+              className="bg-background"
+            />
+          </div>
+          <div>
+            <label className="text-xs text-muted-foreground font-medium mb-1 block">Status / Role</label>
+            <select
+              value={form.role}
+              onChange={e => setForm(p => ({ ...p, role: e.target.value }))}
+              className="w-full bg-background border border-border rounded-md px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+            >
+              <option value="aluno">Aluno ativo</option>
+              <option value="pendente">Pendente</option>
+              <option value="administracao">Secretaria</option>
+            </select>
+          </div>
+        </div>
+
+        <div className="flex gap-2 pt-2">
+          <Button onClick={() => onSave(form)} className="flex-1" disabled={salvando}>
+            {salvando ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Salvar'}
+          </Button>
+          <Button variant="outline" onClick={onClose} className="flex-1">Cancelar</Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Página principal ─────────────────────────────────────────────────────────
+
+export default function Alunos() {
+  const { toast } = useToast();
+  const navigate = useNavigate();
+
+  const [page, setPage]   = useState(1);
+  const [search, setSearch]   = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+
+  const [alunos, setAlunos]   = useState<UserRow[]>([]);
+  const [total, setTotal]     = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [atualizando, setAtualizando] = useState<string | null>(null);
+
+  const [editAluno, setEditAluno] = useState<UserRow | null>(null);
+
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const handleSearch = (value: string) => {
+    setSearch(value);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      setDebouncedSearch(value);
+      setPage(1);
+    }, 300);
+  };
+
+  const carregar = useCallback(async () => {
+    setLoading(true);
+    const { data, total: t } = await getUsuarios(page, PAGE_SIZE, debouncedSearch);
+    // Filtra apenas alunos e pendentes
+    const filtrados = data.filter(u => u.role === 'aluno' || u.role === 'pendente');
+    setAlunos(filtrados);
+    setTotal(t);
+    setLoading(false);
+  }, [page, debouncedSearch]);
+
+  useEffect(() => { carregar(); }, [carregar]);
+
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+
+  const aprovar = async (userId: string) => {
+    setAtualizando(userId);
+    const { error } = await updateRole(userId, 'aluno');
+    if (error) {
+      toast({ title: 'Erro ao aprovar', description: error, variant: 'destructive' });
+    } else {
+      toast({ title: 'Aluno aprovado!', description: 'Acesso liberado.' });
+      await carregar();
+    }
+    setAtualizando(null);
+  };
+
+  const trancar = async (userId: string) => {
+    setAtualizando(userId);
+    const { error } = await updateRole(userId, 'pendente');
+    if (error) {
+      toast({ title: 'Erro ao trancar', description: error, variant: 'destructive' });
+    } else {
+      toast({ title: 'Aluno trancado', description: 'Acesso suspenso.' });
+      await carregar();
+    }
+    setAtualizando(null);
+  };
+
+  const handleEditSave = async (dados: { full_name: string; telefone: string; role: string }) => {
+    if (!editAluno) return;
+    setAtualizando(editAluno.id);
+    const { error } = await updateUsuario(editAluno.id, dados);
+    if (error) {
+      toast({ title: 'Erro ao salvar', description: error, variant: 'destructive' });
+    } else {
+      toast({ title: 'Aluno atualizado!', description: 'Dados salvos com sucesso.' });
+      setEditAluno(null);
+      await carregar();
+    }
+    setAtualizando(null);
+  };
+
+  const pageStart = (page - 1) * PAGE_SIZE + 1;
+  const pageEnd   = Math.min(page * PAGE_SIZE, total);
+
+  return (
+    <div className="p-6 space-y-6 relative">
+      <div>
+        <h1 className="text-2xl font-merriweather font-bold text-primary">Alunos</h1>
+        <p className="text-muted-foreground mt-1">Ficha, dados e status dos alunos matriculados</p>
+      </div>
+
+      {/* Busca */}
+      <div className="relative max-w-sm">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <Input
+          value={search}
+          onChange={e => handleSearch(e.target.value)}
+          placeholder="Buscar por nome ou e-mail..."
+          className="pl-9 bg-background border-border text-foreground shadow-sm"
+        />
+      </div>
+
+      {/* Tabela */}
+      <div className="bg-card border border-border rounded-xl overflow-hidden shadow-sm">
+        {loading ? (
+          <div className="flex items-center justify-center gap-2 p-12 text-muted-foreground animate-pulse">
+            <Loader2 className="h-4 w-4 animate-spin" /> Carregando alunos...
+          </div>
+        ) : alunos.length === 0 ? (
+          <div className="flex flex-col items-center justify-center p-12 text-muted-foreground gap-2">
+            <GraduationCap className="h-10 w-10 opacity-30" />
+            <p>{debouncedSearch ? 'Nenhum aluno encontrado.' : 'Nenhum aluno cadastrado.'}</p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-border bg-muted/30">
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Aluno</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Telefone</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Status</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Cadastro</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Ações</th>
+                </tr>
+              </thead>
+              <tbody>
+                {alunos.map((aluno, i) => {
+                  const sc = statusConfig[aluno.role] ?? statusConfig['pendente'];
+                  const StatusIcon = sc.icon;
+                  return (
+                    <tr key={aluno.id} className={`border-b border-border last:border-0 hover:bg-muted/20 transition-colors ${i % 2 !== 0 ? 'bg-muted/5' : ''}`}>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-3">
+                          <div className="h-8 w-8 rounded-full bg-primary/20 flex items-center justify-center shrink-0">
+                            <User className="h-4 w-4 text-primary" />
+                          </div>
+                          <div>
+                            <p className="font-medium text-foreground">{aluno.full_name}</p>
+                            <p className="text-xs text-muted-foreground">{aluno.email ?? '—'}</p>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 text-sm text-muted-foreground">{aluno.telefone ?? '—'}</td>
+                      <td className="px-4 py-3">
+                        <span className={`inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full border ${sc.color}`}>
+                          <StatusIcon className="h-3 w-3" /> {sc.label}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-xs text-muted-foreground">
+                        {new Date(aluno.created_at).toLocaleDateString('pt-BR')}
+                      </td>
+                      <td className="px-4 py-3">
+                        {atualizando === aluno.id ? (
+                          <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                        ) : (
+                          <div className="flex items-center gap-1">
+                            <button
+                              onClick={() => navigate(`/dashboard/aluno/${aluno.id}`)}
+                              className="p-1.5 hover:bg-muted rounded text-muted-foreground hover:text-primary transition-colors"
+                              title="Ver Ficha"
+                            >
+                              <Eye className="h-4 w-4" />
+                            </button>
+                            <button
+                              onClick={() => setEditAluno(aluno)}
+                              className="p-1.5 hover:bg-muted rounded text-muted-foreground hover:text-primary transition-colors"
+                              title="Editar dados"
+                            >
+                              <Edit className="h-4 w-4" />
+                            </button>
+                            {aluno.role === 'pendente' ? (
+                              <button
+                                onClick={() => aprovar(aluno.id)}
+                                className="p-1.5 hover:bg-muted rounded text-muted-foreground hover:text-green-400 transition-colors"
+                                title="Aprovar acesso"
+                              >
+                                <CheckCircle className="h-4 w-4" />
+                              </button>
+                            ) : (
+                              <button
+                                onClick={() => trancar(aluno.id)}
+                                className="p-1.5 hover:bg-muted rounded text-muted-foreground hover:text-yellow-400 transition-colors"
+                                title="Trancar acesso"
+                              >
+                                <Lock className="h-4 w-4" />
+                              </button>
+                            )}
+                          </div>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {/* Paginação */}
+      {total > 0 && (
+        <div className="flex items-center justify-between text-xs text-muted-foreground">
+          <span>
+            Exibindo {pageStart}–{pageEnd} de {total} usuário{total !== 1 ? 's' : ''} (alunos/pendentes)
+            {debouncedSearch && <span className="ml-1">(filtrado)</span>}
+          </span>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline" size="sm"
+              onClick={() => setPage(p => Math.max(1, p - 1))}
+              disabled={page <= 1 || loading}
+              className="h-7 px-2"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <span className="px-2">Página {page} de {totalPages}</span>
+            <Button
+              variant="outline" size="sm"
+              onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+              disabled={page >= totalPages || loading}
+              className="h-7 px-2"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {editAluno && (
+        <AlunoModal
+          aluno={editAluno}
+          salvando={atualizando === editAluno.id}
+          onSave={handleEditSave}
+          onClose={() => setEditAluno(null)}
+        />
+      )}
+    </div>
+  );
+}
