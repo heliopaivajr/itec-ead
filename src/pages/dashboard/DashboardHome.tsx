@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useOutletContext } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import {
   GraduationCap, BookOpen, Book, UserCheck,
   CalendarDays, ClipboardCheck, FileText, Bell, Users, ClipboardList
@@ -8,6 +9,7 @@ import {
   PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis,
   Tooltip, ResponsiveContainer, Legend
 } from 'recharts';
+import { Skeleton } from '@/components/ui/skeleton';
 import { KpiCard } from '@/components/dashboard/KpiCard';
 import { StatusBadge } from '@/components/dashboard/StatusBadge';
 import { getKpis, getLeadsRecentes, getMatriculasRecentes, getLeadsPorCurso } from '@/services/dashboard.service';
@@ -26,11 +28,21 @@ const COURSE_LABELS: Record<string, string> = {
   'ministerial-mulheres': 'Ministerial',
 };
 
+function KpiSkeleton() {
+  return (
+    <div className="bg-card border border-border rounded-xl p-5 space-y-2">
+      <Skeleton className="h-3 w-20" />
+      <Skeleton className="h-8 w-14" />
+    </div>
+  );
+}
+
 function AdminView({ name }: { name: string }) {
   const [kpis, setKpis] = useState({ alunos: 0, professores: 0, leads: 0, matriculas: 0 });
   const [leadsPorCurso, setLeadsPorCurso] = useState<{ name: string; value: number; color: string }[]>([]);
   const [ultimosLeads, setUltimosLeads] = useState<any[]>([]);
   const [matriculasRecentes, setMatriculasRecentes] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     async function carregarDados() {
@@ -51,6 +63,7 @@ function AdminView({ name }: { name: string }) {
           color: COURSE_COLORS[curso] ?? '#6b7280',
         }))
       );
+      setIsLoading(false);
     }
     carregarDados();
   }, []);
@@ -64,10 +77,16 @@ function AdminView({ name }: { name: string }) {
 
       {/* KPIs */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <KpiCard titulo="Alunos" valor={kpis.alunos}        icone={GraduationCap} href="/dashboard/usuarios" />
-        <KpiCard titulo="Professores" valor={kpis.professores} icone={BookOpen}     corFundo="bg-green-500/10" />
-        <KpiCard titulo="Leads" valor={kpis.leads}          icone={UserCheck}      href="/dashboard/leads"    corFundo="bg-blue-500/10" />
-        <KpiCard titulo="Matrículas" valor={kpis.matriculas} icone={ClipboardCheck} href="/dashboard/matriculas" corFundo="bg-purple-500/10" />
+        {isLoading ? (
+          [1, 2, 3, 4].map(i => <KpiSkeleton key={i} />)
+        ) : (
+          <>
+            <KpiCard titulo="Alunos"      valor={kpis.alunos}      icone={GraduationCap} href="/dashboard/usuarios" />
+            <KpiCard titulo="Professores" valor={kpis.professores}  icone={BookOpen}      corFundo="bg-green-500/10" />
+            <KpiCard titulo="Leads"       valor={kpis.leads}        icone={UserCheck}     href="/dashboard/leads"    corFundo="bg-blue-500/10" />
+            <KpiCard titulo="Matrículas"  valor={kpis.matriculas}   icone={ClipboardCheck} href="/dashboard/matriculas" corFundo="bg-purple-500/10" />
+          </>
+        )}
       </div>
 
       {/* Gráficos */}
@@ -103,7 +122,7 @@ function AdminView({ name }: { name: string }) {
             { icon: Book,          label: 'Matrículas',          desc: 'Aprovar e gerenciar matrículas',  href: '/dashboard/matriculas' },
             { icon: Bell,          label: 'Avisos',              desc: 'Comunicados para alunos',         href: '/dashboard/avisos' },
           ].map(item => (
-            <a key={item.label} href={item.href}
+            <Link key={item.label} to={item.href}
               className="flex items-center gap-3 p-2.5 rounded-lg hover:bg-muted/50 transition-colors group">
               <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
                 <item.icon className="h-4 w-4 text-primary" />
@@ -112,7 +131,7 @@ function AdminView({ name }: { name: string }) {
                 <p className="text-sm font-medium text-foreground group-hover:text-primary transition-colors">{item.label}</p>
                 <p className="text-xs text-muted-foreground">{item.desc}</p>
               </div>
-            </a>
+            </Link>
           ))}
         </div>
       </div>
@@ -123,7 +142,7 @@ function AdminView({ name }: { name: string }) {
         <div className="bg-card border border-border rounded-xl overflow-hidden">
           <div className="flex items-center justify-between px-5 py-3 border-b border-border">
             <h2 className="text-sm font-semibold text-foreground">Últimos Leads</h2>
-            <a href="/dashboard/leads" className="text-xs text-primary hover:underline">Ver todos →</a>
+            <Link to="/dashboard/leads" className="text-xs text-primary hover:underline">Ver todos →</Link>
           </div>
           {ultimosLeads.length === 0 ? (
             <p className="p-5 text-sm text-muted-foreground">Nenhum lead ainda.</p>
@@ -151,7 +170,7 @@ function AdminView({ name }: { name: string }) {
         <div className="bg-card border border-border rounded-xl overflow-hidden">
           <div className="flex items-center justify-between px-5 py-3 border-b border-border">
             <h2 className="text-sm font-semibold text-foreground">Matrículas Recentes</h2>
-            <a href="/dashboard/matriculas" className="text-xs text-primary hover:underline">Ver todas →</a>
+            <Link to="/dashboard/matriculas" className="text-xs text-primary hover:underline">Ver todas →</Link>
           </div>
           {matriculasRecentes.length === 0 ? (
             <p className="p-5 text-sm text-muted-foreground">Nenhuma matrícula ainda.</p>
@@ -189,28 +208,28 @@ function ProfessorView({ name }: { name: string }) {
         <p className="text-muted-foreground mt-1">Área do Professor — Gerencie suas turmas e materiais</p>
       </div>
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <KpiCard titulo="Turmas Ativas" valor="—" icone={Users} />
-        <KpiCard titulo="Alunos" valor="—" icone={GraduationCap} corFundo="bg-green-500/10" />
-        <KpiCard titulo="Aulas esta semana" valor="—" icone={CalendarDays} corFundo="bg-blue-500/10" />
+        <KpiCard titulo="Turmas Ativas"       valor="—" icone={Users} />
+        <KpiCard titulo="Alunos"              valor="—" icone={GraduationCap} corFundo="bg-green-500/10" />
+        <KpiCard titulo="Aulas esta semana"   valor="—" icone={CalendarDays}  corFundo="bg-blue-500/10" />
         <KpiCard titulo="Avaliações pendentes" valor="—" icone={ClipboardList} corFundo="bg-yellow-500/10" />
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {[
-          { icon: Users,         label: 'Minhas Turmas',    desc: 'Nenhuma turma ativa.',                       href: '/dashboard/turmas' },
-          { icon: BookOpen,      label: 'Materiais de Aula', desc: 'Faça upload de apostilas e slides.',         href: '/dashboard/materiais' },
-          { icon: ClipboardList, label: 'Avaliações',        desc: 'Crie e gerencie provas e trabalhos.',        href: '/dashboard/avaliacoes' },
-          { icon: CalendarDays,  label: 'Agenda',            desc: 'Calendário de aulas e compromissos.',        href: '/dashboard/agenda' },
-          { icon: ClipboardCheck,label: 'Frequência',        desc: 'Lance a frequência das suas turmas.',       href: '/dashboard/turmas' },
-          { icon: Bell,          label: 'Avisos',            desc: 'Crie comunicados para seus alunos.',        href: '/dashboard/avisos' },
+          { icon: Users,         label: 'Minhas Disciplinas', desc: 'Acesse suas disciplinas ativas.',        href: '/dashboard/professor' },
+          { icon: BookOpen,      label: 'Materiais de Aula',  desc: 'Faça upload de apostilas e slides.',    href: '/dashboard/materiais' },
+          { icon: ClipboardList, label: 'Avaliações',         desc: 'Crie e gerencie provas e trabalhos.',   href: '/dashboard/avaliacoes' },
+          { icon: CalendarDays,  label: 'Agenda',             desc: 'Calendário de aulas e compromissos.',   href: '/dashboard/agenda' },
+          { icon: ClipboardCheck,label: 'Frequência',         desc: 'Lance a frequência das suas turmas.',   href: '/dashboard/professor' },
+          { icon: Bell,          label: 'Avisos',             desc: 'Crie comunicados para seus alunos.',    href: '/dashboard/avisos' },
         ].map(item => (
-          <a key={item.label} href={item.href}
+          <Link key={item.label} to={item.href}
             className="bg-card border border-border rounded-xl p-5 hover:border-primary/40 transition-all block">
             <div className="flex items-center gap-2 mb-2">
               <item.icon className="h-5 w-5 text-primary" />
               <h3 className="font-semibold text-foreground">{item.label}</h3>
             </div>
             <p className="text-sm text-muted-foreground">{item.desc}</p>
-          </a>
+          </Link>
         ))}
       </div>
     </div>
@@ -228,27 +247,27 @@ function AlunoView({ name }: { name: string }) {
       </div>
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <KpiCard titulo="Cursos Ativos" valor="—" icone={Book} />
-        <KpiCard titulo="Frequência" valor="—" icone={ClipboardCheck} corFundo="bg-green-500/10" />
-        <KpiCard titulo="Média Geral" valor="—" icone={GraduationCap} corFundo="bg-blue-500/10" />
-        <KpiCard titulo="Avisos" valor="—" icone={Bell} corFundo="bg-yellow-500/10" />
+        <KpiCard titulo="Frequência"    valor="—" icone={ClipboardCheck} corFundo="bg-green-500/10" />
+        <KpiCard titulo="Média Geral"   valor="—" icone={GraduationCap}  corFundo="bg-blue-500/10" />
+        <KpiCard titulo="Avisos"        valor="—" icone={Bell}           corFundo="bg-yellow-500/10" />
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {[
           { icon: Book,          label: 'Meus Cursos',  desc: 'Acompanhe seu progresso acadêmico.',        href: '/dashboard/cursos' },
           { icon: CalendarDays,  label: 'Eventos',      desc: 'Calendário acadêmico e próximas aulas.',    href: '/dashboard/eventos' },
           { icon: FileText,      label: 'Documentos',   desc: 'Certificados e histórico acadêmico.',       href: '/dashboard/documentos' },
-          { icon: ClipboardCheck,label: 'Frequência',   desc: 'Seu histórico de presença por disciplina.', href: '/dashboard/ao-vivo' },
+          { icon: ClipboardCheck,label: 'Frequência',   desc: 'Seu histórico de presença por disciplina.', href: '/dashboard/cursos' },
           { icon: Bell,          label: 'Avisos',       desc: 'Comunicados da secretaria e professores.',  href: '/dashboard/avisos' },
           { icon: BookOpen,      label: 'Materiais',    desc: 'Apostilas e materiais de aula.',            href: '/dashboard/materiais' },
         ].map(item => (
-          <a key={item.label} href={item.href}
+          <Link key={item.label} to={item.href}
             className="bg-card border border-border rounded-xl p-5 hover:border-primary/40 transition-all block">
             <div className="flex items-center gap-2 mb-2">
               <item.icon className="h-5 w-5 text-primary" />
               <h3 className="font-semibold text-foreground">{item.label}</h3>
             </div>
             <p className="text-sm text-muted-foreground">{item.desc}</p>
-          </a>
+          </Link>
         ))}
       </div>
       <div className="bg-primary/5 border border-primary/20 rounded-xl p-5">
