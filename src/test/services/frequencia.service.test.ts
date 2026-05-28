@@ -4,6 +4,11 @@ import {
   getResumoFrequencia,
   lancarFrequencia,
   getAlunosAbaixoLimite,
+  getFrequenciaByDisciplina,
+  justificarFalta,
+  calcularResumosPorAluno,
+  getResumoFrequenciaBatch,
+  type RegistroFrequencia,
 } from '@/services/frequencia.service';
 
 // Monta registros de presença para teste de resumo
@@ -105,6 +110,175 @@ describe('frequencia.service', () => {
       }]);
 
       expect(resultado.error).toBe('rls blocked');
+    });
+  });
+
+  describe('getFrequenciaByDisciplina', () => {
+    it('retorna registros da disciplina com limit=120', async () => {
+      vi.mocked(supabase.from).mockReset();
+      const limitFn = vi.fn().mockResolvedValue({
+        data: [
+          { id: 'f1', disciplina_id: 'd1', aluno_id: 'a1', presente: true, data_aula: '2026-05-01' },
+          { id: 'f2', disciplina_id: 'd1', aluno_id: 'a2', presente: false, data_aula: '2026-05-01' },
+        ],
+        error: null,
+      });
+      vi.mocked(supabase.from).mockReturnValue({
+        select: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            order: vi.fn().mockReturnValue({ limit: limitFn }),
+          }),
+        }),
+      } as any);
+
+      const resultado = await getFrequenciaByDisciplina('d1');
+
+      expect(resultado).toHaveLength(2);
+      expect(limitFn).toHaveBeenCalledWith(120);
+    });
+
+    it('retorna array vazio quando erro', async () => {
+      vi.mocked(supabase.from).mockReset();
+      vi.mocked(supabase.from).mockReturnValue({
+        select: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            order: vi.fn().mockReturnValue({
+              limit: vi.fn().mockResolvedValue({ data: null, error: { message: 'error' } }),
+            }),
+          }),
+        }),
+      } as any);
+
+      const resultado = await getFrequenciaByDisciplina('d1');
+
+      expect(resultado).toEqual([]);
+    });
+  });
+
+  describe('justificarFalta', () => {
+    it('atualiza justificada=true com documento_url e retorna error=null', async () => {
+      vi.mocked(supabase.from).mockReset();
+      const eqFn = vi.fn().mockResolvedValue({ error: null });
+      const updateFn = vi.fn().mockReturnValue({ eq: eqFn });
+      vi.mocked(supabase.from).mockReturnValue({ update: updateFn } as any);
+
+      const resultado = await justificarFalta('freq-1', 'https://doc.pdf');
+
+      expect(resultado.error).toBeNull();
+      const payload = updateFn.mock.calls[0][0];
+      expect(payload.justificada).toBe(true);
+      expect(payload.documento_url).toBe('https://doc.pdf');
+    });
+
+    it('retorna error quando update falha', async () => {
+      vi.mocked(supabase.from).mockReset();
+      vi.mocked(supabase.from).mockReturnValue({
+        update: vi.fn().mockReturnValue({
+          eq: vi.fn().mockResolvedValue({ error: { message: 'rls blocked' } }),
+        }),
+      } as any);
+
+      const resultado = await justificarFalta('freq-1', 'https://doc.pdf');
+
+      expect(resultado.error).toBe('rls blocked');
+    });
+  });
+
+  describe('calcularResumosPorAluno', () => {
+    it('calcula resumos corretos para múltiplos alunos sem queries', () => {
+      const registros: RegistroFrequencia[] = [
+        { id: 'f1', disciplina_id: 'd1', aluno_id: 'a1', professor_id: 'p1', data_aula: '2026-05-01', presente: true,  justificada: false, documento_url: null, observacao: null, registrado_em: '' },
+        { id: 'f2', disciplina_id: 'd1', aluno_id: 'a1', professor_id: 'p1', data_aula: '2026-05-08', presente: true,  justificada: false, documento_url: null, observacao: null, registrado_em: '' },
+        { id: 'f3', disciplina_id: 'd1', aluno_id: 'a1', professor_id: 'p1', data_aula: '2026-05-15', presente: false, justificada: true,  documento_url: null, observacao: null, registrado_em: '' },
+        { id: 'f4', disciplina_id: 'd1', aluno_id: 'a1', professor_id: 'p1', data_aula: '2026-05-22', presente: false, justificada: false, documento_url: null, observacao: null, registrado_em: '' },
+        { id: 'f5', disciplina_id: 'd1', aluno_id: 'a2', professor_id: 'p1', data_aula: '2026-05-01', presente: true,  justificada: false, documento_url: null, observacao: null, registrado_em: '' },
+        { id: 'f6', disciplina_id: 'd1', aluno_id: 'a2', professor_id: 'p1', data_aula: '2026-05-08', presente: true,  justificada: false, documento_url: null, observacao: null, registrado_em: '' },
+      ];
+
+      const resultado = calcularResumosPorAluno(registros);
+
+      // a1: 4 aulas, 2 presenças = 50% → reprovado
+      const resumoA1 = resultado.get('a1')!;
+      expect(resumoA1.total_aulas).toBe(4);
+      expect(resumoA1.presencas).toBe(2);
+      expect(resumoA1.faltas_justificadas).toBe(1);
+      expect(resumoA1.percentual_presenca).toBe(50);
+      expect(resumoA1.status).toBe('reprovado');
+
+      // a2: 2 aulas, 2 presenças = 100% → ok
+      const resumoA2 = resultado.get('a2')!;
+      expect(resumoA2.total_aulas).toBe(2);
+      expect(resumoA2.percentual_presenca).toBe(100);
+      expect(resumoA2.status).toBe('ok');
+    });
+
+    it('retorna Map vazio para array vazio', () => {
+      const resultado = calcularResumosPorAluno([]);
+      expect(resultado.size).toBe(0);
+    });
+
+    it('retorna percentual=100 e status=ok quando aluno não tem faltas', () => {
+      const registros: RegistroFrequencia[] = [
+        { id: 'f1', disciplina_id: 'd1', aluno_id: 'a1', professor_id: 'p1', data_aula: '2026-05-01', presente: true, justificada: false, documento_url: null, observacao: null, registrado_em: '' },
+      ];
+      const resultado = calcularResumosPorAluno(registros);
+      expect(resultado.get('a1')?.status).toBe('ok');
+    });
+  });
+
+  describe('getResumoFrequenciaBatch', () => {
+    it('retorna Map vazio quando disciplinaIds está vazio', async () => {
+      const resultado = await getResumoFrequenciaBatch('aluno-1', []);
+      expect(resultado.size).toBe(0);
+    });
+
+    it('calcula resumo correto por disciplina para o aluno', async () => {
+      vi.mocked(supabase.from).mockReset();
+      vi.mocked(supabase.from).mockReturnValue({
+        select: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            in: vi.fn().mockReturnValue({
+              limit: vi.fn().mockResolvedValue({
+                data: [
+                  { disciplina_id: 'd1', presente: true,  justificada: false },
+                  { disciplina_id: 'd1', presente: true,  justificada: false },
+                  { disciplina_id: 'd1', presente: false, justificada: false },
+                  { disciplina_id: 'd1', presente: false, justificada: false },
+                  { disciplina_id: 'd2', presente: true,  justificada: false },
+                  { disciplina_id: 'd2', presente: true,  justificada: false },
+                ],
+                error: null,
+              }),
+            }),
+          }),
+        }),
+      } as any);
+
+      const resultado = await getResumoFrequenciaBatch('aluno-1', ['d1', 'd2']);
+
+      // d1: 4 aulas, 2 presenças = 50% → reprovado
+      expect(resultado.get('d1')?.percentual_presenca).toBe(50);
+      expect(resultado.get('d1')?.status).toBe('reprovado');
+      // d2: 2 aulas, 2 presenças = 100% → ok
+      expect(resultado.get('d2')?.percentual_presenca).toBe(100);
+      expect(resultado.get('d2')?.status).toBe('ok');
+    });
+
+    it('retorna Map vazio quando Supabase retorna erro', async () => {
+      vi.mocked(supabase.from).mockReset();
+      vi.mocked(supabase.from).mockReturnValue({
+        select: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            in: vi.fn().mockReturnValue({
+              limit: vi.fn().mockResolvedValue({ data: null, error: { message: 'error' } }),
+            }),
+          }),
+        }),
+      } as any);
+
+      const resultado = await getResumoFrequenciaBatch('aluno-1', ['d1']);
+
+      expect(resultado.size).toBe(0);
     });
   });
 

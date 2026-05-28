@@ -2,8 +2,13 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { supabase } from '@/lib/supabase';
 import {
   getCursoAtivo,
+  getModulosByCurso,
   getDisciplinasByModulo,
+  getAllDisciplinas,
+  getDisciplinaById,
+  getPrerequisitos,
   verificarPrerequisitos,
+  verificarPrerequisitoBatch,
 } from '@/services/academico.service';
 
 // chain: from().select().eq().order().limit().single() → resolves
@@ -50,6 +55,31 @@ describe('academico.service', () => {
     });
   });
 
+  describe('getModulosByCurso', () => {
+    it('retorna módulos do curso em ordem', async () => {
+      mockListQuery({
+        data: [
+          { id: 'm1', curso_id: 'c1', nome: 'Módulo 1', ordem: 1 },
+          { id: 'm2', curso_id: 'c1', nome: 'Módulo 2', ordem: 2 },
+        ],
+        error: null,
+      });
+
+      const resultado = await getModulosByCurso('c1');
+
+      expect(resultado).toHaveLength(2);
+      expect(resultado[0].nome).toBe('Módulo 1');
+    });
+
+    it('retorna array vazio quando erro', async () => {
+      mockListQuery({ data: null, error: { message: 'error' } });
+
+      const resultado = await getModulosByCurso('c1');
+
+      expect(resultado).toEqual([]);
+    });
+  });
+
   describe('getDisciplinasByModulo', () => {
     it('retorna disciplinas do módulo e verifica que limit foi chamado', async () => {
       const mockLimit = mockListQuery({
@@ -70,6 +100,184 @@ describe('academico.service', () => {
       const resultado = await getDisciplinasByModulo('modulo-123');
 
       expect(resultado).toEqual([]);
+    });
+  });
+
+  describe('getAllDisciplinas', () => {
+    it('retorna todas as disciplinas', async () => {
+      vi.mocked(supabase.from).mockReset();
+      const limitFn = vi.fn().mockResolvedValue({
+        data: [
+          { id: 'd1', codigo: 'B1NTG', nome: 'NT I' },
+          { id: 'd2', codigo: 'B1ATG', nome: 'AT I' },
+        ],
+        error: null,
+      });
+      vi.mocked(supabase.from).mockReturnValue({
+        select: vi.fn().mockReturnValue({
+          order: vi.fn().mockReturnValue({ limit: limitFn }),
+        }),
+      } as any);
+
+      const resultado = await getAllDisciplinas();
+
+      expect(resultado).toHaveLength(2);
+      expect(limitFn).toHaveBeenCalledWith(200);
+    });
+
+    it('retorna array vazio quando erro', async () => {
+      vi.mocked(supabase.from).mockReset();
+      vi.mocked(supabase.from).mockReturnValue({
+        select: vi.fn().mockReturnValue({
+          order: vi.fn().mockReturnValue({
+            limit: vi.fn().mockResolvedValue({ data: null, error: { message: 'error' } }),
+          }),
+        }),
+      } as any);
+
+      const resultado = await getAllDisciplinas();
+
+      expect(resultado).toEqual([]);
+    });
+  });
+
+  describe('getDisciplinaById', () => {
+    it('retorna disciplina quando id existe', async () => {
+      vi.mocked(supabase.from).mockReset();
+      vi.mocked(supabase.from).mockReturnValue({
+        select: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            single: vi.fn().mockResolvedValue({
+              data: { id: 'd1', codigo: 'B1NTG', nome: 'NT I' },
+              error: null,
+            }),
+          }),
+        }),
+      } as any);
+
+      const disc = await getDisciplinaById('d1');
+
+      expect(disc?.codigo).toBe('B1NTG');
+    });
+
+    it('retorna null quando não encontrada', async () => {
+      vi.mocked(supabase.from).mockReset();
+      vi.mocked(supabase.from).mockReturnValue({
+        select: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            single: vi.fn().mockResolvedValue({ data: null, error: { code: 'PGRST116' } }),
+          }),
+        }),
+      } as any);
+
+      const disc = await getDisciplinaById('inexistente');
+
+      expect(disc).toBeNull();
+    });
+  });
+
+  describe('getPrerequisitos', () => {
+    it('retorna pré-requisitos da disciplina', async () => {
+      vi.mocked(supabase.from).mockReset();
+      vi.mocked(supabase.from).mockReturnValue({
+        select: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            limit: vi.fn().mockResolvedValue({
+              data: [{ id: 'p1', disciplina_id: 'd1', prerequisito_id: 'd0', tipo: 'prerequisito' }],
+              error: null,
+            }),
+          }),
+        }),
+      } as any);
+
+      const resultado = await getPrerequisitos('d1');
+
+      expect(resultado).toHaveLength(1);
+      expect(resultado[0].tipo).toBe('prerequisito');
+    });
+
+    it('retorna array vazio quando sem pré-requisitos', async () => {
+      vi.mocked(supabase.from).mockReset();
+      vi.mocked(supabase.from).mockReturnValue({
+        select: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            limit: vi.fn().mockResolvedValue({ data: [], error: null }),
+          }),
+        }),
+      } as any);
+
+      const resultado = await getPrerequisitos('d-sem-prereq');
+
+      expect(resultado).toEqual([]);
+    });
+  });
+
+  describe('verificarPrerequisitoBatch', () => {
+    it('retorna Map vazio quando disciplinaIds está vazio', async () => {
+      const resultado = await verificarPrerequisitoBatch('aluno-1', [], []);
+
+      expect(resultado.size).toBe(0);
+    });
+
+    it('retorna aprovado=true para disciplinas sem pré-requisitos', async () => {
+      vi.mocked(supabase.from).mockReset();
+      // Promise.all: [prerequisitos_v2, matriculas_disciplina]
+      vi.mocked(supabase.from)
+        .mockReturnValueOnce({
+          select: vi.fn().mockReturnValue({
+            in: vi.fn().mockReturnValue({
+              limit: vi.fn().mockResolvedValue({ data: [], error: null }),
+            }),
+          }),
+        } as any)
+        .mockReturnValueOnce({
+          select: vi.fn().mockReturnValue({
+            in: vi.fn().mockReturnValue({
+              eq: vi.fn().mockReturnValue({
+                limit: vi.fn().mockResolvedValue({ data: [], error: null }),
+              }),
+            }),
+          }),
+        } as any);
+
+      const todasDiscs = [{ id: 'd1', codigo: 'B1NTG', nome: 'NT I' } as any];
+      const resultado = await verificarPrerequisitoBatch('aluno-1', ['d1'], todasDiscs);
+
+      expect(resultado.get('d1')?.aprovado).toBe(true);
+    });
+
+    it('retorna aprovado=false quando pré-requisito não cumprido', async () => {
+      vi.mocked(supabase.from).mockReset();
+      vi.mocked(supabase.from)
+        .mockReturnValueOnce({
+          select: vi.fn().mockReturnValue({
+            in: vi.fn().mockReturnValue({
+              limit: vi.fn().mockResolvedValue({
+                data: [{ disciplina_id: 'd2', prerequisito_id: 'd1', tipo: 'prerequisito' }],
+                error: null,
+              }),
+            }),
+          }),
+        } as any)
+        .mockReturnValueOnce({
+          select: vi.fn().mockReturnValue({
+            in: vi.fn().mockReturnValue({
+              eq: vi.fn().mockReturnValue({
+                limit: vi.fn().mockResolvedValue({ data: [], error: null }),
+              }),
+            }),
+          }),
+        } as any);
+
+      const todasDiscs = [
+        { id: 'd1', codigo: 'B1NTG', nome: 'NT I' } as any,
+        { id: 'd2', codigo: 'B1ATG', nome: 'AT I' } as any,
+      ];
+      const resultado = await verificarPrerequisitoBatch('aluno-1', ['d2'], todasDiscs);
+
+      expect(resultado.get('d2')?.aprovado).toBe(false);
+      expect(resultado.get('d2')?.faltam).toHaveLength(1);
+      expect(resultado.get('d2')?.faltam[0].codigo).toBe('B1NTG');
     });
   });
 

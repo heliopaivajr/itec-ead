@@ -2,8 +2,10 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { supabase } from '@/lib/supabase';
 import {
   getMateriaisByDisciplina,
+  getProgressoByAluno,
   getPercentualProgresso,
   marcarMaterialVisualizado,
+  getMateriaiseProgressoBatch,
 } from '@/services/material.service';
 
 beforeEach(() => { vi.clearAllMocks(); });
@@ -112,6 +114,124 @@ describe('material.service', () => {
       // Sem materiais → 100 (não há nada para completar)
       // Conforme implementação: if (materiais.length === 0) return 100
       expect(percentual).toBe(100);
+    });
+  });
+
+  describe('getProgressoByAluno', () => {
+    it('retorna registros de progresso do aluno na disciplina', async () => {
+      vi.mocked(supabase.from).mockReset();
+      vi.mocked(supabase.from).mockReturnValue({
+        select: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            eq: vi.fn().mockResolvedValue({
+              data: [
+                { id: 'p1', aluno_id: 'a1', material_id: 'm1', disciplina_id: 'd1' },
+                { id: 'p2', aluno_id: 'a1', material_id: 'm2', disciplina_id: 'd1' },
+              ],
+              error: null,
+            }),
+          }),
+        }),
+      } as any);
+
+      const resultado = await getProgressoByAluno('a1', 'd1');
+
+      expect(resultado).toHaveLength(2);
+    });
+
+    it('retorna array vazio quando erro', async () => {
+      vi.mocked(supabase.from).mockReset();
+      vi.mocked(supabase.from).mockReturnValue({
+        select: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            eq: vi.fn().mockResolvedValue({ data: null, error: { message: 'error' } }),
+          }),
+        }),
+      } as any);
+
+      const resultado = await getProgressoByAluno('a1', 'd1');
+
+      expect(resultado).toEqual([]);
+    });
+  });
+
+  describe('getMateriaiseProgressoBatch', () => {
+    it('retorna Map vazio quando disciplinaIds está vazio', async () => {
+      const resultado = await getMateriaiseProgressoBatch('aluno-1', []);
+      expect(resultado.size).toBe(0);
+    });
+
+    it('calcula percentual correto por disciplina', async () => {
+      vi.mocked(supabase.from).mockReset();
+      // Promise.all: [materiais, progresso_aluno]
+      vi.mocked(supabase.from)
+        .mockReturnValueOnce({
+          select: vi.fn().mockReturnValue({
+            in: vi.fn().mockReturnValue({
+              limit: vi.fn().mockReturnValue({
+                eq: vi.fn().mockResolvedValue({
+                  data: [
+                    { id: 'm1', disciplina_id: 'd1' },
+                    { id: 'm2', disciplina_id: 'd1' },
+                    { id: 'm3', disciplina_id: 'd1' },
+                    { id: 'm4', disciplina_id: 'd2' },
+                  ],
+                  error: null,
+                }),
+              }),
+            }),
+          }),
+        } as any)
+        .mockReturnValueOnce({
+          select: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              in: vi.fn().mockReturnValue({
+                limit: vi.fn().mockResolvedValue({
+                  data: [
+                    { material_id: 'm1', disciplina_id: 'd1' },
+                    { material_id: 'm4', disciplina_id: 'd2' },
+                  ],
+                  error: null,
+                }),
+              }),
+            }),
+          }),
+        } as any);
+
+      const resultado = await getMateriaiseProgressoBatch('aluno-1', ['d1', 'd2']);
+
+      // d1: 3 materiais, 1 visualizado = 33%
+      expect(resultado.get('d1')?.count).toBe(3);
+      expect(resultado.get('d1')?.percentual).toBe(33);
+      // d2: 1 material, 1 visualizado = 100%
+      expect(resultado.get('d2')?.percentual).toBe(100);
+    });
+
+    it('retorna percentual=100 para disciplina sem materiais', async () => {
+      vi.mocked(supabase.from).mockReset();
+      vi.mocked(supabase.from)
+        .mockReturnValueOnce({
+          select: vi.fn().mockReturnValue({
+            in: vi.fn().mockReturnValue({
+              limit: vi.fn().mockReturnValue({
+                eq: vi.fn().mockResolvedValue({ data: [], error: null }),
+              }),
+            }),
+          }),
+        } as any)
+        .mockReturnValueOnce({
+          select: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              in: vi.fn().mockReturnValue({
+                limit: vi.fn().mockResolvedValue({ data: [], error: null }),
+              }),
+            }),
+          }),
+        } as any);
+
+      const resultado = await getMateriaiseProgressoBatch('aluno-1', ['d1']);
+
+      expect(resultado.get('d1')?.percentual).toBe(100);
     });
   });
 
