@@ -19,6 +19,7 @@ import {
   createMatricula,
   createTaxaMatricula,
 } from '@/services/matriculas.service';
+import { updatePerfil } from '@/services/usuarios.service';
 import { getTurmasAtivas } from '@/services/turmas.service';
 import type { Turma } from '@/services/turmas.service';
 import type { DashboardContext } from '../Dashboard';
@@ -26,8 +27,11 @@ import type { DashboardContext } from '../Dashboard';
 // ─── Tipos ────────────────────────────────────────────────────
 interface DadosPessoais {
   nome_completo: string; cpf: string; rg: string;
-  data_nascimento: string; telefone: string; email: string;
-  endereco: string; igreja: string;
+  data_nascimento: string; sexo: string;
+  telefone: string; email: string;
+  endereco: string; numero: string; complemento: string;
+  bairro: string; cidade: string; estado: string; cep: string;
+  igreja: string;
 }
 
 const DOCS_OBRIGATORIOS = [
@@ -79,8 +83,10 @@ export default function NovaMatricula() {
   }, []);
 
   const [dados, setDados] = useState<DadosPessoais>({
-    nome_completo: '', cpf: '', rg: '', data_nascimento: '',
-    telefone: '', email: '', endereco: '', igreja: '',
+    nome_completo: '', cpf: '', rg: '', data_nascimento: '', sexo: '',
+    telefone: '', email: '',
+    endereco: '', numero: '', complemento: '', bairro: '', cidade: '', estado: '', cep: '',
+    igreja: '',
   });
 
   const [docs, setDocs] = useState<Record<string, DocStatus>>(
@@ -139,6 +145,24 @@ export default function NovaMatricula() {
       // 3. Cria taxa de matrícula pendente
       await createTaxaMatricula(aluno.id, mat.id, profile.id);
 
+      // 4. Salva dados pessoais coletados no perfil do aluno
+      await updatePerfil(aluno.id, {
+        full_name:       dados.nome_completo,
+        telefone:        dados.telefone || undefined,
+        cpf:             dados.cpf      || undefined,
+        rg:              dados.rg       || undefined,
+        data_nascimento: dados.data_nascimento || undefined,
+        sexo:            (dados.sexo as 'masculino' | 'feminino' | 'outro') || undefined,
+        endereco:        dados.endereco    || undefined,
+        numero:          dados.numero      || undefined,
+        complemento:     dados.complemento || undefined,
+        bairro:          dados.bairro      || undefined,
+        cidade:          dados.cidade      || undefined,
+        estado:          dados.estado      || undefined,
+        cep:             dados.cep         || undefined,
+        igreja_local:    dados.igreja      || undefined,
+      });
+
       setMatriculaId(mat.id);
       setEtapa(2);
       toast({ title: 'Matrícula registrada!', description: 'Status: PENDENTE. Aguarda validação presencial.' });
@@ -178,11 +202,11 @@ export default function NovaMatricula() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {([
               ['nome_completo','Nome completo *','text'],
+              ['email','E-mail *','email'],
               ['cpf','CPF *','text'],
               ['rg','RG','text'],
               ['data_nascimento','Data de nascimento','date'],
               ['telefone','Telefone / WhatsApp','text'],
-              ['email','E-mail *','email'],
             ] as [keyof DadosPessoais, string, string][]).map(([key, label, type]) => (
               <div key={key}>
                 <Label className="text-sm text-foreground">{label}</Label>
@@ -191,9 +215,54 @@ export default function NovaMatricula() {
                   className="mt-1.5 bg-background border-border text-foreground" />
               </div>
             ))}
+            <div>
+              <Label className="text-sm text-foreground">Sexo</Label>
+              <select value={dados.sexo} onChange={e => setField('sexo', e.target.value)}
+                className="mt-1.5 w-full bg-background border border-border rounded-md px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary">
+                <option value="">—</option>
+                <option value="masculino">Masculino</option>
+                <option value="feminino">Feminino</option>
+                <option value="outro">Outro</option>
+              </select>
+            </div>
             <div className="sm:col-span-2">
-              <Label className="text-sm text-foreground">Endereço completo</Label>
+              <Label className="text-sm text-foreground">Logradouro</Label>
               <Input value={dados.endereco} onChange={e => setField('endereco', e.target.value)}
+                placeholder="Rua, Av., etc."
+                className="mt-1.5 bg-background border-border text-foreground" />
+            </div>
+            <div>
+              <Label className="text-sm text-foreground">Número</Label>
+              <Input value={dados.numero} onChange={e => setField('numero', e.target.value)}
+                placeholder="123"
+                className="mt-1.5 bg-background border-border text-foreground" />
+            </div>
+            <div>
+              <Label className="text-sm text-foreground">Complemento</Label>
+              <Input value={dados.complemento} onChange={e => setField('complemento', e.target.value)}
+                placeholder="Apto, bloco…"
+                className="mt-1.5 bg-background border-border text-foreground" />
+            </div>
+            <div>
+              <Label className="text-sm text-foreground">Bairro</Label>
+              <Input value={dados.bairro} onChange={e => setField('bairro', e.target.value)}
+                className="mt-1.5 bg-background border-border text-foreground" />
+            </div>
+            <div>
+              <Label className="text-sm text-foreground">CEP</Label>
+              <Input value={dados.cep} onChange={e => setField('cep', e.target.value)}
+                placeholder="00000-000"
+                className="mt-1.5 bg-background border-border text-foreground" />
+            </div>
+            <div>
+              <Label className="text-sm text-foreground">Cidade</Label>
+              <Input value={dados.cidade} onChange={e => setField('cidade', e.target.value)}
+                className="mt-1.5 bg-background border-border text-foreground" />
+            </div>
+            <div>
+              <Label className="text-sm text-foreground">Estado (UF)</Label>
+              <Input value={dados.estado} onChange={e => setField('estado', e.target.value)}
+                placeholder="SP" maxLength={2}
                 className="mt-1.5 bg-background border-border text-foreground" />
             </div>
             <div className="sm:col-span-2">

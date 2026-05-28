@@ -19,25 +19,58 @@ const statusConfig: Record<string, { label: string; color: string; icon: React.E
 
 // ─── Modal editar aluno ───────────────────────────────────────────────────────
 
+type ModalForm = {
+  full_name: string; telefone: string; role: string; bio: string;
+  cpf: string; rg: string; data_nascimento: string; sexo: string;
+  endereco: string; numero: string; complemento: string; bairro: string;
+  cidade: string; estado: string; cep: string; igreja_local: string;
+};
+
 interface AlunoModalProps {
   aluno: UserRow;
   salvando: boolean;
-  onSave: (dados: { full_name: string; telefone: string; role: string }) => void;
+  onSave: (dados: ModalForm) => void;
   onClose: () => void;
 }
 
 function AlunoModal({ aluno, salvando, onSave, onClose }: AlunoModalProps) {
-  const [form, setForm] = useState({
-    full_name: aluno.full_name ?? '',
-    telefone:  aluno.telefone ?? '',
-    role:      aluno.role,
+  const [tab, setTab] = useState<'basico' | 'endereco' | 'ministerio'>('basico');
+  const [form, setForm] = useState<ModalForm>({
+    full_name:      aluno.full_name      ?? '',
+    telefone:       aluno.telefone       ?? '',
+    role:           aluno.role,
+    bio:            aluno.bio            ?? '',
+    cpf:            aluno.cpf            ?? '',
+    rg:             aluno.rg             ?? '',
+    data_nascimento: aluno.data_nascimento ?? '',
+    sexo:           aluno.sexo           ?? '',
+    endereco:       aluno.endereco       ?? '',
+    numero:         aluno.numero         ?? '',
+    complemento:    aluno.complemento    ?? '',
+    bairro:         aluno.bairro         ?? '',
+    cidade:         aluno.cidade         ?? '',
+    estado:         aluno.estado         ?? '',
+    cep:            aluno.cep            ?? '',
+    igreja_local:   aluno.igreja_local   ?? '',
   });
+
+  const field = (key: keyof ModalForm, label: string, props?: React.InputHTMLAttributes<HTMLInputElement>) => (
+    <div>
+      <label className="text-xs text-muted-foreground font-medium mb-1 block">{label}</label>
+      <Input
+        value={form[key]}
+        onChange={e => setForm(p => ({ ...p, [key]: e.target.value }))}
+        className="bg-background"
+        {...props}
+      />
+    </div>
+  );
 
   return (
     <div className="fixed inset-0 bg-background/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-card border border-border rounded-xl p-6 w-full max-w-md shadow-lg space-y-4">
+      <div className="bg-card border border-border rounded-xl p-6 w-full max-w-lg shadow-lg space-y-4 max-h-[90vh] overflow-y-auto">
         <div className="flex items-center gap-3">
-          <div className="h-10 w-10 rounded-full bg-primary/20 flex items-center justify-center">
+          <div className="h-10 w-10 rounded-full bg-primary/20 flex items-center justify-center shrink-0">
             <User className="h-5 w-5 text-primary" />
           </div>
           <div>
@@ -46,37 +79,83 @@ function AlunoModal({ aluno, salvando, onSave, onClose }: AlunoModalProps) {
           </div>
         </div>
 
-        <div className="space-y-3">
-          <div>
-            <label className="text-xs text-muted-foreground font-medium mb-1 block">Nome Completo</label>
-            <Input
-              value={form.full_name}
-              onChange={e => setForm(p => ({ ...p, full_name: e.target.value }))}
-              className="bg-background"
-            />
-          </div>
-          <div>
-            <label className="text-xs text-muted-foreground font-medium mb-1 block">Telefone</label>
-            <Input
-              value={form.telefone}
-              onChange={e => setForm(p => ({ ...p, telefone: e.target.value }))}
-              placeholder="(00) 00000-0000"
-              className="bg-background"
-            />
-          </div>
-          <div>
-            <label className="text-xs text-muted-foreground font-medium mb-1 block">Status / Role</label>
-            <select
-              value={form.role}
-              onChange={e => setForm(p => ({ ...p, role: e.target.value }))}
-              className="w-full bg-background border border-border rounded-md px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+        {/* Tabs */}
+        <div className="flex gap-1 border-b border-border">
+          {(['basico', 'endereco', 'ministerio'] as const).map(t => (
+            <button
+              key={t}
+              onClick={() => setTab(t)}
+              className={`px-3 py-1.5 text-xs font-medium rounded-t capitalize transition-colors ${
+                tab === t
+                  ? 'bg-primary/10 text-primary border-b-2 border-primary'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
             >
-              <option value="aluno">Aluno ativo</option>
-              <option value="pendente">Pendente</option>
-              <option value="administracao">Secretaria</option>
-            </select>
-          </div>
+              {t === 'basico' ? 'Básico' : t === 'endereco' ? 'Endereço' : 'Ministério'}
+            </button>
+          ))}
         </div>
+
+        {tab === 'basico' && (
+          <div className="space-y-3">
+            {field('full_name', 'Nome Completo')}
+            {field('telefone', 'Telefone', { placeholder: '(00) 00000-0000' })}
+            <div className="grid grid-cols-2 gap-3">
+              {field('cpf', 'CPF', { placeholder: '000.000.000-00' })}
+              {field('rg', 'RG')}
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              {field('data_nascimento', 'Nascimento', { type: 'date' })}
+              <div>
+                <label className="text-xs text-muted-foreground font-medium mb-1 block">Sexo</label>
+                <select
+                  value={form.sexo}
+                  onChange={e => setForm(p => ({ ...p, sexo: e.target.value }))}
+                  className="w-full bg-background border border-border rounded-md px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                >
+                  <option value="">—</option>
+                  <option value="masculino">Masculino</option>
+                  <option value="feminino">Feminino</option>
+                  <option value="outro">Outro</option>
+                </select>
+              </div>
+            </div>
+            <div>
+              <label className="text-xs text-muted-foreground font-medium mb-1 block">Status / Role</label>
+              <select
+                value={form.role}
+                onChange={e => setForm(p => ({ ...p, role: e.target.value }))}
+                className="w-full bg-background border border-border rounded-md px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+              >
+                <option value="aluno">Aluno ativo</option>
+                <option value="pendente">Pendente</option>
+                <option value="administracao">Secretaria</option>
+              </select>
+            </div>
+          </div>
+        )}
+
+        {tab === 'endereco' && (
+          <div className="space-y-3">
+            {field('endereco', 'Logradouro (rua, av.)', { placeholder: 'Rua Exemplo' })}
+            <div className="grid grid-cols-3 gap-3">
+              {field('numero', 'Número', { placeholder: '123' })}
+              {field('complemento', 'Complemento', { placeholder: 'Apto 2' })}
+              {field('cep', 'CEP', { placeholder: '00000-000' })}
+            </div>
+            {field('bairro', 'Bairro')}
+            <div className="grid grid-cols-3 gap-3">
+              <div className="col-span-2">{field('cidade', 'Cidade')}</div>
+              {field('estado', 'UF', { placeholder: 'SP', maxLength: 2 })}
+            </div>
+          </div>
+        )}
+
+        {tab === 'ministerio' && (
+          <div className="space-y-3">
+            {field('igreja_local', 'Igreja local', { placeholder: 'Nome da igreja' })}
+          </div>
+        )}
 
         <div className="flex gap-2 pt-2">
           <Button onClick={() => onSave(form)} className="flex-1" disabled={salvando}>
@@ -154,7 +233,7 @@ export default function Alunos() {
     setAtualizando(null);
   };
 
-  const handleEditSave = async (dados: { full_name: string; telefone: string; role: string }) => {
+  const handleEditSave = async (dados: ModalForm) => {
     if (!editAluno) return;
     setAtualizando(editAluno.id);
     const { error } = await updateUsuario(editAluno.id, dados);

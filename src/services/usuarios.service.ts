@@ -11,6 +11,20 @@ export interface UserRow {
   foto_url?: string;
   updated_at?: string;
   created_at: string;
+  // dados pessoais (migration 021)
+  cpf?: string;
+  rg?: string;
+  data_nascimento?: string;
+  sexo?: 'masculino' | 'feminino' | 'outro';
+  endereco?: string;
+  numero?: string;
+  complemento?: string;
+  bairro?: string;
+  cidade?: string;
+  estado?: string;
+  cep?: string;
+  igreja_local?: string;
+  observacoes_internas?: string;
 }
 
 export interface ServiceResult {
@@ -98,6 +112,20 @@ export interface UpdatePerfilPayload {
   telefone?: string;
   bio?: string;
   avatar_url?: string;
+  // dados pessoais (migration 021)
+  cpf?: string;
+  rg?: string;
+  data_nascimento?: string;
+  sexo?: 'masculino' | 'feminino' | 'outro';
+  endereco?: string;
+  numero?: string;
+  complemento?: string;
+  bairro?: string;
+  cidade?: string;
+  estado?: string;
+  cep?: string;
+  igreja_local?: string;
+  observacoes_internas?: string;
 }
 
 // Atualização do próprio perfil — usado em Perfil.tsx

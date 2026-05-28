@@ -3,7 +3,7 @@ import { supabase } from '@/lib/supabase';
 import { getProfile } from '@/services/profile.service';
 import { signOut as authSignOut } from '@/services/auth.service';
 
-export type UserRole = 'pendente' | 'aluno' | 'professor' | 'administracao' | 'admin' | 'superadmin';
+export type UserRole = 'pendente' | 'aluno' | 'professor' | 'administracao' | 'financeiro' | 'admin' | 'superadmin';
 
 export interface Profile {
   id: string;
@@ -13,6 +13,20 @@ export interface Profile {
   avatar_url?: string;
   bio?: string;
   email?: string;
+  // dados pessoais (migration 021)
+  cpf?: string;
+  rg?: string;
+  data_nascimento?: string;
+  sexo?: 'masculino' | 'feminino' | 'outro';
+  endereco?: string;
+  numero?: string;
+  complemento?: string;
+  bairro?: string;
+  cidade?: string;
+  estado?: string;
+  cep?: string;
+  igreja_local?: string;
+  observacoes_internas?: string;
 }
 
 export function useProfile() {

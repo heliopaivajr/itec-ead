@@ -1,11 +1,12 @@
 import React, { useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useOutletContext } from 'react-router-dom';
 import {
   ArrowLeft, Loader2, User, Phone, Mail, MapPin,
-  GraduationCap, FileText, CreditCard,
+  GraduationCap, FileText, CreditCard, Church, Home, Save,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Textarea } from '@/components/ui/textarea';
 import {
   getFichaAluno,
   type PerfilAluno,
@@ -13,6 +14,8 @@ import {
   type DocumentoFicha,
   type MensalidadeFicha,
 } from '@/services/ficha-aluno.service';
+import { updatePerfil } from '@/services/usuarios.service';
+import type { DashboardContext } from '../Dashboard';
 
 // ─── Helpers ─────────────────────────────────────────────────
 
@@ -43,12 +46,16 @@ function moeda(v: number) {
 export default function FichaAluno() {
   const { alunoId } = useParams<{ alunoId: string }>();
   const navigate    = useNavigate();
+  const { profile: adminProfile } = useOutletContext<DashboardContext>();
 
   const [loading,      setLoading]      = useState(true);
   const [perfil,       setPerfil]       = useState<PerfilAluno | null>(null);
   const [matriculas,   setMatriculas]   = useState<MatriculaFicha[]>([]);
   const [documentos,   setDocumentos]   = useState<DocumentoFicha[]>([]);
   const [mensalidades, setMensalidades] = useState<MensalidadeFicha[]>([]);
+
+  const [obsEdit,    setObsEdit]    = useState('');
+  const [savingObs,  setSavingObs]  = useState(false);
 
   useEffect(() => {
     if (!alunoId) return;
@@ -62,8 +69,18 @@ export default function FichaAluno() {
     setMatriculas(ficha.matriculas);
     setDocumentos(ficha.documentos);
     setMensalidades(ficha.mensalidades);
+    setObsEdit(ficha.perfil?.observacoes_internas ?? '');
     setLoading(false);
   };
+
+  const salvarObs = async () => {
+    if (!alunoId) return;
+    setSavingObs(true);
+    await updatePerfil(alunoId, { observacoes_internas: obsEdit });
+    setSavingObs(false);
+  };
+
+  const podeVerObs = ['superadmin', 'admin', 'administracao'].includes(adminProfile.role);
 
   if (loading) {
     return (
@@ -86,6 +103,14 @@ export default function FichaAluno() {
   }
 
   const inadimplente = mensalidades.some(m => m.status === 'atrasado');
+  const enderecoCompleto = [
+    perfil.endereco,
+    perfil.numero && `nº ${perfil.numero}`,
+    perfil.complemento,
+    perfil.bairro,
+    perfil.cidade && perfil.estado ? `${perfil.cidade}/${perfil.estado}` : (perfil.cidade || perfil.estado),
+    perfil.cep && `CEP ${perfil.cep}`,
+  ].filter(Boolean).join(', ');
 
   return (
     <div className="space-y-6 max-w-4xl">
@@ -126,8 +151,20 @@ export default function FichaAluno() {
         </div>
 
         <div className="grid sm:grid-cols-2 gap-3 text-sm">
-          <InfoRow icon={<Mail className="h-4 w-4" />} label="E-mail" value={perfil.email} />
+          <InfoRow icon={<Mail className="h-4 w-4" />}  label="E-mail"   value={perfil.email} />
           <InfoRow icon={<Phone className="h-4 w-4" />} label="Telefone" value={perfil.telefone ?? '—'} />
+          {perfil.cpf && (
+            <InfoRow icon={<FileText className="h-4 w-4" />} label="CPF" value={perfil.cpf} />
+          )}
+          {perfil.rg && (
+            <InfoRow icon={<FileText className="h-4 w-4" />} label="RG" value={perfil.rg} />
+          )}
+          {perfil.data_nascimento && (
+            <InfoRow icon={<User className="h-4 w-4" />} label="Nascimento" value={fmt(perfil.data_nascimento)} />
+          )}
+          {perfil.sexo && (
+            <InfoRow icon={<User className="h-4 w-4" />} label="Sexo" value={perfil.sexo} />
+          )}
           {perfil.bio && (
             <div className="sm:col-span-2">
               <InfoRow icon={<MapPin className="h-4 w-4" />} label="Bio" value={perfil.bio} />
@@ -135,6 +172,28 @@ export default function FichaAluno() {
           )}
         </div>
       </div>
+
+      {/* Endereço */}
+      {enderecoCompleto && (
+        <Section title="Endereço" icon={<Home className="h-4 w-4" />}>
+          <div className="grid sm:grid-cols-2 gap-3 text-sm">
+            {perfil.endereco && <InfoRow icon={<MapPin className="h-4 w-4" />} label="Logradouro" value={perfil.endereco} />}
+            {perfil.numero    && <InfoRow icon={<MapPin className="h-4 w-4" />} label="Número"     value={perfil.numero} />}
+            {perfil.complemento && <InfoRow icon={<MapPin className="h-4 w-4" />} label="Complemento" value={perfil.complemento} />}
+            {perfil.bairro    && <InfoRow icon={<MapPin className="h-4 w-4" />} label="Bairro"     value={perfil.bairro} />}
+            {perfil.cidade    && <InfoRow icon={<MapPin className="h-4 w-4" />} label="Cidade"     value={perfil.cidade} />}
+            {perfil.estado    && <InfoRow icon={<MapPin className="h-4 w-4" />} label="Estado"     value={perfil.estado} />}
+            {perfil.cep       && <InfoRow icon={<MapPin className="h-4 w-4" />} label="CEP"        value={perfil.cep} />}
+          </div>
+        </Section>
+      )}
+
+      {/* Ministério */}
+      {perfil.igreja_local && (
+        <Section title="Ministério" icon={<Church className="h-4 w-4" />}>
+          <InfoRow icon={<Church className="h-4 w-4" />} label="Igreja local" value={perfil.igreja_local} />
+        </Section>
+      )}
 
       {/* Matrículas */}
       <Section title="Matrículas" icon={<GraduationCap className="h-4 w-4" />}>
@@ -240,6 +299,25 @@ export default function FichaAluno() {
           </table>
         )}
       </Section>
+
+      {/* Observações internas — só para secretaria/admin */}
+      {podeVerObs && (
+        <Section title="Observações Internas" icon={<FileText className="h-4 w-4" />}>
+          <div className="space-y-3">
+            <Textarea
+              value={obsEdit}
+              onChange={e => setObsEdit(e.target.value)}
+              placeholder="Notas internas sobre este aluno…"
+              rows={4}
+              className="resize-none"
+            />
+            <Button size="sm" onClick={salvarObs} disabled={savingObs}>
+              <Save className="h-4 w-4 mr-2" />
+              {savingObs ? 'Salvando…' : 'Salvar observações'}
+            </Button>
+          </div>
+        </Section>
+      )}
     </div>
   );
 }

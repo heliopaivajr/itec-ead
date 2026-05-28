@@ -9,6 +9,20 @@ export interface PerfilAluno {
   bio: string | null;
   avatar_url: string | null;
   created_at: string;
+  // dados pessoais (migration 021)
+  cpf?: string | null;
+  rg?: string | null;
+  data_nascimento?: string | null;
+  sexo?: string | null;
+  endereco?: string | null;
+  numero?: string | null;
+  complemento?: string | null;
+  bairro?: string | null;
+  cidade?: string | null;
+  estado?: string | null;
+  cep?: string | null;
+  igreja_local?: string | null;
+  observacoes_internas?: string | null;
 }
 
 export interface MatriculaFicha {
@@ -47,7 +61,7 @@ export async function getFichaAluno(alunoId: string): Promise<FichaAlunoData> {
   const [perfilRes, matRes, docRes, mensRes] = await Promise.all([
     supabase
       .from('profiles')
-      .select('id, full_name, email, role, telefone, bio, avatar_url, created_at')
+      .select('id, full_name, email, role, telefone, bio, avatar_url, created_at, cpf, rg, data_nascimento, sexo, endereco, numero, complemento, bairro, cidade, estado, cep, igreja_local, observacoes_internas')
       .eq('id', alunoId)
       .single(),
 
