@@ -93,14 +93,21 @@ export async function updateUsuario(
   return { error: null };
 }
 
+export interface UpdatePerfilPayload {
+  full_name?: string;
+  telefone?: string;
+  bio?: string;
+  avatar_url?: string;
+}
+
 // Atualização do próprio perfil — usado em Perfil.tsx
 export async function updatePerfil(
   userId: string,
-  dados: { full_name: string; telefone: string; bio: string }
+  dados: UpdatePerfilPayload
 ): Promise<ServiceResult> {
   const { error } = await supabase
     .from('profiles')
-    .update({ ...dados, updated_at: new Date().toISOString() })
+    .update(dados)
     .eq('id', userId);
 
   if (error) return { error: error.message };
