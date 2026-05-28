@@ -3,7 +3,7 @@ import {
   Book, User, Users, Tv, CalendarDays,
   FileText, CreditCard, HelpCircle, Bell,
   Settings, ShieldAlert, BookOpen, LayoutDashboard,
-  LogOut, ClipboardList, UserCheck, Building2, Shield, Megaphone, Home
+  LogOut, ClipboardList, UserCheck, Building2, Shield, Megaphone, Home, GraduationCap
 } from 'lucide-react';
 import {
   SidebarProvider, Sidebar, SidebarHeader, SidebarContent, SidebarFooter,
@@ -73,6 +73,7 @@ const menuByRole: Record<string, { icon: React.ElementType; label: string; href:
     { icon: Users,           label: 'Usuários',        href: '/dashboard/usuarios',         tooltip: 'Ver alunos e professores' },
     { icon: UserCheck,       label: 'Matrículas',      href: '/dashboard/matriculas',       tooltip: 'Aprovar matrículas' },
     { icon: Shield,          label: 'Nova Matrícula',  href: '/dashboard/nova-matricula',   tooltip: 'Cadastrar novo aluno' },
+    { icon: GraduationCap,   label: 'Turmas',          href: '/dashboard/turmas-admin',     tooltip: 'Gestão de turmas' },
     { icon: ClipboardList,   label: 'Leads',           href: '/dashboard/leads',            tooltip: 'Interessados cadastrados' },
     { icon: CreditCard,      label: 'Financeiro',      href: '/dashboard/financeiro',       tooltip: 'Mensalidades e pagamentos' },
     { icon: BookOpen,        label: 'Convalidações',   href: '/dashboard/convalidacoes',    tooltip: 'Aproveitamento de disciplinas' },
@@ -86,6 +87,7 @@ const menuByRole: Record<string, { icon: React.ElementType; label: string; href:
     { icon: BookOpen,        label: 'Professores',    href: '/dashboard/professores-admin',    tooltip: 'Corpo docente' },
     { icon: Home,            label: 'Equipe ITEC',    href: '/dashboard/equipe-itec',          tooltip: 'Equipe administrativa' },
     { icon: Book,            label: 'Cursos',         href: '/dashboard/cursos-admin',         tooltip: 'Gerenciar cursos' },
+    { icon: GraduationCap,   label: 'Turmas',         href: '/dashboard/turmas-admin',         tooltip: 'Gestão de turmas' },
     { icon: UserCheck,       label: 'Matrículas',     href: '/dashboard/matriculas',           tooltip: 'Aprovar matrículas' },
     { icon: ClipboardList,   label: 'Leads',          href: '/dashboard/leads',                tooltip: 'Interessados cadastrados' },
     { icon: CreditCard,      label: 'Financeiro',     href: '/dashboard/financeiro',           tooltip: 'Gestão financeira' },
@@ -99,6 +101,7 @@ const menuByRole: Record<string, { icon: React.ElementType; label: string; href:
     { icon: BookOpen,        label: 'Professores',    href: '/dashboard/professores-admin',    tooltip: 'Corpo docente' },
     { icon: Home,            label: 'Equipe ITEC',    href: '/dashboard/equipe-itec',          tooltip: 'Equipe administrativa' },
     { icon: Book,            label: 'Cursos',         href: '/dashboard/cursos-admin',         tooltip: 'Gerenciar cursos' },
+    { icon: GraduationCap,   label: 'Turmas',         href: '/dashboard/turmas-admin',         tooltip: 'Gestão de turmas' },
     { icon: UserCheck,       label: 'Matrículas',     href: '/dashboard/matriculas',           tooltip: 'Aprovar matrículas' },
     { icon: ClipboardList,   label: 'Leads',          href: '/dashboard/leads',                tooltip: 'Interessados cadastrados' },
     { icon: CreditCard,      label: 'Financeiro',     href: '/dashboard/financeiro',           tooltip: 'Gestão financeira' },

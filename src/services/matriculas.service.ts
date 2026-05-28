@@ -71,6 +71,7 @@ export interface CreateMatriculaPayload {
   aluno_id: string;
   status: 'pendente';
   curso_id?: string;
+  turma_id?: string;
   observacoes?: string;
 }
 

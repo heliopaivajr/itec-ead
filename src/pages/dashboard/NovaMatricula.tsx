@@ -1,10 +1,17 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useOutletContext } from 'react-router-dom';
-import { Check, Upload, Loader2, ArrowLeft, ArrowRight, User } from 'lucide-react';
+import { Check, Upload, Loader2, ArrowLeft, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/lib/supabase';
 import {
@@ -12,6 +19,8 @@ import {
   createMatricula,
   createTaxaMatricula,
 } from '@/services/matriculas.service';
+import { getTurmasAtivas } from '@/services/turmas.service';
+import type { Turma } from '@/services/turmas.service';
 import type { DashboardContext } from '../Dashboard';
 
 // ─── Tipos ────────────────────────────────────────────────────
@@ -62,6 +71,12 @@ export default function NovaMatricula() {
   const [etapa, setEtapa]     = useState(0);
   const [salvando, setSalvando] = useState(false);
   const [matriculaId, setMatriculaId] = useState<string | null>(null);
+  const [turmas, setTurmas]   = useState<Turma[]>([]);
+  const [turmaId, setTurmaId] = useState<string>('');
+
+  useEffect(() => {
+    getTurmasAtivas().then(setTurmas);
+  }, []);
 
   const [dados, setDados] = useState<DadosPessoais>({
     nome_completo: '', cpf: '', rg: '', data_nascimento: '',
@@ -116,6 +131,7 @@ export default function NovaMatricula() {
       const { data: mat, error: errMat } = await createMatricula({
         aluno_id: aluno.id,
         status:   'pendente',
+        turma_id: turmaId || undefined,
       });
 
       if (errMat || !mat) throw new Error(errMat ?? 'Erro ao criar matrícula');
@@ -184,6 +200,21 @@ export default function NovaMatricula() {
               <Label className="text-sm text-foreground">Igreja local</Label>
               <Input value={dados.igreja} onChange={e => setField('igreja', e.target.value)}
                 className="mt-1.5 bg-background border-border text-foreground" />
+            </div>
+            <div className="sm:col-span-2">
+              <Label className="text-sm text-foreground">Turma</Label>
+              <Select value={turmaId} onValueChange={setTurmaId}>
+                <SelectTrigger className="mt-1.5 bg-background border-border text-foreground">
+                  <SelectValue placeholder="Selecione a turma (opcional)" />
+                </SelectTrigger>
+                <SelectContent>
+                  {turmas.map(t => (
+                    <SelectItem key={t.id} value={t.id}>
+                      {t.codigo} — {t.nome}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
           <Button onClick={avancarEtapa1} className="w-full bg-primary text-primary-foreground">
@@ -265,6 +296,14 @@ export default function NovaMatricula() {
                 <div className="flex justify-between py-2 border-b border-border">
                   <span className="text-muted-foreground">CPF</span>
                   <span className="text-foreground">{dados.cpf}</span>
+                </div>
+                <div className="flex justify-between py-2 border-b border-border">
+                  <span className="text-muted-foreground">Turma</span>
+                  <span className="text-foreground">
+                    {turmaId
+                      ? (turmas.find(t => t.id === turmaId)?.codigo ?? '—')
+                      : <span className="text-muted-foreground">Não selecionada</span>}
+                  </span>
                 </div>
                 <div className="flex justify-between py-2 border-b border-border">
                   <span className="text-muted-foreground">Documentos</span>

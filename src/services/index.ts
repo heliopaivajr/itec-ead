@@ -16,3 +16,6 @@ export * from './frequencia.service';
 export * from './matricula-academica.service';
 export * from './financeiro.service';
 export * from './material.service';
+
+// Services Sprint I
+// turmas.service — importar diretamente (ServiceResult ambíguo no barrel)

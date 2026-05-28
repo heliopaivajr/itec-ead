@@ -49,6 +49,8 @@ const ContratoForm       = lazy(() => import("./pages/dashboard/ContratoForm"));
 const MeusContratos      = lazy(() => import("./pages/dashboard/MeusContratos"));
 const ProfessoresAdmin   = lazy(() => import("./pages/dashboard/ProfessoresAdmin"));
 const EquipeITEC         = lazy(() => import("./pages/dashboard/EquipeITEC"));
+const GestaoTurmas       = lazy(() => import("./pages/dashboard/GestaoTurmas"));
+const FichaAluno         = lazy(() => import("./pages/dashboard/FichaAluno"));
 import ProtectedRoute from '@/components/ProtectedRoute';
 
 const queryClient = new QueryClient();
@@ -133,6 +135,12 @@ const App = () => (
               {/* Admin — Professores e Equipe */}
               <Route path="professores-admin" element={<ProfessoresAdmin />} />
               <Route path="equipe-itec"       element={<EquipeITEC />} />
+
+              {/* Admin — Turmas */}
+              <Route path="turmas-admin"      element={<GestaoTurmas />} />
+
+              {/* Secretaria/Admin — Ficha do aluno */}
+              <Route path="aluno/:alunoId"    element={<FichaAluno />} />
 
               {/* All roles */}
               <Route path="perfil" element={<Perfil />} />
