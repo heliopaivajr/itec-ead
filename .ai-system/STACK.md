@@ -26,8 +26,8 @@
 
 ## Testes
 - Vitest + @testing-library/react + jsdom
-- **48 testes passando**
-- src/test/setup.ts com mock global do Supabase
+- **86 testes passando** (atualizado pós-Sprint F2)
+- src/test/setup.ts com mock global do Supabase (fluent builder)
 
 ## Variáveis de ambiente
 - VITE_SUPABASE_URL
@@ -90,21 +90,29 @@ src/
 | 014 | 20260526_014_seed_itec | Teologia: 6 módulos, 40 disciplinas, 22 prereqs |
 | 017 | 20260527_017_profiles_avatar | ADD COLUMN avatar_url em profiles |
 
-## Migrations pendentes — Sprint I
+## Migrations aplicadas — Sprint I
 
-| # | Conteúdo | Status |
+| # | Arquivo | Conteúdo |
 |---|---|---|
-| 018 | Tabela `turmas` (código, curso_id, ano, semestre, status, vagas) | Pendente |
-| 019 | `turma_id UUID` em `matriculas` | Pendente |
-| 020 | Constraint role inclui `financeiro` em profiles | Pendente |
+| 018 | 20260527_018_turmas | Tabela `turmas` + RLS + seed 3 turmas |
+| 019 | 20260527_019_matriculas_turma_id | `turma_id UUID` FK em `matriculas` |
+| 020 | 20260527_020_role_financeiro | Constraint role inclui `financeiro` |
+
+## Migrations pendentes — Sprint J, K, L
+
+| # | Conteúdo | Sprint |
+|---|---|---|
+| 021 | `video_url`, `video_tipo`, `video_duracao_min` em `materiais` | K |
+| 022 | Tabela `certificados` (emissão + número ITEC-ANO-SEQ) | L |
+| 023 | Tabela `verificacao_certificados` (rota pública sem auth) | L |
 
 ## Dívida técnica conhecida
 
-| DT | Item | Sprint |
-|---|---|---|
-| DT-01 | `supabase.from` direto em `NovaMatricula.tsx` e `Convalidacoes.tsx` | F1 |
-| DT-02 | 6 services Sprint D sem cobertura de testes | T3 |
-| DT-03 | `getFrequenciaByDisciplina`, `getMateriaisByDisciplina` sem LIMIT | F2 |
+| DT | Item | Sprint | Status |
+|---|---|---|---|
+| DT-01 | `supabase.from` direto em `Convalidacoes.tsx` | F1 | ⚠️ Pendente |
+| DT-02 | 6 services Sprint D sem cobertura de testes | T3 | ⚠️ Pendente |
+| DT-03 | Services sem LIMIT protetivo | F2 | ✅ Resolvido |
 
 ## Score de auditoria — 2026-05-26
 

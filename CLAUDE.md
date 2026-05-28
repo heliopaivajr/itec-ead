@@ -129,17 +129,20 @@ Sprint I:
 
 ## Testes
 ```bash
-pnpm test:run   # deve sempre passar 48/48
+pnpm test:run   # deve sempre passar 86/86
 ```
 - Vitest + Testing Library + jsdom
-- Mock global do Supabase em `src/test/setup.ts`
+- Mock global do Supabase em `src/test/setup.ts` (fluent builder)
 - Testes em `src/test/` — services e componentes críticos
 - ⚠️ 6 services Sprint D sem cobertura — ver Sprint T3
-- ✅ DT-03 resolvido: LIMIT em academico, professor (paginado), material services
+- ✅ DT-03 resolvido: LIMIT em todos os services (Sprint F2)
 
 ## ADRs
 - ADR-001: decisões iniciais de arquitetura
 - ADR-002: camada de serviços — **IMPLEMENTADO** (14 services)
+- ADR-003: sistema de turmas — **IMPLEMENTADO** (Sprint I)
+- ADR-004: estratégia de vídeos EAD — PROPOSTA
+- ADR-005: sistema de certificados — PROPOSTA
 
 ## Auditoria
 - Última: 2026-05-26 pós-Sprint D
@@ -152,3 +155,106 @@ A pasta `.ai-system/` é um sistema documental independente
 que roda no Claude.ai (Projetos), não no Claude Code.
 Contém agentes, specs, auditorias e ADRs do projeto.
 Não misturar com o código da plataforma web.
+
+## Roadmap de Features
+
+### Concluído
+- Sprint A1-A5: bugs menores
+- Sprint G+H: CRUD professores + equipe ITEC
+- Sprint I: turmas + ficha aluno + role financeiro
+- Sprint F2: performance N+1 + rotas + LIMITs
+
+### Pendente — Simulação
+- [ ] Testar professor (frequência, contrato PDF)
+- [ ] Testar financeiro (registrar pagamento)
+- [ ] Testar fluxo Nova Matrícula completo
+- [ ] Testar ficha do aluno pelo superadmin
+
+### Sprint J — Gestão Acadêmica
+- Upload materiais por disciplina
+- Criar/editar módulos e disciplinas
+- Gerenciar pré-requisitos visualmente
+
+### Sprint K — Vídeos EAD
+- Campo YouTube URL por disciplina/material
+- Player embedado no dashboard do aluno
+- Marcar vídeo como "assistido"
+- Progresso conta para certificado
+
+### Sprint L — Certificados
+- Verificação automática de conclusão
+  (frequência ≥ 75% + disciplinas aprovadas
+   + sem débitos financeiros)
+- Geração PDF com @react-pdf/renderer
+- QR Code de verificação
+- Página pública: itecedu.com/verificar/[codigo]
+- Download pelo aluno
+- Emissão manual pela secretaria
+- Registro único com número sequencial
+
+### Sprint M — Melhorias EAD (futuro)
+- Fórum por disciplina
+- Chat com professor
+- Provas online
+- Biblioteca digital (PDFs apostilas)
+
+## Infraestrutura — Plano de Evolução
+
+### Agora (desenvolvimento)
+Supabase Free + Vercel Free = $0/mês
+
+### Lançamento (100-150 alunos)
+Supabase Pro ($25) + Vercel Pro ($20) = $45/mês
+- Sem pausas no banco
+- Google OAuth reabilitado
+- Backups automáticos
+
+### Crescimento (150-500 alunos)
+Supabase Pro + Vercel Pro + Cloudflare CDN
+= ~$70/mês
+
+### Escala (500-1000 alunos)
+Avaliar migração para GCP
+Cloud SQL + Firebase Auth + BigQuery
+= ~$150/mês
+
+### Grande escala (1000+ alunos)
+GCP completo ou AWS
+= $300-500/mês
+
+## Vídeos EAD — Decisão Técnica
+
+Estratégia em fases:
+1. YouTube não listado (agora) — $0
+   → Professor sobe vídeo no YouTube
+   → Link adicionado no material
+   → Aluno assiste via iframe no dashboard
+
+2. Cloudflare Stream (150+ alunos) — $5/1000min
+   → Upload direto no sistema
+   → Player com logo ITEC
+   → Rastreamento básico
+
+3. Mux (300+ alunos) — $0.015/min
+   → Rastreamento completo
+   → Analytics de visualização
+   → Qualidade adaptativa
+
+## Certificados — Decisão Técnica
+
+Tecnologia: @react-pdf/renderer (já instalado)
+Padrão: mesmo do ContratoForm.tsx
+
+Conteúdo do certificado:
+- Nome completo e CPF do aluno
+- Curso: Graduação em Teologia Livre
+- Carga horária: 185 créditos
+- Data de conclusão
+- Assinatura: Pr. Eliel (Reitor)
+- Assinatura: Pr. Hélio Paiva Jr. (Diretor)
+- QR Code de verificação
+- Número de registro único
+
+Verificação pública:
+itecedu.com/verificar/[codigo]
+→ Mostra nome, curso, data, "Certificado válido ✅"
