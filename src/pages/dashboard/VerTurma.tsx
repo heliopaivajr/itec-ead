@@ -4,7 +4,7 @@ import { ArrowLeft, Download, AlertTriangle, CheckCircle2, XCircle } from 'lucid
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { getDisciplinaById } from '@/services/academico.service';
-import { getFrequenciaByDisciplina, getResumoFrequencia } from '@/services/frequencia.service';
+import { getFrequenciaByDisciplina, calcularResumosPorAluno } from '@/services/frequencia.service';
 import type { Disciplina } from '@/services/academico.service';
 
 type Filtro = 'todos' | 'risco' | 'ok';
@@ -44,20 +44,21 @@ export default function VerTurma() {
         registros.map(r => [r.aluno_id, r.aluno?.full_name ?? r.aluno_id])
       );
 
+      // Calcula resumos em memória — sem queries extras (N+1 eliminado)
       const alunosUnicos = [...new Set(registros.map(r => r.aluno_id))];
-      const rows: AlunoTurma[] = await Promise.all(
-        alunosUnicos.map(async (alunoId): Promise<AlunoTurma> => {
-          const resumo = await getResumoFrequencia(alunoId, disciplinaId);
-          return {
-            aluno_id:    alunoId,
-            nome:        nomeMap.get(alunoId) ?? alunoId,
-            percentual:  resumo.percentual_presenca,
-            total_aulas: resumo.total_aulas,
-            presencas:   resumo.presencas,
-            status:      resumo.status,
-          };
-        })
-      );
+      const resumos = calcularResumosPorAluno(registros);
+
+      const rows: AlunoTurma[] = alunosUnicos.map((alunoId): AlunoTurma => {
+        const resumo = resumos.get(alunoId);
+        return {
+          aluno_id:    alunoId,
+          nome:        nomeMap.get(alunoId) ?? alunoId,
+          percentual:  resumo?.percentual_presenca ?? 100,
+          total_aulas: resumo?.total_aulas ?? 0,
+          presencas:   resumo?.presencas ?? 0,
+          status:      resumo?.status ?? 'ok',
+        };
+      });
 
       setAlunos(rows.sort((a, b) => a.percentual - b.percentual));
       setLoading(false);

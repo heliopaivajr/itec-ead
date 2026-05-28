@@ -2,47 +2,17 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   ArrowLeft, Loader2, User, Phone, Mail, MapPin,
-  GraduationCap, FileText, CreditCard, Calendar,
+  GraduationCap, FileText, CreditCard,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { supabase } from '@/lib/supabase';
-
-// ─── Tipos ───────────────────────────────────────────────────
-
-interface Perfil {
-  id: string;
-  full_name: string;
-  email: string;
-  role: string;
-  telefone: string | null;
-  bio: string | null;
-  avatar_url: string | null;
-  created_at: string;
-}
-
-interface MatriculaAluno {
-  id: string;
-  status: string;
-  created_at: string;
-  turma?: { codigo: string; nome: string } | null;
-}
-
-interface DocumentoAluno {
-  id: string;
-  tipo_documento: string;
-  status: string;
-  criado_em: string;
-}
-
-interface Mensalidade {
-  id: string;
-  mes_referencia: string;
-  valor: number;
-  status: string;
-  data_vencimento: string;
-  data_pagamento: string | null;
-}
+import {
+  getFichaAluno,
+  type PerfilAluno,
+  type MatriculaFicha,
+  type DocumentoFicha,
+  type MensalidadeFicha,
+} from '@/services/ficha-aluno.service';
 
 // ─── Helpers ─────────────────────────────────────────────────
 
@@ -74,11 +44,11 @@ export default function FichaAluno() {
   const { alunoId } = useParams<{ alunoId: string }>();
   const navigate    = useNavigate();
 
-  const [loading,   setLoading]   = useState(true);
-  const [perfil,    setPerfil]    = useState<Perfil | null>(null);
-  const [matriculas, setMatriculas] = useState<MatriculaAluno[]>([]);
-  const [documentos, setDocumentos] = useState<DocumentoAluno[]>([]);
-  const [mensalidades, setMensalidades] = useState<Mensalidade[]>([]);
+  const [loading,      setLoading]      = useState(true);
+  const [perfil,       setPerfil]       = useState<PerfilAluno | null>(null);
+  const [matriculas,   setMatriculas]   = useState<MatriculaFicha[]>([]);
+  const [documentos,   setDocumentos]   = useState<DocumentoFicha[]>([]);
+  const [mensalidades, setMensalidades] = useState<MensalidadeFicha[]>([]);
 
   useEffect(() => {
     if (!alunoId) return;
@@ -87,31 +57,11 @@ export default function FichaAluno() {
 
   const load = async (id: string) => {
     setLoading(true);
-
-    const [perfilRes, matRes, docRes, mensRes] = await Promise.all([
-      supabase.from('profiles').select('*').eq('id', id).single(),
-      supabase
-        .from('matriculas')
-        .select('id, status, created_at, turma:turmas(codigo, nome)')
-        .eq('aluno_id', id)
-        .order('created_at', { ascending: false }),
-      supabase
-        .from('documentos_aluno')
-        .select('id, tipo_documento, status, criado_em')
-        .eq('aluno_id', id)
-        .order('criado_em', { ascending: false }),
-      supabase
-        .from('mensalidades')
-        .select('id, mes_referencia, valor, status, data_vencimento, data_pagamento')
-        .eq('aluno_id', id)
-        .order('data_vencimento', { ascending: false })
-        .limit(24),
-    ]);
-
-    if (perfilRes.data) setPerfil(perfilRes.data as Perfil);
-    setMatriculas((matRes.data ?? []) as MatriculaAluno[]);
-    setDocumentos((docRes.data ?? []) as DocumentoAluno[]);
-    setMensalidades((mensRes.data ?? []) as Mensalidade[]);
+    const ficha = await getFichaAluno(id);
+    setPerfil(ficha.perfil);
+    setMatriculas(ficha.matriculas);
+    setDocumentos(ficha.documentos);
+    setMensalidades(ficha.mensalidades);
     setLoading(false);
   };
 
@@ -203,7 +153,7 @@ export default function FichaAluno() {
             <tbody className="divide-y">
               {matriculas.map(m => (
                 <tr key={m.id}>
-                  <td className="py-2 font-mono text-xs text-muted-foreground">{m.id.slice(0,8)}…</td>
+                  <td className="py-2 font-mono text-xs text-muted-foreground">{m.id.slice(0, 8)}…</td>
                   <td className="py-2">{m.turma?.codigo ?? <span className="text-muted-foreground">—</span>}</td>
                   <td className="py-2">{fmt(m.created_at)}</td>
                   <td className="py-2">

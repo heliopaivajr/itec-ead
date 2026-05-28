@@ -162,6 +162,36 @@ export async function getAlunosAbaixoLimite(
     .sort((a, b) => a.percentual - b.percentual);
 }
 
+// Calcula resumo por aluno a partir de registros já em memória — 0 queries extras
+export function calcularResumosPorAluno(
+  registros: RegistroFrequencia[]
+): Map<string, ResumoFrequencia> {
+  const byAluno = new Map<string, { total: number; presencas: number; justificadas: number }>();
+
+  for (const r of registros) {
+    const entry = byAluno.get(r.aluno_id) ?? { total: 0, presencas: 0, justificadas: 0 };
+    entry.total++;
+    if (r.presente) entry.presencas++;
+    else if (r.justificada) entry.justificadas++;
+    byAluno.set(r.aluno_id, entry);
+  }
+
+  const result = new Map<string, ResumoFrequencia>();
+  for (const [alunoId, { total, presencas, justificadas }] of byAluno) {
+    const faltas     = total - presencas;
+    const percentual = total > 0 ? Math.round((presencas / total) * 100) : 100;
+    result.set(alunoId, {
+      total_aulas:         total,
+      presencas,
+      faltas,
+      faltas_justificadas: justificadas,
+      percentual_presenca: percentual,
+      status:              calcularStatus(percentual),
+    });
+  }
+  return result;
+}
+
 // Batch: resumo de frequência para múltiplas disciplinas de um aluno (1 query)
 export async function getResumoFrequenciaBatch(
   alunoId: string,

@@ -93,13 +93,15 @@ describe('financeiro.service', () => {
         // Chamada 1: buscar matrículas ativas
         .mockReturnValueOnce({
           select: vi.fn().mockReturnValue({
-            eq: vi.fn().mockResolvedValue({
-              data: [
-                { id: 'mat-1', aluno_id: 'aluno-A' },
-                { id: 'mat-2', aluno_id: 'aluno-B' },
-                { id: 'mat-3', aluno_id: 'aluno-C' },
-              ],
-              error: null,
+            eq: vi.fn().mockReturnValue({
+              limit: vi.fn().mockResolvedValue({
+                data: [
+                  { id: 'mat-1', aluno_id: 'aluno-A' },
+                  { id: 'mat-2', aluno_id: 'aluno-B' },
+                  { id: 'mat-3', aluno_id: 'aluno-C' },
+                ],
+                error: null,
+              }),
             }),
           }),
         } as any)
@@ -120,7 +122,9 @@ describe('financeiro.service', () => {
       vi.mocked(supabase.from)
         .mockReturnValueOnce({
           select: vi.fn().mockReturnValue({
-            eq: vi.fn().mockResolvedValue({ data: [], error: null }),
+            eq: vi.fn().mockReturnValue({
+              limit: vi.fn().mockResolvedValue({ data: [], error: null }),
+            }),
           }),
         } as any)
         .mockReturnValueOnce({
@@ -137,7 +141,9 @@ describe('financeiro.service', () => {
       vi.mocked(supabase.from).mockReset();
       vi.mocked(supabase.from).mockReturnValueOnce({
         select: vi.fn().mockReturnValue({
-          eq: vi.fn().mockResolvedValue({ data: null, error: { message: 'db error' } }),
+          eq: vi.fn().mockReturnValue({
+            limit: vi.fn().mockResolvedValue({ data: null, error: { message: 'db error' } }),
+          }),
         }),
       } as any);
 

@@ -22,7 +22,8 @@ export async function getEquipe(): Promise<MembroEquipe[]> {
   const { data, error } = await supabase
     .from('equipe_itec')
     .select('*')
-    .order('nome', { ascending: true });
+    .order('nome', { ascending: true })
+    .limit(100);
 
   if (error) return [];
   return (data as MembroEquipe[]) ?? [];

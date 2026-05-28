@@ -7,9 +7,9 @@ import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
 import {
-  getConvalidacoesByAluno,
   solicitarConvalidacao,
-  aprovarConvalidacao,
+  getConvalidacoesPorStatus,
+  encaminharConvalidacao,
   getAlunoPorEmail,
   getDisciplinaPorCodigo,
   type Convalidacao,
@@ -139,14 +139,8 @@ export default function Convalidacoes() {
   // Busca todas as convalidações (admin/secretaria vê todas via RLS)
   const carregar = useCallback(async () => {
     setLoading(true);
-    // Busca por todos os alunos — secretaria vê todas via RLS
-    const { data, error } = await supabase
-      .from('convalidacoes')
-      .select('*')
-      .eq('status', filtro)
-      .order('solicitado_em', { ascending: false });
-
-    if (!error && data) setItens(data as Convalidacao[]);
+    const data = await getConvalidacoesPorStatus(filtro);
+    setItens(data);
     setLoading(false);
   }, [filtro]);
 
@@ -154,14 +148,10 @@ export default function Convalidacoes() {
 
   const encaminhar = async (id: string) => {
     setEncaminhando(id);
-    // Muda status para aprovado (coordenador responsável = usuário atual)
-    const { error } = await supabase
-      .from('convalidacoes')
-      .update({ coordenador_responsavel: profile.id })
-      .eq('id', id);
+    const { error } = await encaminharConvalidacao(id, profile.id);
     setEncaminhando(null);
     if (error) {
-      toast({ title: 'Erro', description: error.message, variant: 'destructive' });
+      toast({ title: 'Erro', description: error, variant: 'destructive' });
     } else {
       toast({ title: 'Encaminhado para aprovação!' });
       carregar();

@@ -8,7 +8,7 @@ import { getDisciplinaById } from '@/services/academico.service';
 import {
   getFrequenciaByDisciplina,
   lancarFrequencia,
-  getResumoFrequencia,
+  calcularResumosPorAluno,
   type RegistroFrequencia,
 } from '@/services/frequencia.service';
 import { getProfessorByUserId } from '@/services/professor.service';
@@ -60,26 +60,21 @@ export default function LancarFrequencia() {
     const registros = await getFrequenciaByDisciplina(disciplinaId);
     const doDia     = registros.filter(r => r.data_aula === data);
 
-    // Busca todos os alunos únicos que têm algum registro nessa disciplina
+    // Calcula resumos em memória — sem queries extras (N+1 eliminado)
     const alunosUnicos = [...new Set(registros.map(r => r.aluno_id))];
+    const nomeMap  = new Map(registros.map(r => [r.aluno_id, r.aluno?.full_name ?? r.aluno_id]));
+    const resumos  = calcularResumosPorAluno(registros);
 
-    // Mapa aluno_id → nome/email via join já incluso nos registros
-    const nomeMap = new Map(
-      registros.map(r => [r.aluno_id, r.aluno?.full_name ?? r.aluno_id])
-    );
-
-    const rows: AlunoRow[] = await Promise.all(
-      alunosUnicos.map(async (alunoId): Promise<AlunoRow> => {
-        const resumo      = await getResumoFrequencia(alunoId, disciplinaId);
-        const registroDia = doDia.find(r => r.aluno_id === alunoId);
-        return {
-          aluno_id:         alunoId,
-          nome:             nomeMap.get(alunoId) ?? alunoId,
-          presente:         registroDia?.presente ?? true,
-          percentual_atual: resumo.percentual_presenca,
-        };
-      })
-    );
+    const rows: AlunoRow[] = alunosUnicos.map((alunoId): AlunoRow => {
+      const resumo      = resumos.get(alunoId);
+      const registroDia = doDia.find(r => r.aluno_id === alunoId);
+      return {
+        aluno_id:         alunoId,
+        nome:             nomeMap.get(alunoId) ?? alunoId,
+        presente:         registroDia?.presente ?? true,
+        percentual_atual: resumo?.percentual_presenca ?? 100,
+      };
+    });
 
     setAlunos(rows);
     setLoading(false);

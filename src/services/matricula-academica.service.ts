@@ -173,6 +173,20 @@ export async function rejeitarConvalidacao(
   return { error: null };
 }
 
+// Encaminha convalidação para aprovação (atribui coordenador responsável)
+export async function encaminharConvalidacao(
+  id: string,
+  coordenadorId: string
+): Promise<ServiceResult> {
+  const { error } = await supabase
+    .from('convalidacoes')
+    .update({ coordenador_responsavel: coordenadorId })
+    .eq('id', id);
+
+  if (error) return { error: error.message };
+  return { error: null };
+}
+
 // Listar todas as convalidações por status — admin/superadmin
 export async function getConvalidacoesPorStatus(
   status: 'pendente' | 'aprovado' | 'rejeitado'

@@ -181,7 +181,8 @@ export async function gerarMensalidadesMes(
   const { data: matriculas, error: errMat } = await supabase
     .from('matriculas')
     .select('id, aluno_id')
-    .eq('status', 'ativa');
+    .eq('status', 'ativa')
+    .limit(500);
 
   if (errMat || !matriculas) return { geradas: 0, error: errMat?.message ?? 'Erro ao buscar matrículas' };
 

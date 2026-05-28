@@ -41,7 +41,8 @@ export async function getTurmas(): Promise<Turma[]> {
     .from('turmas')
     .select('*')
     .order('ano', { ascending: false })
-    .order('semestre', { ascending: false });
+    .order('semestre', { ascending: false })
+    .limit(50);
 
   if (error) {
     console.error('getTurmas:', error.message);

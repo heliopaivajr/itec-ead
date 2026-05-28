@@ -52,6 +52,9 @@ export default function ProfessoresAdmin() {
 
   useEffect(() => { load(); }, [load]);
 
+  // Carrega disciplinas uma vez no mount — não a cada abertura de modal
+  useEffect(() => { getAllDisciplinas().then(setDisciplinas); }, []);
+
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const pageStart  = (page - 1) * PAGE_SIZE + 1;
   const pageEnd    = Math.min(page * PAGE_SIZE, total);
@@ -67,10 +70,9 @@ export default function ProfessoresAdmin() {
     }
   };
 
-  const abrirVincular = async (p: Professor) => {
+  const abrirVincular = (p: Professor) => {
     setVincularProf(p);
     setDisciplinaId('');
-    setDisciplinas(await getAllDisciplinas());
   };
 
   const handleVincular = async () => {
