@@ -69,12 +69,32 @@ Duas áreas distintas no mesmo React Router:
 
 `index.ts` — barrel export de todos os 14 services.
 
-## Roles do sistema
-```
-pendente → aluno → professor → administracao → admin → superadmin
-```
+## Roles do sistema (completo)
+
+| Role | Quem | Acesso principal |
+|------|------|-----------------|
+| superadmin | Hélio Paiva Jr. | Tudo |
+| admin | Diretoria | Gestão acadêmica completa |
+| administracao | Secretaria (Camila) | Matrículas, docs, financeiro básico |
+| professor | Docentes | Frequência, contrato, materiais |
+| aluno | Alunos matriculados | Dashboard próprio |
+| pendente | Novo cadastro | Tela de aguardo |
+
 Fallback seguro: `getRole()` retorna `'pendente'` se erro ou perfil não existir.
 Role `superadmin` definido diretamente no banco (migration 004).
+
+## Turmas
+```
+TEO-2025-1 → 1ª turma (Módulo 2 em 2026)
+TEO-2026-1 → 2ª turma (Módulo 1 em 2026)
+TEO-2026-2 → 3ª turma planejada (Ago/2026)
+```
+
+## Próximo Sprint
+Sprint I:
+- Tabela turmas + vincular matriculas (migrations 018-019)
+- Ficha completa do aluno (secretaria)
+- Gestão de turmas no dashboard
 
 ## Banco de dados — 19 tabelas (RLS em todas)
 
