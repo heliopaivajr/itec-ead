@@ -27,6 +27,7 @@ export default function ProtectedRoute({ children }: { children: React.ReactNode
 
   useEffect(() => {
     let montado = true;
+    let subscription: { unsubscribe: () => void } | null = null;
 
     async function verificar(session: Session | null) {
       if (!session) {
@@ -44,31 +45,35 @@ export default function ProtectedRoute({ children }: { children: React.ReactNode
       }
     }
 
-    // 1. Registrar listener PRIMEIRO — captura INITIAL_SESSION e SIGNED_IN do PKCE callback
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
+    function iniciar() {
+      // 1. Registrar listener PRIMEIRO — captura INITIAL_SESSION e SIGNED_IN do PKCE callback
+      const { data } = supabase.auth.onAuthStateChange(async (event, session) => {
         if (!montado) return;
-        if (
-          event === 'SIGNED_IN' ||
-          event === 'TOKEN_REFRESHED' ||
-          event === 'INITIAL_SESSION'
-        ) {
+        if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'INITIAL_SESSION') {
           await verificar(session);
         }
         if (event === 'SIGNED_OUT') {
           if (montado) setEstado('sem-sessao');
         }
-      }
-    );
+      });
+      subscription = data.subscription;
 
-    // 2. Verificar sessão já existente (ex: usuário que voltou à aba)
-    // Se null: NÃO redirecionar — aguardar INITIAL_SESSION/SIGNED_IN do onAuthStateChange
-    // O timeout de 30s garante que nunca ficará preso para sempre
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) verificar(session);
-    });
+      // 2. Verificar sessão já existente (ex: usuário que voltou à aba)
+      // Se null: NÃO redirecionar — aguardar INITIAL_SESSION/SIGNED_IN do onAuthStateChange
+      // O timeout de 30s garante que nunca ficará preso para sempre
+      supabase.auth.getSession().then(({ data: { session } }) => {
+        if (session) verificar(session);
+      });
+    }
 
-    return () => { montado = false; subscription.unsubscribe(); };
+    // Warmup silencioso — acorda o Supabase Free antes de verificar o token.
+    // Sem isso, acessar /dashboard diretamente com banco frio pode fazer getRole()
+    // demorar o suficiente para o timeout de 30s redirecionar para /login.
+    supabase.from('profiles').select('id').limit(1)
+      .then(() => { if (montado) iniciar(); })
+      .catch(() => { if (montado) iniciar(); });
+
+    return () => { montado = false; subscription?.unsubscribe(); };
   }, []);
 
   if (estado === 'carregando') {
