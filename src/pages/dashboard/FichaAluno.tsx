@@ -177,20 +177,29 @@ export default function FichaAluno() {
             <thead>
               <tr className="text-left text-muted-foreground border-b">
                 <th className="pb-2 font-medium">Documento</th>
-                <th className="pb-2 font-medium">Data</th>
+                <th className="pb-2 font-medium">Enviado em</th>
                 <th className="pb-2 font-medium">Status</th>
+                <th className="pb-2 font-medium">Observação</th>
               </tr>
             </thead>
             <tbody className="divide-y">
               {documentos.map(d => (
                 <tr key={d.id}>
-                  <td className="py-2">{d.tipo_documento}</td>
-                  <td className="py-2">{fmt(d.criado_em)}</td>
+                  <td className="py-2">
+                    {d.url ? (
+                      <a href={d.url} target="_blank" rel="noopener noreferrer"
+                        className="hover:text-primary underline underline-offset-2">
+                        {d.tipo}
+                      </a>
+                    ) : d.tipo}
+                  </td>
+                  <td className="py-2">{fmt(d.enviado_em)}</td>
                   <td className="py-2">
                     <Badge variant="outline" className={`text-xs ${STATUS_COLORS[d.status] ?? ''}`}>
                       {d.status}
                     </Badge>
                   </td>
+                  <td className="py-2 text-xs text-muted-foreground">{d.observacao ?? '—'}</td>
                 </tr>
               ))}
             </tbody>

@@ -11,7 +11,7 @@ describe('ficha-aluno.service', () => {
 
       const mockPerfil     = { id: 'a1', full_name: 'Pedro Lima', email: 'pedro@itec.com', role: 'aluno', telefone: null, bio: null, avatar_url: null, created_at: '2026-01-01' };
       const mockMatriculas = [{ id: 'mat-1', status: 'ativa', created_at: '2026-01-01', turma: { codigo: 'TEO-2026-1', nome: '2ª Turma' } }];
-      const mockDocumentos = [{ id: 'doc-1', tipo_documento: 'RG', status: 'validado', criado_em: '2026-01-02' }];
+      const mockDocumentos = [{ id: 'doc-1', tipo: 'RG', url: 'https://doc.pdf', status: 'validado', observacao: null, enviado_em: '2026-01-02' }];
       const mockMensalidades = [{ id: 'men-1', mes_referencia: '2026-05-01', valor: 200, status: 'pago', data_vencimento: '2026-05-10', data_pagamento: '2026-05-08' }];
 
       // Promise.all faz 4 chamadas simultâneas — cada mockReturnValueOnce captura uma

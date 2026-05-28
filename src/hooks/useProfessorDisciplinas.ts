@@ -39,7 +39,9 @@ export function useProfessorDisciplinas(userId: string): ProfessorDisciplinasDat
       try {
         const professor = await getProfessorByUserId(userId);
         if (!professor) {
-          setState({ professor: null, disciplinas: [], loading: false, error: null });
+          // Usuário tem role='professor' mas ainda não tem registro na tabela professores.
+          // Deixa professor=null e disciplinas=[]; ProfessorHome mostra aviso de cadastro incompleto.
+          setState({ professor: null, disciplinas: [], loading: false, error: 'cadastro-incompleto' });
           return;
         }
 

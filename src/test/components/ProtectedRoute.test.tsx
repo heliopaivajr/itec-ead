@@ -27,7 +27,6 @@ function renderProtectedRoute() {
 function mockAuth(session: any, role: string | null) {
   const mockSingle = vi.fn().mockResolvedValue({ data: role ? { role } : null, error: null });
   const mockEq     = vi.fn().mockReturnValue({ single: mockSingle });
-  const mockSelect = vi.fn().mockReturnValue({ eq: mockEq });
 
   vi.mocked(supabase.auth.getSession).mockResolvedValue({
     data: { session },
@@ -42,8 +41,13 @@ function mockAuth(session: any, role: string | null) {
     return { data: { subscription: { unsubscribe: vi.fn() } } } as any;
   });
 
+  // warmup: from('profiles').select('id').limit(1) → resolve vazio
+  // role:   from('profiles').select('role').eq(...).single() → resolve { role }
   vi.mocked(supabase.from).mockReturnValue({
-    select: mockSelect,
+    select: vi.fn().mockReturnValue({
+      eq: mockEq,
+      limit: vi.fn().mockResolvedValue({ data: [], error: null }),
+    }),
   } as any);
 }
 

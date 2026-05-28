@@ -26,6 +26,21 @@ export default function ProfessorHome() {
     );
   }
 
+  if (error === 'cadastro-incompleto') {
+    return (
+      <div className="p-6 flex flex-col items-center justify-center min-h-[40vh] gap-4 text-center">
+        <AlertTriangle className="h-10 w-10 text-yellow-500 opacity-80" />
+        <div>
+          <p className="font-semibold text-foreground">Cadastro de professor incompleto</p>
+          <p className="text-sm text-muted-foreground mt-1">
+            Seu perfil de professor ainda não foi criado pela secretaria.<br />
+            Entre em contato com a administração para regularizar seu cadastro.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   if (error) {
     return (
       <div className="p-6 flex flex-col items-center justify-center min-h-[40vh] gap-4">

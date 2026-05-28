@@ -20,9 +20,11 @@ export interface MatriculaFicha {
 
 export interface DocumentoFicha {
   id: string;
-  tipo_documento: string;
+  tipo: string;
+  url: string;
   status: string;
-  criado_em: string;
+  observacao?: string;
+  enviado_em: string;
 }
 
 export interface MensalidadeFicha {
@@ -58,9 +60,9 @@ export async function getFichaAluno(alunoId: string): Promise<FichaAlunoData> {
 
     supabase
       .from('documentos_aluno')
-      .select('id, tipo_documento, status, criado_em')
+      .select('id, tipo, url, status, observacao, enviado_em')
       .eq('aluno_id', alunoId)
-      .order('criado_em', { ascending: false })
+      .order('enviado_em', { ascending: false })
       .limit(50),
 
     supabase
