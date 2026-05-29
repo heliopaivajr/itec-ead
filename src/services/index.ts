@@ -19,3 +19,6 @@ export * from './material.service';
 
 // Services Sprint I
 // turmas.service — importar diretamente (ServiceResult ambíguo no barrel)
+
+// Services Sprint J
+export * from './notas.service';

@@ -52,6 +52,8 @@ const EquipeITEC         = lazy(() => import("./pages/dashboard/EquipeITEC"));
 const GestaoTurmas       = lazy(() => import("./pages/dashboard/GestaoTurmas"));
 const FichaAluno         = lazy(() => import("./pages/dashboard/FichaAluno"));
 const Alunos             = lazy(() => import("./pages/dashboard/Alunos"));
+const LancarNotas        = lazy(() => import("./pages/dashboard/LancarNotas"));
+const ConsolidadoNotas   = lazy(() => import("./pages/dashboard/ConsolidadoNotas"));
 import ProtectedRoute from '@/components/ProtectedRoute';
 
 const queryClient = new QueryClient();
@@ -128,9 +130,11 @@ const App = () => (
 
               {/* Professor */}
               <Route path="professor"                              element={<ProfessorHome />} />
-              <Route path="professor/frequencia/:disciplinaId"    element={<LancarFrequencia />} />
-              <Route path="professor/turma/:disciplinaId"         element={<VerTurma />} />
-              <Route path="professor/contratos"                    element={<MeusContratos />} />
+              <Route path="professor/frequencia/:disciplinaId"              element={<LancarFrequencia />} />
+              <Route path="professor/turma/:disciplinaId"                   element={<VerTurma />} />
+              <Route path="professor/notas/:turmaId/:disciplinaId"          element={<LancarNotas />} />
+              <Route path="professor/consolidado/:turmaId/:disciplinaId"    element={<ConsolidadoNotas />} />
+              <Route path="professor/contratos"                             element={<MeusContratos />} />
               <Route path="professor/contrato/:contratoId"        element={<ContratoForm />} />
 
               {/* Admin — Professores e Equipe */}
@@ -138,7 +142,8 @@ const App = () => (
               <Route path="equipe-itec"       element={<EquipeITEC />} />
 
               {/* Admin — Turmas */}
-              <Route path="turmas-admin"      element={<GestaoTurmas />} />
+              <Route path="turmas-admin"                                 element={<GestaoTurmas />} />
+              <Route path="notas/:turmaId/:disciplinaId"                 element={<ConsolidadoNotas />} />
 
               {/* Secretaria/Admin — Lista e ficha do aluno */}
               <Route path="alunos"            element={<Alunos />} />
