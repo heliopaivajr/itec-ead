@@ -81,6 +81,36 @@
 
 ---
 
+## LICAO-004 — Agentes que leem o schema antes de implementar evitam retrabalho
+
+**Data:** 2026-05-29
+**Contexto:** Sprint J — Agente 13 leu a migration antes de implementar e corrigiu a assinatura da função antes de escrever uma linha de código.
+**Problema:** Spec do Agente 20 referenciou coluna inexistente. Sem a leitura prévia da migration, o erro teria chegado ao runtime.
+**Decisão tomada:** Reforçado no SKILL.md do Agente 20 com verificação obrigatória de schema antes de toda spec de query.
+**Justificativa:** Custo de ler uma migration: 30 segundos. Custo de retrabalho por coluna errada: 30 minutos ou mais.
+**Agentes impactados:** 20-project-manager, 05-backend-engineer, 13-performance-eng
+**Mudança aplicada:** MELHORIA-001 aplicada no SKILL.md do Agente 20.
+**Resultado esperado:** Specs de query com nomes de colunas sempre validados contra as migrations.
+**Como aplicar no futuro:** Antes de nomear qualquer coluna em spec de query, abrir a migration da tabela e confirmar nome e tipo.
+**Status:** aplicada
+
+---
+
+## LICAO-005 — Feature sem ponto de entrada na UI é feature invisível
+
+**Data:** 2026-05-29
+**Contexto:** Sprint J — `LancarNotas.tsx` implementada e funcional, mas sem link de acesso em `ProfessorHome.tsx`.
+**Problema:** Professor precisaria digitar a URL manualmente para acessar a tela de notas — comportamento inaceitável em produção.
+**Decisão tomada:** Botão "Lançar Notas" adicionado em `ProfessorHome.tsx`. Regra reforçada no SKILL.md do Agente 06.
+**Justificativa:** Não basta a rota existir. O usuário precisa de um caminho navegável até ela dentro do dashboard.
+**Agentes impactados:** 06-frontend-engineer, 20-project-manager
+**Mudança aplicada:** MELHORIA-002 aplicada no SKILL.md do Agente 06. WARN-UX-001 corrigido em `ProfessorHome.tsx`.
+**Resultado esperado:** Toda feature entregue com pelo menos um ponto de entrada navegável.
+**Como aplicar no futuro:** Ao criar nova tela, verificar obrigatoriamente se há link/botão apontando para ela antes do commit.
+**Status:** aplicada
+
+---
+
 *Mantido pelo agente-Osabio · ITEC-EAD · 2025*
 
 

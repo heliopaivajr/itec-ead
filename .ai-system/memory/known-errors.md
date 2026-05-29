@@ -129,4 +129,26 @@ Ao criar tela com parâmetros de rota obrigatórios, verificar se o componente p
 
 ---
 
+## ERR-SCHEMA-001
+
+**Data:** 2026-05-29
+**Sprint:** J
+**Agente:** 20-project-manager
+**Erro:** Spec referenciou coluna `turma_id` em tabela `frequencia`
+      que não existe. Correto: `disciplinaId` + `alunoIds[]`.
+**Prevenção:** MELHORIA-001 aplicada no SKILL.md do Agente 20.
+
+---
+
+## ERR-UX-001
+
+**Data:** 2026-05-29
+**Sprint:** J
+**Agente:** 06-frontend-engineer
+**Erro:** `LancarNotas.tsx` entregue sem ponto de entrada na UI.
+      Professor não conseguia acessar sem URL manual.
+**Prevenção:** MELHORIA-002 aplicada no SKILL.md do Agente 06.
+
+---
+
 *Mantido pelo agente-Osabio · ITEC-EAD · 2025*

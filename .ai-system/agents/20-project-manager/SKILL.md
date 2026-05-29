@@ -68,11 +68,21 @@ Antes de qualquer plano, verifico:
 □ O Agente 19 já analisou o lado funcional?
 ```
 
-**VERIFICAÇÃO DE SCHEMA (obrigatória para tasks de query/performance):**
-Antes de nomear colunas em parâmetros de função ou specs de query (`WHERE col = X`, `IN`, `JOIN`),
-verificar as migrations em `supabase/migrations/` e confirmar o nome exato de cada coluna.
-**Nunca assumir que uma coluna existe sem confirmar na migration correspondente.**
-(Origem: ERR-001 / LICAO-001 — Sprint J referenciou `turma_id` em `frequencia` que não existe.)
+### VERIFICAÇÃO DE SCHEMA (obrigatória para tasks de query/performance)
+
+Antes de nomear colunas em parâmetros de função ou filtros de query:
+
+1. Abrir as migrations em `supabase/migrations/`
+2. Confirmar que a coluna existe na tabela referenciada
+3. Confirmar o tipo da coluna (uuid, text, integer, etc.)
+4. NUNCA assumir que uma coluna existe sem verificar
+
+Exemplo do erro real (Sprint J):
+- Spec disse: `getResumoFrequenciaBatch(turmaId)`
+- Coluna `turma_id` NÃO existe na tabela `frequencia`
+- Correto: `getResumoFrequenciaPorTurma(disciplinaId, alunoIds[])`
+
+Regra: spec com coluna errada = retrabalho de implementação.
 
 Se qualquer item marcar **SIM**, ele aparece como **Risco Identificado** no plano.
 

@@ -97,18 +97,28 @@ SEMPRE acessibilidade: aria-label em ações, semântica HTML
 
 ## Checklist de Entrega (obrigatório antes de qualquer commit)
 
-**PONTO DE ENTRADA NA UI (obrigatório):**
-Toda nova página ou rota implementada DEVE ter pelo menos um ponto de entrada navegável:
-- Link no menu lateral, ou
-- Botão na página pai, ou
-- Card de navegação no dashboard
+### PONTO DE ENTRADA NA UI (obrigatório em toda entrega)
 
-Para rotas com parâmetros obrigatórios (`:turmaId`, `:disciplinaId`, etc.):
-verificar qual componente pai tem acesso a esses parâmetros e criar o link nesse componente
-como subtask obrigatória do mesmo sprint.
+Toda nova página ou rota implementada DEVE ter pelo menos
+um ponto de entrada navegável antes de ser considerada entregue:
 
-**Entrega sem ponto de entrada = feature incompleta.**
-(Origem: ERR-002 / LICAO-003 — `LancarNotas.tsx` criada sem link em `ProfessorHome.tsx`.)
+Opções válidas (pelo menos uma):
+- Link no menu lateral (Sidebar/Nav)
+- Botão ou card na página pai
+- Card de navegação no dashboard do role correto
+
+Verificação obrigatória antes do commit:
+- [ ] A rota existe no router?
+- [ ] Tem pelo menos um link/botão apontando para ela?
+- [ ] O role correto consegue acessar sem digitar URL?
+
+Exemplo do erro real (Sprint J):
+- `LancarNotas.tsx` implementado corretamente
+- Rota `/dashboard/professor/notas/:turmaId/:disciplinaId` existe
+- Mas `ProfessorHome.tsx` não tinha nenhum link para ela
+- Resultado: feature inacessível sem digitar URL manualmente
+
+Regra: feature sem ponto de entrada = feature incompleta.
 
 ---
 *Sistema de Agentes IA para SaaS — Hélio Paiva Jr. — ObraIA 2025*
