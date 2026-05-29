@@ -1,62 +1,85 @@
 # .ai-system — Sistema de Agentes IA · ITEC-EAD
-**Hélio Paiva Jr. · ObraIA · Paulista/PE · 2025**
+**Hélio Paiva Jr. · ObraIA · Paulista/PE · 2025**  
+**Versão:** 3.0 — Com agente-Osabio (Supervisor de Evolução)
 
 ---
 
 ## O Que É Esta Pasta
 
-Esta pasta contém o sistema completo de agentes IA para o desenvolvimento do ITEC-EAD.
-Cada agente é um especialista com papel, regras e restrições definidas em seu arquivo `SKILL.md`.
+Sistema completo de agentes IA para o desenvolvimento do ITEC-EAD.
+Cada agente é um especialista com papel, regras e restrições definidas em seu `SKILL.md` ou arquivo `.md`.
 
-**Regra fundamental:** Nenhum código antes de spec aprovada. Nenhum agente técnico ativado sem plano.
+**Regra fundamental:** Nenhum código antes de spec aprovada. Nenhum agente técnico ativado sem plano. Nenhuma evolução de agente sem controle.
 
 ---
 
-## Os 20 Agentes — Referência Rápida
+## A Hierarquia do Sistema
 
-### Estratégicos (NOVOS)
+```
+HÉLIO
+  └── Visão, decisão final, aprovação de mudanças críticas
 
-| # | Agente | Função | Quando Usar |
-|---|--------|--------|-------------|
-| **19** | product-analyst | Analista de Produto / Negócio ITEC | O que falta? Fluxo correto? Requisitos funcionais |
+AGENTE 20 — Gestor de Projeto
+  └── Organiza execução, define ordem, aciona agentes
+
+agente-Osabio — Mentor / Supervisor
+  └── Melhora os agentes, registra erros, eleva maturidade
+
+AGENTE 19 — Analista de Produto
+  └── Entende o negócio, define requisitos funcionais
+
+AGENTES 01–18 — Técnicos
+  └── Implementam com precisão e dentro do escopo
+```
+
+---
+
+## Os 21 Agentes — Referência Rápida
+
+### Camada de Supervisão e Estratégia
+
+| Agente | Nome | Função | Quando Usar |
+|--------|------|--------|-------------|
+| **Osabio** | agente-Osabio | Mentor · Supervisor de Evolução | Auditar agentes, registrar erros, propor melhorias, elevar maturidade |
 | **20** | project-manager | Gestor de Projeto / Coordenador | Como executar? Qual ordem? Quais agentes? |
+| **19** | product-analyst | Analista de Produto / Negócio | O que falta? Fluxo correto? Requisitos funcionais |
 
 ### Arquitetura
 
 | # | Agente | Função | Quando Usar |
 |---|--------|--------|-------------|
-| 01 | architect | Arquiteto de Software | Início do projeto, decisões estruturais, ADRs |
-| 02 | domain-designer | Domain Designer DDD | Criar entidades, value objects, eventos |
-| 03 | api-designer | Designer de API REST | Projetar endpoints antes de implementar |
-| 04 | db-architect | Arquiteto de Banco | Schema, migrations, RLS, índices |
+| 01 | architect | Arquiteto de Software | Decisões estruturais, ADRs |
+| 02 | domain-designer | Domain Designer DDD | Entidades, value objects, eventos |
+| 03 | api-designer | Designer de API REST | Contratos de endpoint |
+| 04 | db-architect | Arquiteto de Banco | Schema, migrations, RLS |
 
 ### Desenvolvimento
 
 | # | Agente | Função | Quando Usar |
 |---|--------|--------|-------------|
-| 05 | backend-engineer | Engenheiro Backend | Use cases, services, integrações |
+| 05 | backend-engineer | Engenheiro Backend | Services, use cases, integrações |
 | 06 | frontend-engineer | Engenheiro Frontend | Componentes React, pages, hooks |
-| 07 | auth-specialist | Especialista Auth | Login, roles, permissões, middleware |
-| 08 | billing-engineer | Engenheiro Billing | Mensalidades, pagamentos, webhooks |
-| 09 | infra-engineer | Engenheiro de Infra | Deploy, CI/CD, variáveis de ambiente |
+| 07 | auth-specialist | Especialista Auth | Login, roles, permissões |
+| 08 | billing-engineer | Engenheiro Billing | Mensalidades, pagamentos |
+| 09 | infra-engineer | Engenheiro de Infra | Deploy, CI/CD, env vars |
 
 ### Qualidade
 
 | # | Agente | Função | Quando Usar |
 |---|--------|--------|-------------|
-| 10 | test-engineer | Engenheiro de Testes | Unit, integration e E2E tests |
-| 11 | security-auditor | Auditor de Segurança | Auth, RLS, secrets, OWASP |
-| 12 | code-reviewer | Revisor de Código | Review estruturado com score de qualidade |
-| 13 | performance-eng | Engenheiro Performance | N+1, queries lentas, bundle pesado |
+| 10 | test-engineer | Engenheiro de Testes | Unit, integration, E2E |
+| 11 | security-auditor | Auditor de Segurança | RLS, secrets, OWASP |
+| 12 | code-reviewer | Revisor de Código | Review com score de qualidade |
+| 13 | performance-eng | Engenheiro Performance | N+1, queries lentas, bundle |
 
 ### Auditoria
 
 | # | Agente | Função | Quando Usar |
 |---|--------|--------|-------------|
 | **14** ⭐ | auditor | Auditor de Codebase | **PRIMEIRO em projeto existente** |
-| 15 | debt-analyst | Analista Débito Técnico | Mapear e priorizar problemas acumulados |
+| 15 | debt-analyst | Analista Débito Técnico | Mapear problemas acumulados |
 | 16 | migration-planner | Planejador Migração | Mudanças arquiteturais seguras |
-| 17 | lgpd-auditor | Auditor LGPD | PII, consentimento, direitos dos alunos |
+| 17 | lgpd-auditor | Auditor LGPD | PII, consentimento, direitos |
 
 ### Produto
 
@@ -69,56 +92,32 @@ Cada agente é um especialista com papel, regras e restrições definidas em seu
 ## Comandos de Ativação Rápida
 
 ```bash
-# Analisar se a plataforma está completa (NOVO)
+# Auditar os agentes (estado de maturidade, falhas, melhorias)
+Ative .ai-system/agents/core/agente-Osabio.md
+Modo: Auditoria
+
+# Registrar erro de um agente
+Ative .ai-system/agents/core/agente-Osabio.md
+Modo: Documentação
+Registre o erro: [descrição do erro, agente envolvido]
+
+# Propor melhoria em um agente
+Ative .ai-system/agents/core/agente-Osabio.md
+Modo: Proposta
+Agente a melhorar: [qual agente]
+Problema: [o que está errado]
+
+# Analisar se a plataforma está completa
 Ative .ai-system/agents/19-product-analyst/SKILL.md
 
-# Organizar execução de uma demanda (NOVO)
+# Organizar execução de uma demanda
 Ative .ai-system/agents/20-project-manager/SKILL.md
 
-# Auditar o projeto
+# Auditar o projeto (código)
 Ative .ai-system/agents/14-auditor/SKILL.md e execute o protocolo completo
 
 # Nova feature
 Abra .ai-system/templates/sdd-new-feature.md e siga o protocolo SDD
-
-# Revisar código
-Ative .ai-system/agents/12-code-reviewer/SKILL.md e revise [arquivo/PR]
-
-# Verificar segurança
-Ative .ai-system/agents/11-security-auditor/SKILL.md e execute o checklist
-
-# Planejar migração
-Ative .ai-system/agents/16-migration-planner/SKILL.md para [contexto]
-
-# Verificar LGPD
-Ative .ai-system/agents/17-lgpd-auditor/SKILL.md e execute o PII map
-
-# Documentar
-Ative .ai-system/agents/18-doc-writer/SKILL.md e documente [o quê]
-```
-
----
-
-## Fluxo Padrão de Trabalho
-
-```
-Nova demanda do Hélio
-    ↓
-[20] Gestor classifica e monta Plano de Execução
-    ↓
-[19] Analista de Produto analisa o negócio (se funcional/mista)
-    ↓
-Hélio aprova o plano
-    ↓
-Agentes técnicos executam (ordem definida pelo Agente 20)
-    ↓
-[10] Testes → [12] Code Review → [11] Segurança
-    ↓
-[19] Valida coerência com o negócio
-    ↓
-[18] Documenta → [09] Deploy
-    ↓
-Entrega concluída
 ```
 
 ---
@@ -127,13 +126,15 @@ Entrega concluída
 
 ```
 .ai-system/
-├── CLAUDE.md              ← Regras globais (lido automaticamente)
-├── SYSTEM.md              ← DNA do produto ITEC-EAD
-├── STACK.md               ← Stack técnica com versões
-├── ARCHITECTURE.md        ← Decisões arquiteturais do projeto
-├── README.md              ← Este arquivo
+├── CLAUDE.md
+├── SYSTEM.md
+├── STACK.md
+├── ARCHITECTURE.md
+├── README.md                              ← este arquivo
 │
 ├── agents/
+│   ├── core/
+│   │   └── agente-Osabio.md              ← NOVO — mentor e supervisor
 │   ├── 01-architect/SKILL.md
 │   ├── 02-domain-designer/SKILL.md
 │   ├── 03-api-designer/SKILL.md
@@ -147,13 +148,25 @@ Entrega concluída
 │   ├── 11-security-auditor/SKILL.md
 │   ├── 12-code-reviewer/SKILL.md
 │   ├── 13-performance-eng/SKILL.md
-│   ├── 14-auditor/SKILL.md          ← usar primeiro em projeto existente
+│   ├── 14-auditor/SKILL.md
 │   ├── 15-debt-analyst/SKILL.md
 │   ├── 16-migration-planner/SKILL.md
 │   ├── 17-lgpd-auditor/SKILL.md
 │   ├── 18-doc-writer/SKILL.md
-│   ├── 19-product-analyst/SKILL.md  ← NOVO — análise de negócio
-│   └── 20-project-manager/SKILL.md  ← NOVO — coordenação de execução
+│   ├── 19-product-analyst/SKILL.md
+│   └── 20-project-manager/SKILL.md
+│
+├── memory/                                ← NOVO — memória técnica
+│   ├── agent-maturity-map.md             ← nível de cada agente
+│   ├── known-errors.md                   ← erros registrados
+│   ├── lessons-learned.md                ← lições e histórico de melhorias
+│   └── agent-feedback-log.md             ← feedbacks sobre os agentes
+│
+├── checklists/                            ← NOVO — qualidade
+│   └── quality-checklists.md             ← checklist agente, prompt, skill, produto
+│
+├── docs/                                  ← NOVO — regras e fluxos
+│   └── agent-safety-rules.md             ← regras de segurança + fluxos de orquestração
 │
 ├── templates/
 │   ├── sdd-new-feature.md
@@ -162,12 +175,12 @@ Entrega concluída
 │   ├── adr-template.md
 │   └── audit-report.md
 │
-├── specs/         ← specs aprovadas por feature
-├── adr/           ← Architecture Decision Records
-├── audit/         ← relatórios de auditoria
-└── runbooks/      ← deploy, rollback, incidentes
+├── specs/
+├── adr/
+├── audit/
+└── runbooks/
 ```
 
 ---
 
-*ITEC-EAD · Sistema de Agentes IA · v2.0 com Agentes Estratégicos · 2025*
+*ITEC-EAD · Sistema de Agentes IA · v3.0 · 2025*
