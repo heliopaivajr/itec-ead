@@ -1,12 +1,12 @@
 # CLAUDE.md — ITEC-EAD
 # Lido automaticamente pelo Claude Code
-# Atualizado: 2026-05-26
+# Atualizado: 2026-05-28
 
 ## Projeto
 Plataforma EAD do Instituto de Teologia Cristã
 Site: https://www.itecedu.com
 Dev: Hélio Paiva Jr. (superadmin)
-Score atual: **7.8/10** 🟢
+Score atual: **9.2/10** 🟢
 
 ## Comandos
 
@@ -129,7 +129,7 @@ Sprint I:
 
 ## Testes
 ```bash
-pnpm test:run   # deve sempre passar 86/86
+pnpm test:run   # deve sempre passar 163/163
 ```
 - Vitest + Testing Library + jsdom
 - Mock global do Supabase em `src/test/setup.ts` (fluent builder)
@@ -145,10 +145,10 @@ pnpm test:run   # deve sempre passar 86/86
 - ADR-005: sistema de certificados — PROPOSTA
 
 ## Auditoria
-- Última: 2026-05-26 pós-Sprint D
-- Score: 7.8/10
-- Relatório: `.ai-system/audit/2026-05-pos-sprint-d/report.md`
-- Próxima meta: 8.5/10
+- Última: 2026-05-28 pós-Sprint I
+- Score: 9.2/10
+- Relatório: `.ai-system/audit/2026-05-dashboard-performance/report.md`
+- Próxima meta: 9.5/10
 
 ## .ai-system/ — contexto separado
 A pasta `.ai-system/` é um sistema documental independente
@@ -164,39 +164,32 @@ Não misturar com o código da plataforma web.
 - Sprint I: turmas + ficha aluno + role financeiro
 - Sprint F2: performance N+1 + rotas + LIMITs
 
-### Pendente — Simulação
-- [ ] Testar professor (frequência, contrato PDF)
-- [ ] Testar financeiro (registrar pagamento)
-- [ ] Testar fluxo Nova Matrícula completo
-- [ ] Testar ficha do aluno pelo superadmin
+### Ordem dos Próximos Sprints (aprovado 2026-05-28)
 
-### Sprint J — Gestão Acadêmica
-- Upload materiais por disciplina
-- Criar/editar módulos e disciplinas
-- Gerenciar pré-requisitos visualmente
+| Sprint | Tema | Migrations | Status |
+|--------|------|-----------|--------|
+| **J** | Sistema de Notas e Avaliações | 022-023 | 🔴 Próximo — CRÍTICO |
+| **K** | Documentos PDF + E-mail (Resend) | 022b | 🔜 |
+| **L** | Vídeos EAD + Upload Materiais | 024 | 🔜 |
+| **M** | Certificados + Portal Egresso | 025-026 | 🔜 |
+| **N** | Calendário Acadêmico + Devocional | 027-028 | 🔜 |
+| **O** | Financeiro PIX (Asaas) | 029 | 🔜 Requer conta Asaas |
 
-### Sprint K — Vídeos EAD
-- Campo YouTube URL por disciplina/material
-- Player embedado no dashboard do aluno
-- Marcar vídeo como "assistido"
-- Progresso conta para certificado
+Plano completo: `.ai-system/specs/plano-execucao-sprints-j-o.md`
 
-### Sprint L — Certificados
-- Verificação automática de conclusão
-  (frequência ≥ 75% + disciplinas aprovadas
-   + sem débitos financeiros)
-- Geração PDF com @react-pdf/renderer
-- QR Code de verificação
-- Página pública: itecedu.com/verificar/[codigo]
-- Download pelo aluno
-- Emissão manual pela secretaria
-- Registro único com número sequencial
+### Pré-requisitos pendentes (Hélio fazer antes dos sprints)
+- [ ] Criar conta Resend (resend.com) + configurar DNS → antes Sprint K
+- [ ] Escanear assinaturas PNG (Pr. Eliel + Pr. Hélio) → antes Sprint M
+- [ ] Aprovar mockup do certificado → antes Sprint M
+- [ ] Abrir conta Asaas com CNPJ + validar com Hugo → antes Sprint O
 
-### Sprint M — Melhorias EAD (futuro)
-- Fórum por disciplina
-- Chat com professor
-- Provas online
-- Biblioteca digital (PDFs apostilas)
+### Regra de qualidade (obrigatória em TODO sprint)
+Ciclo: `SPEC (19)` → `PLANO (20)` → `IMPL (05/06)` → `TESTES (10)` →
+       `REVIEW (12)` → `SEGURANÇA (11)` → `AUDITORIA (14)` → `DOCS (18)` → `DEPLOY (09)`
+
+- `pnpm test:run` deve passar 100% antes de qualquer commit
+- Agente 14 (auditoria rápida) ao final de todo sprint
+- Score meta: 9.5/10
 
 ## Infraestrutura — Plano de Evolução
 

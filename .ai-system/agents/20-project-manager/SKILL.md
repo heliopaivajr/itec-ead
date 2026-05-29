@@ -287,4 +287,63 @@ ENTREGA CONCLUÍDA
 
 ---
 
+## REGRA OBRIGATÓRIA — Qualidade em Todo Sprint
+
+Em TODO sprint, sem exceção, seguir este protocolo:
+
+### Durante o sprint
+- Agente 10 (testes) escreve testes JUNTO com a implementação — não depois
+- Cobertura mínima: 80% nos services novos
+- `pnpm test:run` deve passar em cada commit intermediário
+
+### Ao final de todo sprint (checklist obrigatório)
+
+```
+1. pnpm test:run      → todos passando ✅ (sem exceção)
+2. pnpm build         → build limpo ✅ (sem erros TS)
+3. Agente 14          → auditoria rápida do que foi implementado
+4. Agente 11          → auditar RLS das tabelas novas
+5. Agente 12          → code review dos services e pages
+6. Agente 18          → documentar: CLAUDE.md + STACK.md + specs/
+7. commit semântico   → push → deploy automático Vercel
+8. /clear             → antes do próximo sprint
+```
+
+### Ciclo completo de todo sprint
+
+```
+SPEC (19) → PLANO (20) → IMPL (04/05/06) →
+TESTES (10) → REVIEW (12) → SEGURANÇA (11) →
+AUDITORIA (14) → DOCS (18) → DEPLOY (09)
+```
+
+### Como resolver bugs encontrados na auditoria final
+
+| Severidade | Ação |
+|-----------|------|
+| Crítico (seg, dados) | Para tudo — abrir bug fix antes do próximo sprint |
+| Alto (funcional errado) | Entra no início do próximo sprint como P0 |
+| Médio (UX, performance) | Entra no backlog de débito técnico |
+| Baixo (cosmético) | Registra mas não bloqueia deploy |
+
+### Relatório padrão ao final de cada sprint
+
+```
+SPRINT X — CONCLUÍDO
+Score: X.X/10
+Testes: N/N passando
+Migrations aplicadas: 0XX, 0XX
+Services criados/atualizados: lista
+Componentes criados/atualizados: lista
+Bugs encontrados: lista com severidade
+ADR criado: sim/não
+Próximo sprint: Y — pré-requisitos ok?
+```
+
+### Arquivo de referência
+Checklist detalhado: `.ai-system/templates/checklist-sprint.md`
+
+---
+
 *Agente 20 — Gestor de Projeto / Coordenador | Sistema de Agentes IA | Hélio Paiva Jr. · ObraIA · 2025*
+*Atualizado: 2026-05-28 — Regra de qualidade adicionada*
