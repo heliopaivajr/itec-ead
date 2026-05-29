@@ -2,7 +2,7 @@ import React from 'react';
 import { useOutletContext, useNavigate } from 'react-router-dom';
 import {
   BookOpen, Users, AlertTriangle, CheckCircle2,
-  FileText, ClipboardList, RefreshCw,
+  FileText, ClipboardList, RefreshCw, Star,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -80,7 +80,7 @@ export default function ProfessorHome() {
 
       {/* Cards por disciplina */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {disciplinas.map(({ contrato, disciplina, alunos_em_risco, manual_disponivel }) => (
+        {disciplinas.map(({ contrato, disciplina, alunos_em_risco, manual_disponivel, turma_id }) => (
           <div key={contrato.id} className="bg-card border border-border rounded-xl overflow-hidden hover:border-primary/30 transition-all">
             {/* Header */}
             <div className="bg-primary/5 border-b border-border p-4">
@@ -113,6 +113,16 @@ export default function ProfessorHome() {
                 onClick={() => navigate(`/dashboard/professor/frequencia/${disciplina.id}`)}
               >
                 <ClipboardList className="h-4 w-4 mr-2" /> Lançar Frequência
+              </Button>
+              <Button
+                size="sm"
+                className="w-full"
+                variant="secondary"
+                disabled={!turma_id}
+                title={!turma_id ? 'Nenhuma turma vinculada a esta disciplina' : undefined}
+                onClick={() => turma_id && navigate(`/dashboard/professor/notas/${turma_id}/${disciplina.id}`)}
+              >
+                <Star className="h-4 w-4 mr-2" /> Lançar Notas
               </Button>
               <div className="grid grid-cols-2 gap-2">
                 <Button

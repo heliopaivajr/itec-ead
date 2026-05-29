@@ -165,8 +165,8 @@ No próximo sprint com task de performance/query, verificar se o Agente 20 cita 
 **Resultado esperado:**
 Eliminação de erros de spec por coluna inexistente.
 
-**Aprovado por:** aguardando Hélio
-**Status:** proposta
+**Aprovado por:** Hélio (2026-05-29)
+**Status:** aplicada
 
 ---
 
@@ -196,8 +196,8 @@ No próximo sprint com nova tela, verificar se há link de entrada funcional na 
 **Resultado esperado:**
 Toda feature frontend entregue com ponto de entrada navegável.
 
-**Aprovado por:** aguardando Hélio
-**Status:** proposta
+**Aprovado por:** Hélio (2026-05-29)
+**Status:** aplicada
 
 ---
 

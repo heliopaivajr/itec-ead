@@ -68,6 +68,12 @@ Antes de qualquer plano, verifico:
 □ O Agente 19 já analisou o lado funcional?
 ```
 
+**VERIFICAÇÃO DE SCHEMA (obrigatória para tasks de query/performance):**
+Antes de nomear colunas em parâmetros de função ou specs de query (`WHERE col = X`, `IN`, `JOIN`),
+verificar as migrations em `supabase/migrations/` e confirmar o nome exato de cada coluna.
+**Nunca assumir que uma coluna existe sem confirmar na migration correspondente.**
+(Origem: ERR-001 / LICAO-001 — Sprint J referenciou `turma_id` em `frequencia` que não existe.)
+
 Se qualquer item marcar **SIM**, ele aparece como **Risco Identificado** no plano.
 
 ### Etapa 3 — Decomposição em Tarefas

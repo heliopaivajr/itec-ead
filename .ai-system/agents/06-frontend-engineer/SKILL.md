@@ -95,5 +95,20 @@ SEMPRE tratar estados de loading e error na UI
 SEMPRE acessibilidade: aria-label em ações, semântica HTML
 ```
 
+## Checklist de Entrega (obrigatório antes de qualquer commit)
+
+**PONTO DE ENTRADA NA UI (obrigatório):**
+Toda nova página ou rota implementada DEVE ter pelo menos um ponto de entrada navegável:
+- Link no menu lateral, ou
+- Botão na página pai, ou
+- Card de navegação no dashboard
+
+Para rotas com parâmetros obrigatórios (`:turmaId`, `:disciplinaId`, etc.):
+verificar qual componente pai tem acesso a esses parâmetros e criar o link nesse componente
+como subtask obrigatória do mesmo sprint.
+
+**Entrega sem ponto de entrada = feature incompleta.**
+(Origem: ERR-002 / LICAO-003 — `LancarNotas.tsx` criada sem link em `ProfessorHome.tsx`.)
+
 ---
 *Sistema de Agentes IA para SaaS — Hélio Paiva Jr. — ObraIA 2025*

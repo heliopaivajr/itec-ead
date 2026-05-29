@@ -5,7 +5,7 @@ import {
   type Professor,
   type ContratoProfessor,
 } from '@/services/professor.service';
-import { getDisciplinaById, type Disciplina } from '@/services/academico.service';
+import { getDisciplinaById, getTurmaIdByDisciplina, type Disciplina } from '@/services/academico.service';
 import { getAlunosAbaixoLimite } from '@/services/frequencia.service';
 
 export interface DisciplinaProfessor {
@@ -13,6 +13,7 @@ export interface DisciplinaProfessor {
   disciplina: Disciplina;
   alunos_em_risco: number;
   manual_disponivel: boolean;
+  turma_id: string | null;
 }
 
 export interface ProfessorDisciplinasData {
@@ -53,13 +54,17 @@ export function useProfessorDisciplinas(userId: string): ProfessorDisciplinasDat
             const disciplina = await getDisciplinaById(contrato.disciplina_id);
             if (!disciplina) return null;
 
-            const emRisco = await getAlunosAbaixoLimite(disciplina.id, 75);
+            const [emRisco, turmaId] = await Promise.all([
+              getAlunosAbaixoLimite(disciplina.id, 75),
+              getTurmaIdByDisciplina(disciplina.id),
+            ]);
 
             return {
               contrato,
               disciplina,
               alunos_em_risco:   emRisco.length,
               manual_disponivel: !!disciplina.manual_url,
+              turma_id:          turmaId,
             };
           })
         );

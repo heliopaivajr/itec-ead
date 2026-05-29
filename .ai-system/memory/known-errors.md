@@ -124,7 +124,7 @@ Ao criar tela com parâmetros de rota obrigatórios, verificar se o componente p
 **Checklist precisa melhorar?** Sim
 **Documento precisa melhorar?** Não
 
-**Status:** aberto
+**Status:** corrigido
 **Aprovado pelo Hélio:** Não necessário
 
 ---
