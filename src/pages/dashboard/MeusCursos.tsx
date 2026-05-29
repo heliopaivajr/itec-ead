@@ -3,7 +3,7 @@ import { useOutletContext } from 'react-router-dom';
 import {
   BookOpen, Clock, Download, ExternalLink,
   ChevronDown, ChevronUp, FileText, BarChart2,
-  AlertTriangle, RefreshCw,
+  AlertTriangle, RefreshCw, GraduationCap,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -36,9 +36,25 @@ function freqBarColor(pct: number) {
   return 'bg-red-500';
 }
 
+const NOTA_STATUS_LABEL: Record<string, string> = {
+  aprovado: 'Aprovado',
+  recuperacao: 'Recuperação',
+  reprovado_nota: 'Rep. Nota',
+  reprovado_falta: 'Rep. Falta',
+  cursando: 'Em curso',
+};
+
+const NOTA_STATUS_COLOR: Record<string, string> = {
+  aprovado: 'text-green-400 bg-green-500/10 border-green-500/30',
+  recuperacao: 'text-yellow-400 bg-yellow-500/10 border-yellow-500/30',
+  reprovado_nota: 'text-red-400 bg-red-500/10 border-red-500/30',
+  reprovado_falta: 'text-red-400 bg-red-500/10 border-red-500/30',
+  cursando: 'text-muted-foreground bg-muted border-border',
+};
+
 // ─── Card de uma disciplina ────────────────────────────────
 function CardDisciplina({ item }: { item: DisciplinaComProgresso }) {
-  const { disciplina, matricula, frequencia, percentual_materiais, materiais_count } = item;
+  const { disciplina, matricula, frequencia, percentual_materiais, materiais_count, notas } = item;
   const pct = frequencia?.percentual_presenca ?? 0;
 
   return (
@@ -91,6 +107,34 @@ function CardDisciplina({ item }: { item: DisciplinaComProgresso }) {
             </span>
           </div>
           {materiais_count > 0 && <ProgressBar value={percentual_materiais} />}
+        </div>
+
+        {/* Notas */}
+        <div className="space-y-1">
+          <div className="flex items-center justify-between text-xs">
+            <span className="text-muted-foreground flex items-center gap-1">
+              <GraduationCap className="h-3 w-3" /> Notas
+            </span>
+            {notas ? (
+              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${NOTA_STATUS_COLOR[notas.status]}`}>
+                {NOTA_STATUS_LABEL[notas.status]}
+              </span>
+            ) : (
+              <span className="text-muted-foreground">— Aguardando lançamento</span>
+            )}
+          </div>
+          {notas && (
+            <div className="flex gap-3 text-xs text-muted-foreground">
+              <span>N1: <strong className="text-foreground">{notas.n1 !== null ? notas.n1.toFixed(1) : '—'}</strong></span>
+              <span>N2: <strong className="text-foreground">{notas.n2 !== null ? notas.n2.toFixed(1) : '—'}</strong></span>
+              <span>Média: <strong className={notas.media !== null ? (notas.media >= 7 ? 'text-green-400' : notas.media >= 5 ? 'text-yellow-400' : 'text-red-400') : 'text-foreground'}>
+                {notas.media !== null ? notas.media.toFixed(1) : '—'}
+              </strong></span>
+              {notas.recuperacao !== null && (
+                <span>Rec: <strong className="text-foreground">{notas.recuperacao.toFixed(1)}</strong></span>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Alerta de frequência */}

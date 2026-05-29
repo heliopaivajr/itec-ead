@@ -213,3 +213,17 @@ export async function verificarPrerequisitoBatch(
   }
   return result;
 }
+
+export async function getTurmaIdByDisciplina(disciplinaId: string): Promise<string | null> {
+  const { data } = await supabase
+    .from('matriculas_disciplina')
+    .select('matricula_id, matriculas!inner(turma_id)')
+    .eq('disciplina_id', disciplinaId)
+    .not('matriculas.turma_id', 'is', null)
+    .limit(1)
+    .single();
+
+  if (!data) return null;
+  const m = (data as unknown as { matriculas: { turma_id: string } }).matriculas;
+  return m?.turma_id ?? null;
+}

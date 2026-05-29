@@ -95,5 +95,30 @@ SEMPRE tratar estados de loading e error na UI
 SEMPRE acessibilidade: aria-label em ações, semântica HTML
 ```
 
+## Checklist de Entrega (obrigatório antes de qualquer commit)
+
+### PONTO DE ENTRADA NA UI (obrigatório em toda entrega)
+
+Toda nova página ou rota implementada DEVE ter pelo menos
+um ponto de entrada navegável antes de ser considerada entregue:
+
+Opções válidas (pelo menos uma):
+- Link no menu lateral (Sidebar/Nav)
+- Botão ou card na página pai
+- Card de navegação no dashboard do role correto
+
+Verificação obrigatória antes do commit:
+- [ ] A rota existe no router?
+- [ ] Tem pelo menos um link/botão apontando para ela?
+- [ ] O role correto consegue acessar sem digitar URL?
+
+Exemplo do erro real (Sprint J):
+- `LancarNotas.tsx` implementado corretamente
+- Rota `/dashboard/professor/notas/:turmaId/:disciplinaId` existe
+- Mas `ProfessorHome.tsx` não tinha nenhum link para ela
+- Resultado: feature inacessível sem digitar URL manualmente
+
+Regra: feature sem ponto de entrada = feature incompleta.
+
 ---
 *Sistema de Agentes IA para SaaS — Hélio Paiva Jr. — ObraIA 2025*

@@ -192,6 +192,50 @@ export function calcularResumosPorAluno(
   return result;
 }
 
+// Batch por disciplina: UMA query retorna resumo de todos os alunos da disciplina
+// Usado por LancarNotas e consolidado de turma (Sprint J)
+export async function getResumoFrequenciaPorTurma(
+  disciplinaId: string,
+  alunoIds?: string[]
+): Promise<Map<string, ResumoFrequencia>> {
+  let query = supabase
+    .from('frequencia')
+    .select('aluno_id, presente, justificada')
+    .eq('disciplina_id', disciplinaId)
+    .limit(500); // proteção: max 50 alunos × 10 aulas
+
+  if (alunoIds && alunoIds.length > 0) {
+    query = query.in('aluno_id', alunoIds);
+  }
+
+  const { data, error } = await query;
+  const result = new Map<string, ResumoFrequencia>();
+  if (error || !data) return result;
+
+  type RawRow = { aluno_id: string; presente: boolean; justificada: boolean };
+  const byAluno = new Map<string, RawRow[]>();
+  for (const r of data as RawRow[]) {
+    const arr = byAluno.get(r.aluno_id) ?? [];
+    arr.push(r);
+    byAluno.set(r.aluno_id, arr);
+  }
+
+  for (const [alunoId, rows] of byAluno) {
+    const total        = rows.length;
+    const presencas    = rows.filter(r => r.presente).length;
+    const faltas       = total - presencas;
+    const justificadas = rows.filter(r => !r.presente && r.justificada).length;
+    const percentual   = total > 0 ? Math.round((presencas / total) * 100) : 100;
+    result.set(alunoId, {
+      total_aulas: total, presencas, faltas,
+      faltas_justificadas: justificadas,
+      percentual_presenca: percentual,
+      status: calcularStatus(percentual),
+    });
+  }
+  return result;
+}
+
 // Batch: resumo de frequência para múltiplas disciplinas de um aluno (1 query)
 export async function getResumoFrequenciaBatch(
   alunoId: string,

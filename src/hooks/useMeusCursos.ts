@@ -19,6 +19,19 @@ import {
 import {
   getMateriaiseProgressoBatch,
 } from '@/services/material.service';
+import {
+  getNotasBatchByAluno,
+  calcularStatus,
+  type StatusNota,
+} from '@/services/notas.service';
+
+export interface ResumoNotas {
+  n1: number | null;
+  n2: number | null;
+  recuperacao: number | null;
+  media: number | null;
+  status: StatusNota;
+}
 
 export interface DisciplinaComProgresso {
   disciplina: Disciplina;
@@ -28,6 +41,7 @@ export interface DisciplinaComProgresso {
   materiais_count: number;
   prereqs_ok: boolean;
   prereqs_faltam: Disciplina[];
+  notas: ResumoNotas | null;
 }
 
 export interface MeusCursosData {
@@ -90,11 +104,12 @@ export function useMeusCursos(alunoId: string): MeusCursosData {
 
         const ids = regulares.map(d => d.id);
 
-        // 3 queries batch em paralelo — eram 32–40 queries individuais
-        const [freqMap, materialMap, prereqMap] = await Promise.all([
+        // 4 queries batch em paralelo — eram 32–40 queries individuais
+        const [freqMap, materialMap, prereqMap, notasMap] = await Promise.all([
           getResumoFrequenciaBatch(alunoId, ids),
           getMateriaiseProgressoBatch(alunoId, ids, true),
           verificarPrerequisitoBatch(alunoId, ids, todasDisciplinas),
+          getNotasBatchByAluno(alunoId, ids),
         ]);
 
         const disciplinas: DisciplinaComProgresso[] = regulares.map(disc => {
@@ -102,6 +117,14 @@ export function useMeusCursos(alunoId: string): MeusCursosData {
           const freq      = freqMap.get(disc.id) ?? null;
           const mat       = materialMap.get(disc.id) ?? { count: 0, percentual: 100 };
           const prereq    = prereqMap.get(disc.id) ?? { aprovado: true, faltam: [] };
+          const notasRaw  = notasMap.get(disc.id) ?? null;
+
+          const notas: ResumoNotas | null = notasRaw
+            ? {
+                ...notasRaw,
+                status: calcularStatus(notasRaw.media, freq?.percentual_presenca ?? 100),
+              }
+            : null;
 
           return {
             disciplina:           disc,
@@ -111,6 +134,7 @@ export function useMeusCursos(alunoId: string): MeusCursosData {
             materiais_count:      mat.count,
             prereqs_ok:           prereq.aprovado,
             prereqs_faltam:       prereq.faltam,
+            notas:                matricula ? notas : null,
           };
         });
 
