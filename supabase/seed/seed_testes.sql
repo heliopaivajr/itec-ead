@@ -172,7 +172,7 @@ BEGIN
     (u_aluno8, u_aluno8, 'email', json_build_object('sub', u_aluno8::text, 'email', 'aluno8@itecedu.com'), NOW(), NOW(), NOW()),
     (u_aluno9, u_aluno9, 'email', json_build_object('sub', u_aluno9::text, 'email', 'aluno9@itecedu.com'), NOW(), NOW(), NOW()),
     (u_aluno10,u_aluno10,'email', json_build_object('sub', u_aluno10::text,'email', 'aluno10@itecedu.com'),NOW(), NOW(), NOW())
-  ON CONFLICT (provider, user_id) DO NOTHING;
+  ON CONFLICT (id) DO NOTHING;
 
   -- ─── 4. PROFILES ───────────────────────────────────────────
   INSERT INTO public.profiles (id, full_name, email, role) VALUES
