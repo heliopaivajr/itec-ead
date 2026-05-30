@@ -152,6 +152,28 @@ BEGIN
     (u_aluno10,'00000000-0000-0000-0000-000000000000', 'aluno10@itecedu.com',pwd, NOW(), NOW(), NOW(), '{"provider":"email","providers":["email"]}', '{}', 'authenticated', 'authenticated')
   ON CONFLICT (id) DO NOTHING;
 
+  -- ─── 3b. IDENTITIES (necessário para login via GoTrue) ────
+  INSERT INTO auth.identities (
+    id, user_id, provider, identity_data,
+    last_sign_in_at, created_at, updated_at
+  ) VALUES
+    (u_prof1,  u_prof1,  'email', json_build_object('sub', u_prof1::text,  'email', 'prof1@itecedu.com'),  NOW(), NOW(), NOW()),
+    (u_prof2,  u_prof2,  'email', json_build_object('sub', u_prof2::text,  'email', 'prof2@itecedu.com'),  NOW(), NOW(), NOW()),
+    (u_prof3,  u_prof3,  'email', json_build_object('sub', u_prof3::text,  'email', 'prof3@itecedu.com'),  NOW(), NOW(), NOW()),
+    (u_prof4,  u_prof4,  'email', json_build_object('sub', u_prof4::text,  'email', 'prof4@itecedu.com'),  NOW(), NOW(), NOW()),
+    (u_prof5,  u_prof5,  'email', json_build_object('sub', u_prof5::text,  'email', 'prof5@itecedu.com'),  NOW(), NOW(), NOW()),
+    (u_aluno1, u_aluno1, 'email', json_build_object('sub', u_aluno1::text, 'email', 'aluno1@itecedu.com'), NOW(), NOW(), NOW()),
+    (u_aluno2, u_aluno2, 'email', json_build_object('sub', u_aluno2::text, 'email', 'aluno2@itecedu.com'), NOW(), NOW(), NOW()),
+    (u_aluno3, u_aluno3, 'email', json_build_object('sub', u_aluno3::text, 'email', 'aluno3@itecedu.com'), NOW(), NOW(), NOW()),
+    (u_aluno4, u_aluno4, 'email', json_build_object('sub', u_aluno4::text, 'email', 'aluno4@itecedu.com'), NOW(), NOW(), NOW()),
+    (u_aluno5, u_aluno5, 'email', json_build_object('sub', u_aluno5::text, 'email', 'aluno5@itecedu.com'), NOW(), NOW(), NOW()),
+    (u_aluno6, u_aluno6, 'email', json_build_object('sub', u_aluno6::text, 'email', 'aluno6@itecedu.com'), NOW(), NOW(), NOW()),
+    (u_aluno7, u_aluno7, 'email', json_build_object('sub', u_aluno7::text, 'email', 'aluno7@itecedu.com'), NOW(), NOW(), NOW()),
+    (u_aluno8, u_aluno8, 'email', json_build_object('sub', u_aluno8::text, 'email', 'aluno8@itecedu.com'), NOW(), NOW(), NOW()),
+    (u_aluno9, u_aluno9, 'email', json_build_object('sub', u_aluno9::text, 'email', 'aluno9@itecedu.com'), NOW(), NOW(), NOW()),
+    (u_aluno10,u_aluno10,'email', json_build_object('sub', u_aluno10::text,'email', 'aluno10@itecedu.com'),NOW(), NOW(), NOW())
+  ON CONFLICT (provider, user_id) DO NOTHING;
+
   -- ─── 4. PROFILES ───────────────────────────────────────────
   INSERT INTO public.profiles (id, full_name, email, role) VALUES
     (u_prof1,  'Prof. Carlos Oliveira',  'prof1@itecedu.com',  'professor'),
