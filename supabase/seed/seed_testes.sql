@@ -142,7 +142,7 @@ BEGIN
     (u_aluno8, '00000000-0000-0000-0000-000000000000', 'aluno8@itecedu.com', pwd, NOW(), NOW(), NOW(), '{"provider":"email","providers":["email"]}', '{}', 'authenticated', 'authenticated'),
     (u_aluno9, '00000000-0000-0000-0000-000000000000', 'aluno9@itecedu.com', pwd, NOW(), NOW(), NOW(), '{"provider":"email","providers":["email"]}', '{}', 'authenticated', 'authenticated'),
     (u_aluno10,'00000000-0000-0000-0000-000000000000', 'aluno10@itecedu.com',pwd, NOW(), NOW(), NOW(), '{"provider":"email","providers":["email"]}', '{}', 'authenticated', 'authenticated')
-  ON CONFLICT (email) DO NOTHING;
+  ON CONFLICT (id) DO NOTHING;
 
   -- ─── 4. PROFILES ───────────────────────────────────────────
   INSERT INTO public.profiles (id, full_name, email, role) VALUES
@@ -189,18 +189,18 @@ BEGIN
   -- ─── 7. MATRÍCULAS ─────────────────────────────────────────
   -- alunos 1-5 → TEO-2026-1 | alunos 6-10 → TEO-2025-1
   INSERT INTO public.matriculas
-    (id, aluno_id, turma_id, status, data_matricula)
+    (id, aluno_id, turma_id, status)
   VALUES
-    (m_aluno1,  u_aluno1, t_2026_1, 'ativa', '2026-01-27'),
-    (m_aluno2,  u_aluno2, t_2026_1, 'ativa', '2026-01-27'),
-    (m_aluno3,  u_aluno3, t_2026_1, 'ativa', '2026-01-27'),
-    (m_aluno4,  u_aluno4, t_2026_1, 'ativa', '2026-01-27'),
-    (m_aluno5,  u_aluno5, t_2026_1, 'ativa', '2026-01-27'),
-    (m_aluno6,  u_aluno6, t_2025_1, 'ativa', '2025-02-10'),
-    (m_aluno7,  u_aluno7, t_2025_1, 'ativa', '2025-02-10'),
-    (m_aluno8,  u_aluno8, t_2025_1, 'ativa', '2025-02-10'),
-    (m_aluno9,  u_aluno9, t_2025_1, 'ativa', '2025-02-10'),
-    (m_aluno10, u_aluno10,t_2025_1, 'ativa', '2025-02-10')
+    (m_aluno1,  u_aluno1, t_2026_1, 'ativa'),
+    (m_aluno2,  u_aluno2, t_2026_1, 'ativa'),
+    (m_aluno3,  u_aluno3, t_2026_1, 'ativa'),
+    (m_aluno4,  u_aluno4, t_2026_1, 'ativa'),
+    (m_aluno5,  u_aluno5, t_2026_1, 'ativa'),
+    (m_aluno6,  u_aluno6, t_2025_1, 'ativa'),
+    (m_aluno7,  u_aluno7, t_2025_1, 'ativa'),
+    (m_aluno8,  u_aluno8, t_2025_1, 'ativa'),
+    (m_aluno9,  u_aluno9, t_2025_1, 'ativa'),
+    (m_aluno10, u_aluno10,t_2025_1, 'ativa')
   ON CONFLICT DO NOTHING;
 
   -- ─── 8. MATRÍCULAS POR DISCIPLINA ──────────────────────────
@@ -222,10 +222,11 @@ BEGIN
   -- aluno1=95% (19/20), aluno2=90%, aluno3=80%, aluno4=75%, aluno5=70% (em risco)
   IF d1 IS NOT NULL THEN
     INSERT INTO public.frequencia
-      (aluno_id, disciplina_id, data_aula, presente, lancado_por)
+      (aluno_id, disciplina_id, professor_id, data_aula, presente)
     SELECT
       al.aluno_id,
       d1,
+      u_prof1,
       ('2026-02-01'::date + (n || ' days')::interval)::date,
       CASE
         WHEN al.aluno_id = u_aluno1 THEN n < 19   -- 95%
@@ -233,8 +234,7 @@ BEGIN
         WHEN al.aluno_id = u_aluno3 THEN n < 16   -- 80%
         WHEN al.aluno_id = u_aluno4 THEN n < 15   -- 75%
         ELSE n < 14                                -- 70%
-      END,
-      u_prof1
+      END
     FROM (VALUES
       (u_aluno1),(u_aluno2),(u_aluno3),(u_aluno4),(u_aluno5)
     ) AS al(aluno_id),
