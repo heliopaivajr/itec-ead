@@ -151,4 +151,32 @@ Ao criar tela com parâmetros de rota obrigatórios, verificar se o componente p
 
 ---
 
+## ERR-SUPABASE-001
+
+**Data:** 2026-05-29
+**Sprint:** fix-professor-dashboard
+**Contexto:** seed de usuários de teste inseridos manualmente em `auth.users`
+
+**Erro:**
+`ON CONFLICT (provider, user_id)` falhou com `42P10` porque `auth.identities`
+não tem constraint unique nessa combinação. A PK real da tabela é `(id)`.
+
+**Correto:**
+```sql
+ON CONFLICT (id) DO NOTHING
+```
+
+**Lição:**
+Antes de usar `ON CONFLICT` em tabelas do schema `auth` do Supabase,
+verificar a PK real com:
+```sql
+SELECT constraint_name, column_name
+FROM information_schema.key_column_usage
+WHERE table_schema = 'auth' AND table_name = 'identities';
+```
+
+**Status:** corrigido
+
+---
+
 *Mantido pelo agente-Osabio · ITEC-EAD · 2025*
