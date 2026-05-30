@@ -40,6 +40,9 @@ DECLARE
   t_2026_1 UUID;
   t_2025_1 UUID;
 
+  -- ID do curso
+  v_curso_id UUID;
+
   -- IDs de disciplinas (primeiras 5 do módulo 1)
   d1 UUID; d2 UUID; d3 UUID; d4 UUID; d5 UUID;
 
@@ -78,6 +81,11 @@ BEGIN
 
   IF t_2026_1 IS NULL OR t_2025_1 IS NULL THEN
     RAISE EXCEPTION 'Turmas TEO-2026-1 / TEO-2025-1 não encontradas. Execute a migration 018 primeiro.';
+  END IF;
+
+  SELECT id INTO v_curso_id FROM public.cursos WHERE codigo = 'GRAD-TEO';
+  IF v_curso_id IS NULL THEN
+    RAISE EXCEPTION 'Curso GRAD-TEO não encontrado. Execute a migration 014 primeiro.';
   END IF;
 
   -- ─── 2. BUSCAR IDs DAS DISCIPLINAS (5 primeiras do módulo 1) ─
@@ -189,18 +197,18 @@ BEGIN
   -- ─── 7. MATRÍCULAS ─────────────────────────────────────────
   -- alunos 1-5 → TEO-2026-1 | alunos 6-10 → TEO-2025-1
   INSERT INTO public.matriculas
-    (id, aluno_id, turma_id, status)
+    (id, aluno_id, curso_id, turma_id, status)
   VALUES
-    (m_aluno1,  u_aluno1, t_2026_1, 'ativa'),
-    (m_aluno2,  u_aluno2, t_2026_1, 'ativa'),
-    (m_aluno3,  u_aluno3, t_2026_1, 'ativa'),
-    (m_aluno4,  u_aluno4, t_2026_1, 'ativa'),
-    (m_aluno5,  u_aluno5, t_2026_1, 'ativa'),
-    (m_aluno6,  u_aluno6, t_2025_1, 'ativa'),
-    (m_aluno7,  u_aluno7, t_2025_1, 'ativa'),
-    (m_aluno8,  u_aluno8, t_2025_1, 'ativa'),
-    (m_aluno9,  u_aluno9, t_2025_1, 'ativa'),
-    (m_aluno10, u_aluno10,t_2025_1, 'ativa')
+    (m_aluno1,  u_aluno1,  v_curso_id, t_2026_1, 'ativa'),
+    (m_aluno2,  u_aluno2,  v_curso_id, t_2026_1, 'ativa'),
+    (m_aluno3,  u_aluno3,  v_curso_id, t_2026_1, 'ativa'),
+    (m_aluno4,  u_aluno4,  v_curso_id, t_2026_1, 'ativa'),
+    (m_aluno5,  u_aluno5,  v_curso_id, t_2026_1, 'ativa'),
+    (m_aluno6,  u_aluno6,  v_curso_id, t_2025_1, 'ativa'),
+    (m_aluno7,  u_aluno7,  v_curso_id, t_2025_1, 'ativa'),
+    (m_aluno8,  u_aluno8,  v_curso_id, t_2025_1, 'ativa'),
+    (m_aluno9,  u_aluno9,  v_curso_id, t_2025_1, 'ativa'),
+    (m_aluno10, u_aluno10, v_curso_id, t_2025_1, 'ativa')
   ON CONFLICT DO NOTHING;
 
   -- ─── 8. MATRÍCULAS POR DISCIPLINA ──────────────────────────
