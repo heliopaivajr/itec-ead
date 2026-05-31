@@ -5,7 +5,7 @@ import { getRole } from '@/services/profile.service';
 import type { Session } from '@supabase/supabase-js';
 
 export const ROLES_COM_ACESSO: string[] = [
-  'aluno', 'professor', 'administracao', 'admin', 'superadmin',
+  'aluno', 'professor', 'administracao', 'financeiro', 'admin', 'superadmin',
 ];
 
 // pendente   → /aguardando (conta criada, aguarda aprovação)

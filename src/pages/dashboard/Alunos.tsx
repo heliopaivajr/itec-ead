@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useOutletContext } from 'react-router-dom';
 import {
   ChevronLeft, ChevronRight, Search, User, GraduationCap,
   Loader2, Edit, Eye, Lock, CheckCircle, Clock,
@@ -8,7 +8,11 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { getUsuarios, updateRole, updateUsuario } from '@/services/usuarios.service';
 import type { UserRow } from '@/services/usuarios.service';
+import { updateStatusMatricula } from '@/services/matriculas.service';
+import { InlineStatusSelect } from '@/components/dashboard/InlineStatusSelect';
+import type { StatusOption } from '@/components/dashboard/InlineStatusSelect';
 import { useToast } from '@/hooks/use-toast';
+import type { DashboardContext } from '../Dashboard';
 
 const PAGE_SIZE = 20;
 
@@ -170,7 +174,18 @@ function AlunoModal({ aluno, salvando, onSave, onClose }: AlunoModalProps) {
 
 // ─── Página principal ─────────────────────────────────────────────────────────
 
+const STATUS_MATRICULA_OPTIONS: StatusOption[] = [
+  { value: 'ativa',     label: 'Ativo',     color: 'bg-green-100 text-green-800'  },
+  { value: 'inativa',   label: 'Inativo',   color: 'bg-gray-100 text-gray-600'   },
+  { value: 'trancada',  label: 'Trancado',  color: 'bg-yellow-100 text-yellow-800' },
+  { value: 'evadida',   label: 'Evadido',   color: 'bg-orange-100 text-orange-800' },
+  { value: 'concluida', label: 'Concluído', color: 'bg-blue-100 text-blue-800'   },
+  { value: 'suspensa',  label: 'Suspenso',  color: 'bg-red-100 text-red-800'     },
+  { value: 'pendente',  label: 'Pendente',  color: 'bg-purple-100 text-purple-800' },
+];
+
 export default function Alunos() {
+  const { profile } = useOutletContext<DashboardContext>();
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -236,7 +251,10 @@ export default function Alunos() {
   const handleEditSave = async (dados: ModalForm) => {
     if (!editAluno) return;
     setAtualizando(editAluno.id);
-    const { error } = await updateUsuario(editAluno.id, dados);
+    const { error } = await updateUsuario(editAluno.id, {
+      ...dados,
+      sexo: dados.sexo as 'masculino' | 'feminino' | 'outro' | undefined,
+    });
     if (error) {
       toast({ title: 'Erro ao salvar', description: error, variant: 'destructive' });
     } else {
@@ -310,9 +328,25 @@ export default function Alunos() {
                       </td>
                       <td className="px-4 py-3 text-sm text-muted-foreground">{aluno.telefone ?? '—'}</td>
                       <td className="px-4 py-3">
-                        <span className={`inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full border ${sc.color}`}>
-                          <StatusIcon className="h-3 w-3" /> {sc.label}
-                        </span>
+                        <InlineStatusSelect
+                          value={aluno.matricula_status ?? 'pendente'}
+                          options={STATUS_MATRICULA_OPTIONS}
+                          disabled={
+                            !aluno.matricula_id ||
+                            !['administracao', 'admin', 'superadmin'].includes(profile?.role ?? '')
+                          }
+                          onSave={async (novoStatus) => {
+                            if (!aluno.matricula_id) throw new Error('Matrícula não encontrada');
+                            if (novoStatus === 'concluida') {
+                              const ok = window.confirm(
+                                'Marcar como concluído é irreversível sem aprovação da direção. Confirmar?'
+                              );
+                              if (!ok) throw new Error('cancelado');
+                            }
+                            const { error } = await updateStatusMatricula(aluno.matricula_id, novoStatus);
+                            if (error) throw new Error(error);
+                          }}
+                        />
                       </td>
                       <td className="px-4 py-3 text-xs text-muted-foreground">
                         {new Date(aluno.created_at).toLocaleDateString('pt-BR')}

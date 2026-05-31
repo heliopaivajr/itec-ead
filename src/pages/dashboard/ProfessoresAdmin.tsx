@@ -6,15 +6,28 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { getProfessores, desativarProfessor, vincularDisciplina } from '@/services/professor.service';
+import { getProfessores, desativarProfessor, reativarProfessor, vincularDisciplina } from '@/services/professor.service';
 import type { Professor } from '@/services/professor.service';
+import { InlineStatusSelect } from '@/components/dashboard/InlineStatusSelect';
+import type { StatusOption } from '@/components/dashboard/InlineStatusSelect';
 import { getAllDisciplinas } from '@/services/academico.service';
 import type { Disciplina } from '@/services/academico.service';
+import {
+  getSolicitacoesPendentes, aprovarSolicitacao, recusarSolicitacao,
+  type SolicitacaoComDetalhes,
+} from '@/services/solicitacoes.service';
+import { Badge } from '@/components/ui/badge';
 import { ProfessorModal } from '@/components/dashboard/ProfessorModal';
 import { useToast } from '@/hooks/use-toast';
 import type { DashboardContext } from '../Dashboard';
 
 const PAGE_SIZE = 20;
+
+// TODO Sprint futuro: adicionar 'afastado' e 'suspenso' quando professores tiver coluna status TEXT
+const STATUS_PROFESSOR_OPTIONS: StatusOption[] = [
+  { value: 'ativo',   label: 'Ativo',   color: 'bg-green-100 text-green-800' },
+  { value: 'inativo', label: 'Inativo', color: 'bg-gray-100 text-gray-600'  },
+];
 
 export default function ProfessoresAdmin() {
   const { profile } = useOutletContext<DashboardContext>();
@@ -27,6 +40,40 @@ export default function ProfessoresAdmin() {
   const [debSearch, setDebSearch]     = useState('');
   const [loading, setLoading]         = useState(true);
   const [showInativos, setShowInativos] = useState(false);
+
+  // Solicitações pendentes
+  const [solicitacoes, setSolicitacoes] = useState<SolicitacaoComDetalhes[]>([]);
+  const [processando, setProcessando]   = useState<string | null>(null);
+
+  useEffect(() => {
+    getSolicitacoesPendentes().then(setSolicitacoes);
+  }, []);
+
+  const handleAprovar = async (id: string) => {
+    setProcessando(id);
+    const { error } = await aprovarSolicitacao(id, profile.id);
+    setProcessando(null);
+    if (error) {
+      toast({ title: 'Erro ao aprovar', description: error, variant: 'destructive' });
+    } else {
+      toast({ title: 'Solicitação aprovada!', description: 'Contrato pendente criado para o professor.' });
+      getSolicitacoesPendentes().then(setSolicitacoes);
+      load();
+    }
+  };
+
+  const handleRecusar = async (id: string) => {
+    const motivo = prompt('Motivo da recusa (opcional):') ?? undefined;
+    setProcessando(id);
+    const { error } = await recusarSolicitacao(id, profile.id, motivo);
+    setProcessando(null);
+    if (error) {
+      toast({ title: 'Erro ao recusar', description: error, variant: 'destructive' });
+    } else {
+      toast({ title: 'Solicitação recusada.' });
+      getSolicitacoesPendentes().then(setSolicitacoes);
+    }
+  };
 
   // Modais
   const [modalProf, setModalProf]     = useState<Professor | 'new' | null>(null);
@@ -100,6 +147,54 @@ export default function ProfessoresAdmin() {
         </Button>
       </div>
 
+      {/* Solicitações Pendentes */}
+      {solicitacoes.length > 0 && (
+        <div className="bg-yellow-500/10 border border-yellow-400/30 rounded-xl p-4 space-y-3">
+          <h2 className="text-sm font-semibold text-yellow-700 dark:text-yellow-400 flex items-center gap-2">
+            <BookOpen className="h-4 w-4" />
+            Solicitações de Disciplina Pendentes ({solicitacoes.length})
+          </h2>
+          <div className="space-y-2">
+            {solicitacoes.map(s => (
+              <div key={s.id} className="bg-card border border-border rounded-lg px-4 py-3 flex items-center justify-between gap-3 flex-wrap">
+                <div className="min-w-0">
+                  <p className="text-sm font-medium text-foreground">{s.professor_nome}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {s.disciplina_codigo} — {s.disciplina_nome}
+                    {s.turma_codigo && ` · Turma ${s.turma_codigo}`}
+                  </p>
+                  {s.observacao && (
+                    <p className="text-xs text-muted-foreground italic mt-0.5">"{s.observacao}"</p>
+                  )}
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <Badge variant="outline" className="bg-yellow-500/20 text-yellow-600 border-yellow-400/30 text-xs">
+                    Pendente
+                  </Badge>
+                  <Button
+                    size="sm"
+                    className="h-7 text-xs bg-green-600 hover:bg-green-700"
+                    disabled={processando === s.id}
+                    onClick={() => handleAprovar(s.id)}
+                  >
+                    Aprovar
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-7 text-xs border-destructive/50 text-destructive hover:bg-destructive/10"
+                    disabled={processando === s.id}
+                    onClick={() => handleRecusar(s.id)}
+                  >
+                    Recusar
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Busca + filtro */}
       <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
         <div className="relative max-w-sm w-full">
@@ -160,9 +255,18 @@ export default function ProfessoresAdmin() {
                     </td>
                     <td className="px-4 py-3 text-xs text-muted-foreground">{p.igreja_local ?? '—'}</td>
                     <td className="px-4 py-3">
-                      <span className={`text-xs font-semibold px-2 py-0.5 rounded-full border ${p.ativo ? 'bg-green-500/20 text-green-400 border-green-500/30' : 'bg-muted text-muted-foreground border-border'}`}>
-                        {p.ativo ? 'Ativo' : 'Inativo'}
-                      </span>
+                      <InlineStatusSelect
+                        value={p.ativo ? 'ativo' : 'inativo'}
+                        options={STATUS_PROFESSOR_OPTIONS}
+                        disabled={!['administracao', 'admin', 'superadmin'].includes(profile.role)}
+                        onSave={async (novoStatus) => {
+                          const { error } = novoStatus === 'ativo'
+                            ? await reativarProfessor(p.id)
+                            : await desativarProfessor(p.id);
+                          if (error) throw new Error(error);
+                          load();
+                        }}
+                      />
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-1">
@@ -180,7 +284,7 @@ export default function ProfessoresAdmin() {
                         >
                           <Link2 className="h-3.5 w-3.5" />
                         </button>
-                        {p.ativo && (
+                        {false && ( // substituído por InlineStatusSelect na coluna Status
                           <button
                             onClick={() => handleDesativar(p)}
                             title="Desativar"
