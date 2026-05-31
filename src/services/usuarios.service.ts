@@ -1,5 +1,6 @@
 import { supabase } from '@/lib/supabase';
 import type { UserRole } from '@/services/profile.service';
+import { sanitizeDate } from '@/utils/sanitize';
 
 export interface UserRow {
   id: string;
@@ -96,11 +97,15 @@ export async function updateRole(userId: string, role: UserRole): Promise<Servic
 // Atualização completa de usuário — usado no modal de edição em Usuarios.tsx
 export async function updateUsuario(
   userId: string,
-  dados: { full_name: string; telefone: string; role: string }
+  dados: UpdatePerfilPayload & { role?: string }
 ): Promise<ServiceResult> {
+  const payload = {
+    ...dados,
+    data_nascimento: sanitizeDate(dados.data_nascimento),
+  };
   const { error } = await supabase
     .from('profiles')
-    .update(dados)
+    .update(payload)
     .eq('id', userId);
 
   if (error) return { error: error.message };
