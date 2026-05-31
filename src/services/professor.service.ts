@@ -196,6 +196,17 @@ export async function desativarProfessor(id: string): Promise<ServiceResult> {
   return { error: null };
 }
 
+export async function reativarProfessor(id: string): Promise<ServiceResult> {
+  const { error } = await supabase
+    .from('professores')
+    .update({ ativo: true, atualizado_em: new Date().toISOString() })
+    .eq('id', id);
+  if (error) return { error: error.message };
+  return { error: null };
+}
+// TODO Sprint futuro: adicionar coluna status TEXT em professores
+// para suportar 'afastado' e 'suspenso' além de ativo/inativo
+
 export async function vincularDisciplina(
   professorId: string,
   disciplinaId: string,

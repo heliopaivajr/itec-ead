@@ -6,8 +6,10 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { getProfessores, desativarProfessor, vincularDisciplina } from '@/services/professor.service';
+import { getProfessores, desativarProfessor, reativarProfessor, vincularDisciplina } from '@/services/professor.service';
 import type { Professor } from '@/services/professor.service';
+import { InlineStatusSelect } from '@/components/dashboard/InlineStatusSelect';
+import type { StatusOption } from '@/components/dashboard/InlineStatusSelect';
 import { getAllDisciplinas } from '@/services/academico.service';
 import type { Disciplina } from '@/services/academico.service';
 import {
@@ -20,6 +22,12 @@ import { useToast } from '@/hooks/use-toast';
 import type { DashboardContext } from '../Dashboard';
 
 const PAGE_SIZE = 20;
+
+// TODO Sprint futuro: adicionar 'afastado' e 'suspenso' quando professores tiver coluna status TEXT
+const STATUS_PROFESSOR_OPTIONS: StatusOption[] = [
+  { value: 'ativo',   label: 'Ativo',   color: 'bg-green-100 text-green-800' },
+  { value: 'inativo', label: 'Inativo', color: 'bg-gray-100 text-gray-600'  },
+];
 
 export default function ProfessoresAdmin() {
   const { profile } = useOutletContext<DashboardContext>();
@@ -247,9 +255,18 @@ export default function ProfessoresAdmin() {
                     </td>
                     <td className="px-4 py-3 text-xs text-muted-foreground">{p.igreja_local ?? '—'}</td>
                     <td className="px-4 py-3">
-                      <span className={`text-xs font-semibold px-2 py-0.5 rounded-full border ${p.ativo ? 'bg-green-500/20 text-green-400 border-green-500/30' : 'bg-muted text-muted-foreground border-border'}`}>
-                        {p.ativo ? 'Ativo' : 'Inativo'}
-                      </span>
+                      <InlineStatusSelect
+                        value={p.ativo ? 'ativo' : 'inativo'}
+                        options={STATUS_PROFESSOR_OPTIONS}
+                        disabled={!['administracao', 'admin', 'superadmin'].includes(profile.role)}
+                        onSave={async (novoStatus) => {
+                          const { error } = novoStatus === 'ativo'
+                            ? await reativarProfessor(p.id)
+                            : await desativarProfessor(p.id);
+                          if (error) throw new Error(error);
+                          load();
+                        }}
+                      />
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-1">
@@ -267,7 +284,7 @@ export default function ProfessoresAdmin() {
                         >
                           <Link2 className="h-3.5 w-3.5" />
                         </button>
-                        {p.ativo && (
+                        {false && ( // substituído por InlineStatusSelect na coluna Status
                           <button
                             onClick={() => handleDesativar(p)}
                             title="Desativar"
