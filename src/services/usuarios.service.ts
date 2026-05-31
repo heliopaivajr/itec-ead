@@ -26,6 +26,9 @@ export interface UserRow {
   cep?: string;
   igreja_local?: string;
   observacoes_internas?: string;
+  // matrícula mais recente (opcional — preenchido por getUsuarios)
+  matricula_id?: string | null;
+  matricula_status?: string | null;
 }
 
 export interface ServiceResult {
@@ -45,6 +48,7 @@ export interface UsuariosStats {
 }
 
 // Listagem paginada com busca opcional por nome/email
+// Inclui matrícula mais recente (id + status) via join
 export async function getUsuarios(
   page = 1,
   limit = 20,
@@ -52,7 +56,7 @@ export async function getUsuarios(
 ): Promise<UsuariosPage> {
   let query = supabase
     .from('profiles')
-    .select('*', { count: 'exact' })
+    .select('*, matriculas(id, status, created_at)', { count: 'exact' })
     .order('full_name', { ascending: true })
     .range((page - 1) * limit, page * limit - 1);
 
@@ -64,7 +68,21 @@ export async function getUsuarios(
 
   const { data, count, error } = await query;
   if (error) return { data: [], total: 0 };
-  return { data: (data as UserRow[]) ?? [], total: count ?? 0 };
+
+  const rows: UserRow[] = (data ?? []).map((perfil: Record<string, unknown>) => {
+    const matriculas = perfil.matriculas as { id: string; status: string; created_at: string }[] | null;
+    const matriculaAtiva = matriculas
+      ?.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0]
+      ?? null;
+    return {
+      ...(perfil as UserRow),
+      matriculas: undefined,
+      matricula_id: matriculaAtiva?.id ?? null,
+      matricula_status: matriculaAtiva?.status ?? null,
+    };
+  });
+
+  return { data: rows, total: count ?? 0 };
 }
 
 // Contagens para os cards KPI — busca apenas a coluna role (leve)
