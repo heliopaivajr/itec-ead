@@ -51,9 +51,10 @@ const menuByRole: Record<string, { icon: React.ElementType; label: string; href:
   aluno: [
     { icon: LayoutDashboard, label: 'Dashboard',      href: '/dashboard',           tooltip: 'Visão geral',              end: true },
     { icon: Book,            label: 'Meus Cursos',    href: '/dashboard/cursos',     tooltip: 'Cursos matriculados' },
-    { icon: Tv,              label: 'Ao Vivo',        href: '/dashboard/ao-vivo',    tooltip: 'Transmissões ao vivo' },
-    { icon: Users,           label: 'Comunidade',     href: '/dashboard/comunidade', tooltip: 'Fóruns e grupos' },
-    { icon: CalendarDays,    label: 'Eventos',        href: '/dashboard/eventos',    tooltip: 'Calendário acadêmico' },
+    // TODO: reabilitar quando tiver conteúdo real (Sprint N)
+    // { icon: Tv,              label: 'Ao Vivo',        href: '/dashboard/ao-vivo',    tooltip: 'Transmissões ao vivo' },
+    // { icon: Users,           label: 'Comunidade',     href: '/dashboard/comunidade', tooltip: 'Fóruns e grupos' },
+    // { icon: CalendarDays,    label: 'Eventos',        href: '/dashboard/eventos',    tooltip: 'Calendário acadêmico' },
     { icon: FileText,        label: 'Documentos',     href: '/dashboard/documentos', tooltip: 'Certificados e histórico' },
     { icon: Megaphone,        label: 'Avisos',         href: '/dashboard/avisos',     tooltip: 'Mural de avisos' },
     { icon: CreditCard,      label: 'Pagamentos',     href: '/dashboard/pagamentos', tooltip: 'Boletos e financeiro' },
