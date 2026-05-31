@@ -31,6 +31,7 @@ const roleLabel: Record<string, string> = {
   aluno:         'Aluno',
   professor:     'Professor',
   administracao: 'Secretaria',
+  financeiro:    'Financeiro',
   admin:         'Diretoria',
   superadmin:    'SuperAdmin',
 };
@@ -39,6 +40,7 @@ const roleColor: Record<string, string> = {
   aluno:         'text-blue-400',
   professor:     'text-green-400',
   administracao: 'text-teal-400',
+  financeiro:    'text-orange-400',
   admin:         'text-red-400',
   superadmin:    'text-primary',
 };
