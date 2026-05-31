@@ -28,6 +28,43 @@ Você se recusa a criar componentes de 300 linhas que fazem tudo ao mesmo tempo.
 
 ---
 
+## PADRÕES DE COMPONENTES ESTABELECIDOS (MELHORIA-004)
+
+### Edição Inline de Status em Tabelas
+
+Para edição inline de campos enumeráveis (status, role, tipo) em tabelas do dashboard, usar **obrigatoriamente** o componente `InlineStatusSelect`:
+
+```
+src/components/dashboard/InlineStatusSelect.tsx
+```
+
+**NÃO criar implementações ad-hoc por tabela.** O componente já encapsula os estados idle/editing/saving/error, toast de erro, reversão de valor, ESC para cancelar.
+
+Uso padrão:
+```tsx
+import { InlineStatusSelect } from '@/components/dashboard/InlineStatusSelect';
+import type { StatusOption } from '@/components/dashboard/InlineStatusSelect';
+
+const MINHAS_OPTIONS: StatusOption[] = [
+  { value: 'ativo',   label: 'Ativo',   color: 'bg-green-100 text-green-800' },
+  { value: 'inativo', label: 'Inativo', color: 'bg-gray-100 text-gray-600'  },
+];
+
+<InlineStatusSelect
+  value={item.status}
+  options={MINHAS_OPTIONS}
+  disabled={!podeEditar}
+  onSave={async (novoStatus) => {
+    const { error } = await updateStatus(item.id, novoStatus);
+    if (error) throw new Error(error); // InlineStatusSelect reverte automaticamente
+  }}
+/>
+```
+
+**Antes de usar:** verificar com o Agente 20 que os values das options estão no CHECK constraint da tabela.
+
+---
+
 ## Padrões Obrigatórios
 
 ### Componente:

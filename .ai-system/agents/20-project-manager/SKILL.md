@@ -84,6 +84,35 @@ Exemplo do erro real (Sprint J):
 
 Regra: spec com coluna errada = retrabalho de implementação.
 
+### VERIFICAÇÃO DE CONSTRAINTS E DEPENDÊNCIAS (obrigatória — MELHORIA-003)
+
+**Antes de especificar opções de status/enum em qualquer dropdown ou InlineStatusSelect:**
+
+1. Verificar o CHECK constraint da tabela:
+   ```sql
+   SELECT pg_get_constraintdef(oid) FROM pg_constraint
+   WHERE conrelid = 'public.<tabela>'::regclass AND contype = 'c';
+   ```
+2. Confirmar que TODOS os values das options estão no CHECK
+3. Se algum valor faltar → criar migration ANTES de especificar as options na UI
+4. NUNCA assumir que o CHECK inclui todos os valores de negócio necessários
+
+Exemplo do erro real (Sprint fix-ux-inline-edit):
+- Spec listou 7 options para `matriculas.status`
+- CHECK só aceitava 3 valores — 4 opções causavam erro silencioso no banco
+
+**Ao montar plano com múltiplas tarefas que compartilham artefatos:**
+
+Regra de dependência de criação: **Se a tarefa B usa um artefato criado pela tarefa A, então A precede B no plano — sempre, automaticamente.**
+
+- Componente reutilizável (ex: InlineStatusSelect) → deve ser criado ANTES das tarefas que o usam
+- Service/hook compartilhado → deve ser criado ANTES das pages que o consomem
+- Migration → deve ser aplicada ANTES dos services que dependem das colunas novas
+
+Exemplo do erro real (Sprint fix-ux-inline-edit):
+- Tarefa 1.5 (criar InlineStatusSelect) foi posicionada DEPOIS de 1.3 e 1.4 (que o consomem)
+- O Hélio corrigiu a ordem manualmente — isso não deveria ser necessário
+
 Se qualquer item marcar **SIM**, ele aparece como **Risco Identificado** no plano.
 
 ### Etapa 3 — Decomposição em Tarefas
