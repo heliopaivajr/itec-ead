@@ -112,6 +112,11 @@ export default function ProfessorHome() {
 
   const nome = professor?.nome_completo ?? profile.full_name ?? 'Professor';
   const totalEmRisco = disciplinas.reduce((s, d) => s + d.alunos_em_risco, 0);
+
+  const PREFIXOS = ['Prof. ', 'Profa. ', 'Professor ', 'Professora ', 'Dr. ', 'Pastor '];
+  const nomeExibicao = PREFIXOS.some(p => nome.trim().startsWith(p))
+    ? nome.trim()
+    : `Prof. ${nome.trim()}`;
   const solicitacoesPendentes = solicitacoes.filter(s => s.status === 'pendente');
 
   return (
@@ -120,7 +125,7 @@ export default function ProfessorHome() {
       <div className="flex items-start justify-between">
         <div>
           <h1 className="text-2xl font-merriweather font-bold text-primary">
-            Olá, Prof. {nome.split(' ')[0]}
+            Olá, {nomeExibicao.split(' ').slice(0, 2).join(' ')}
           </h1>
           <p className="text-muted-foreground mt-1">
             {disciplinas.length} disciplina{disciplinas.length !== 1 ? 's' : ''} ativa{disciplinas.length !== 1 ? 's' : ''}
