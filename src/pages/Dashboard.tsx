@@ -51,7 +51,10 @@ const roleColor: Record<string, string> = {
 const menuByRole: Record<string, { icon: React.ElementType; label: string; href: string; tooltip: string; end?: boolean }[]> = {
   aluno: [
     { icon: LayoutDashboard, label: 'Dashboard',      href: '/dashboard',           tooltip: 'Visão geral',              end: true },
-    { icon: Book,            label: 'Meus Cursos',    href: '/dashboard/cursos',     tooltip: 'Cursos matriculados' },
+    { icon: Book,            label: 'Meus Cursos',      href: '/dashboard/cursos',             tooltip: 'Cursos matriculados' },
+    { icon: Star,            label: 'Minhas Notas',    href: '/dashboard/minhas-notas',       tooltip: 'Notas por disciplina e avaliação' },
+    { icon: CalendarCheck,   label: 'Minha Frequência',href: '/dashboard/minha-frequencia',   tooltip: 'Histórico de presença por disciplina' },
+    { icon: Award,           label: 'Meus Certificados',href: '/dashboard/meus-certificados', tooltip: 'Certificados de conclusão de curso' },
     // TODO: reabilitar quando tiver conteúdo real (Sprint N)
     // { icon: Tv,              label: 'Ao Vivo',        href: '/dashboard/ao-vivo',    tooltip: 'Transmissões ao vivo' },
     // { icon: Users,           label: 'Comunidade',     href: '/dashboard/comunidade', tooltip: 'Fóruns e grupos' },

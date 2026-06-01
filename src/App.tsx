@@ -100,7 +100,10 @@ const App = () => (
               <Route index element={<DashboardHome />} />
 
               {/* Aluno */}
-              <Route path="cursos"      element={<MeusCursos />} />
+              <Route path="cursos"            element={<MeusCursos />} />
+              <Route path="minhas-notas"      element={<ComingSoonPage titulo="Minhas Notas"      descricao="Acompanhe suas notas por disciplina e avaliação em tempo real."        previsao="Agosto 2026" icone={Star} />} />
+              <Route path="minha-frequencia"  element={<ComingSoonPage titulo="Minha Frequência"  descricao="Veja seu histórico de presença e o percentual por disciplina."         previsao="Agosto 2026" icone={CalendarCheck} />} />
+              <Route path="meus-certificados" element={<ComingSoonPage titulo="Meus Certificados" descricao="Baixe e compartilhe seus certificados de conclusão de curso."          previsao="Agosto 2026" icone={Award} />} />
               <Route path="ao-vivo"     element={<ComingSoon title="Ao Vivo" icon={Tv} description="As transmissões ao vivo das aulas estarão disponíveis em breve." />} />
               <Route path="comunidade"  element={<ComingSoon title="Comunidade" icon={Users} description="Fóruns, grupos de oração e mural de avisos em desenvolvimento." />} />
               <Route path="eventos"     element={<ComingSoon title="Eventos" icon={CalendarDays} description="O calendário acadêmico com todos os eventos estará disponível em breve." />} />
