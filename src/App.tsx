@@ -121,6 +121,8 @@ const App = () => (
               <Route path="admin"           element={<PainelAdmin />} />
 
               {/* Admin / Secretaria */}
+              <Route path="relatorios" element={<ComingSoonPage titulo="Relatórios"          descricao="Exporte relatórios de alunos, notas, frequência e financeiro."       previsao="Agosto 2026" icone={BarChart2} />} />
+              <Route path="calendario" element={<ComingSoonPage titulo="Calendário Acadêmico" descricao="Gerencie o calendário de aulas, provas e eventos do ITEC."           previsao="Agosto 2026" icone={CalendarDays} />} />
               <Route path="nova-matricula"  element={<NovaMatricula />} />
               <Route path="financeiro"      element={<FinanceiroPage />} />
               <Route path="convalidacoes"   element={<Convalidacoes />} />
