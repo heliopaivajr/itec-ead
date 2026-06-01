@@ -179,4 +179,101 @@ WHERE table_schema = 'auth' AND table_name = 'identities';
 
 ---
 
+## ERR-SUPABASE-002
+
+**Data:** 2026-05-30
+**Sprint:** fix-ux-inline-edit
+**Contexto:** Seed de usuários de teste com INSERT direto em `auth.users`
+
+**Erro:**
+Usuários criados diretamente em `auth.users` sem entrada em `auth.identities`
+autenticam no GoTrue mas a sessão é inválida — sem `user_id` resolvível.
+Resultado: HTTP 500 / "Database error querying schema" no login.
+
+**Correto:**
+Todo INSERT manual em `auth.users` deve ser acompanhado de INSERT em
+`auth.identities` com `provider = 'email'` e `identity_data = json_build_object('sub', id::text, 'email', email)`.
+Usar sempre o `seed_testes.sql` que já inclui os dois passos.
+
+**Query de diagnóstico:**
+```sql
+SELECT u.email FROM auth.users u
+LEFT JOIN auth.identities i ON i.user_id = u.id
+WHERE i.id IS NULL;
+```
+
+**Status:** corrigido
+
+---
+
+## ERR-SUPABASE-003
+
+**Data:** 2026-05-30
+**Sprint:** fix-ux-inline-edit
+**Contexto:** Policy RLS com `is_staff()` consultando `profiles` para verificar role
+
+**Erro:**
+Função `is_staff()` fazia SELECT em `profiles` para checar role.
+Ao fazer UPDATE em `profiles` (ex: trocar role), a policy de UPDATE
+chamava `is_staff()` que fazia SELECT em `profiles` — recursão infinita.
+Resultado: UPDATE bloqueado silenciosamente, sem erro explícito.
+
+**Correto:**
+Criar tabela `user_roles` (sem RLS) como cache de roles para uso em policies.
+Policies nunca devem fazer SELECT em `profiles` — usar `user_roles` ou
+`auth.jwt() ->> 'role'` para verificar roles em contexto de RLS.
+Ver ADR-006 (proposto).
+
+**Status:** identificado — ADR-006 proposto para sprint futuro
+
+---
+
+## ERR-DB-001
+
+**Data:** 2026-05-30
+**Sprint:** fix-ux-inline-edit
+**Contexto:** InlineStatusSelect com opções que violam CHECK constraint
+
+**Erro:**
+Agente 20 especificou options para `matriculas.status` incluindo
+`inativa`, `evadida`, `suspensa`. O CHECK constraint da tabela (migration 010)
+não incluía esses valores — o `onSave` retornava erro silencioso do Supabase.
+
+**Correto:**
+Antes de especificar qualquer dropdown ou InlineStatusSelect com opções
+de status, consultar o CHECK constraint da tabela:
+```sql
+SELECT pg_get_constraintdef(oid)
+FROM pg_constraint
+WHERE conrelid = 'public.matriculas'::regclass
+AND contype = 'c';
+```
+Se os valores necessários não estiverem no CHECK, criar migration primeiro.
+
+**Status:** corrigido — migration 022 aplicada com todos os status
+
+---
+
+## ERR-PLAN-001
+
+**Data:** 2026-05-30
+**Sprint:** fix-ux-inline-edit
+**Contexto:** Agente 20 ordenou componente base DEPOIS das tarefas que o consomem
+
+**Erro:**
+Agente 20 posicionou a criação de `InlineStatusSelect` (Tarefa 1.5)
+após as tarefas 1.3 (aluno) e 1.4 (professor) que precisam do componente.
+O Hélio identificou e corrigiu a ordem manualmente antes da execução.
+
+**Correto:**
+Dependências de criação de componente UI são dependências reais de execução.
+O componente base deve sempre preceder as tarefas que o consomem no plano.
+Regra: "Se tarefa B usa artefato criado por tarefa A, então A → B no plano."
+
+**Prevenção:** MELHORIA-003 aplicada no SKILL.md do Agente 20.
+
+**Status:** corrigido
+
+---
+
 *Mantido pelo agente-Osabio · ITEC-EAD · 2025*

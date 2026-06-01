@@ -29,6 +29,9 @@ pnpm test:coverage # relatório de cobertura
 - NUNCA usar npm — sempre pnpm
 - NUNCA commitar .env ou .env.local
 - NUNCA `supabase.from()` em `pages/` ou `components/` → SEMPRE usar `src/services/`
+- NUNCA inserir usuários de teste via INSERT manual isolado em `auth.users` → SEMPRE usar `supabase/seed/seed_testes.sql` (inclui auth.identities obrigatório). Ver `supabase/seed/RUNBOOK.md`
+- NUNCA especificar opções de status em dropdown/InlineStatusSelect sem antes verificar o CHECK constraint da tabela no banco
+- Para edição inline de status em tabelas → SEMPRE usar `InlineStatusSelect` de `src/components/dashboard/`
   ⚠️ EXCEÇÃO REMANESCENTE: `Convalidacoes.tsx` — 2 lookups por email/código (encapsular — Sprint F)
   ✅ NovaMatricula.tsx migrado para matriculas.service (getAlunoByEmail, createMatricula, createTaxaMatricula)
 - NUNCA magic strings de role — usar `UserRole` de `profile.service`

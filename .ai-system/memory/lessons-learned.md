@@ -111,6 +111,62 @@
 
 ---
 
+## LICAO-006 — Seed de usuários requer auth.identities além de auth.users
+
+**Data:** 2026-05-30
+**Contexto:** Sprint fix-ux-inline-edit — criação de usuários de teste via INSERT direto
+**Problema:** Usuários inseridos em `auth.users` sem `auth.identities` autenticam no formulário mas recebem HTTP 500 ao acessar o dashboard. GoTrue não resolve a sessão sem a identity row.
+**Decisão tomada:** Sempre criar `auth.identities` junto com `auth.users`. `seed_testes.sql` atualizado.
+**Justificativa:** `auth.users` é o registro; `auth.identities` é o método de autenticação. Sem identity, não há sessão válida.
+**Agentes impactados:** 07-auth-specialist, 04-db-architect
+**Mudança aplicada:** ERR-SUPABASE-002 registrado.
+**Como aplicar no futuro:** Todo INSERT manual em `auth.users` inclui INSERT em `auth.identities`. Usar `seed_testes.sql` como referência.
+**Status:** aplicada
+
+---
+
+## LICAO-007 — Policies RLS não devem fazer SELECT em profiles para verificar role
+
+**Data:** 2026-05-30
+**Contexto:** Sprint fix-ux-inline-edit — UPDATE de role causava recursão silenciosa via is_staff()
+**Problema:** `is_staff()` consultava `profiles.role`. UPDATE em `profiles` acionava a policy → chamava `is_staff()` → SELECT em `profiles` → recursão. Resultado: UPDATE bloqueado silenciosamente.
+**Decisão tomada:** Propor ADR-006: tabela `user_roles` sem RLS como cache de roles para policies.
+**Justificativa:** Policies que dependem da tabela protegida criam ciclos. Solução canônica: fonte de roles separada e sem RLS.
+**Agentes impactados:** 07-auth-specialist, 04-db-architect
+**Mudança aplicada:** ERR-SUPABASE-003 registrado. ADR-006 proposto.
+**Como aplicar no futuro:** Ao criar policy que verifica role, usar `user_roles` ou `auth.jwt()` — nunca `SELECT FROM profiles`.
+**Status:** registrada — ADR-006 pendente
+
+---
+
+## LICAO-008 — CHECK constraint deve ser verificado antes de especificar opções de status
+
+**Data:** 2026-05-30
+**Contexto:** Sprint fix-ux-inline-edit — InlineStatusSelect com valores rejeitados pelo banco
+**Problema:** Agente 20 especificou 7 opções para `matriculas.status`. Migration aceitava apenas 3. `onSave` retornava erro silencioso.
+**Decisão tomada:** Regra adicionada ao SKILL.md do Agente 20: verificar CHECK antes de especificar options.
+**Justificativa:** Dropdown com opções que o banco rejeita é armadilha silenciosa. Verificação do CHECK deve preceder a spec.
+**Agentes impactados:** 20-project-manager, 04-db-architect, 06-frontend-engineer
+**Mudança aplicada:** ERR-DB-001 registrado. MELHORIA-003 aplicada no Agente 20.
+**Como aplicar no futuro:** Antes de listar options de status, rodar `pg_get_constraintdef` e confirmar valores. Se faltarem, criar migration primeiro.
+**Status:** aplicada
+
+---
+
+## LICAO-009 — Componente base deve ser criado antes das tarefas que o consomem
+
+**Data:** 2026-05-30
+**Contexto:** Sprint fix-ux-inline-edit — Agente 20 ordenou InlineStatusSelect (1.5) após 1.3 e 1.4
+**Problema:** Tarefas 1.3 e 1.4 precisavam de InlineStatusSelect. Agente 20 posicionou 1.5 depois. O Hélio reordenou manualmente.
+**Decisão tomada:** Regra adicionada ao SKILL.md do Agente 20: dependências de artefato UI são dependências de execução.
+**Justificativa:** O Hélio não deveria corrigir ordem de dependências — isso é trabalho do Agente 20.
+**Agentes impactados:** 20-project-manager
+**Mudança aplicada:** MELHORIA-003 aplicada no SKILL.md do Agente 20.
+**Como aplicar no futuro:** Se B usa o que A cria → A precede B no plano. Sempre.
+**Status:** aplicada
+
+---
+
 *Mantido pelo agente-Osabio · ITEC-EAD · 2025*
 
 
@@ -227,6 +283,64 @@ No próximo sprint com nova tela, verificar se há link de entrada funcional na 
 Toda feature frontend entregue com ponto de entrada navegável.
 
 **Aprovado por:** Hélio (2026-05-29)
+**Status:** aplicada
+
+---
+
+## MELHORIA-003 — 20-project-manager — Verificar CHECK constraint e ordenar dependências de componente
+
+**Data:** 2026-05-30
+**Agente:** 20-project-manager
+**Nível anterior:** 3 — Confiável
+**Nível novo:** sem mudança de nível (melhorias de checklist)
+
+**Problema identificado:**
+1. Spec de InlineStatusSelect especificou options de status sem verificar o CHECK constraint da tabela — 4 dos 7 valores eram rejeitados pelo banco.
+2. Componente `InlineStatusSelect` (Tarefa 1.5) foi posicionado no plano APÓS as tarefas que o consomem (1.3, 1.4). O Hélio corrigiu a ordem manualmente.
+
+**Melhoria aplicada:**
+Duas regras adicionadas ao SKILL.md do Agente 20:
+1. "Antes de especificar opções de status em qualquer dropdown/select, verificar o CHECK constraint da tabela. Se os valores necessários não estiverem no CHECK, criar migration primeiro."
+2. "Ao identificar que uma tarefa cria um artefato (componente, hook, service) e outra tarefa o consome, o criador deve preceder o consumidor no plano. Regra: se B usa o que A cria → A < B."
+
+**Arquivos alterados:**
+- `.ai-system/agents/20-project-manager/SKILL.md` — nova seção "VERIFICAÇÃO DE CONSTRAINTS E DEPENDÊNCIAS"
+
+**Risco da alteração:** baixo
+**Reversibilidade:** total
+
+**Resultado esperado:**
+Zero planos com componentes base posicionados após seus consumidores. Zero specs com opções de status não validadas contra o CHECK.
+
+**Aprovado por:** Hélio (2026-05-30)
+**Status:** aplicada
+
+---
+
+## MELHORIA-004 — 06-frontend-engineer — InlineStatusSelect como padrão oficial de edição inline
+
+**Data:** 2026-05-30
+**Agente:** 06-frontend-engineer
+**Nível anterior:** 3 — Confiável
+**Nível novo:** sem mudança de nível
+
+**Problema identificado:**
+Sem convenção estabelecida, o agente poderia criar implementações ad-hoc de edição inline por tabela, gerando inconsistência visual e duplicação de código.
+
+**Melhoria aplicada:**
+Adicionado ao SKILL.md do Agente 06:
+> "Para edição inline de campos enumeráveis (status, role, tipo) em tabelas, usar obrigatoriamente o componente `InlineStatusSelect` de `src/components/dashboard/`. Não criar implementações ad-hoc. O componente aceita `options`, `onSave` e `disabled` — toda a lógica de estado (idle/editing/saving/error) já está encapsulada."
+
+**Arquivos alterados:**
+- `.ai-system/agents/06-frontend-engineer/SKILL.md` — nova seção "PADRÕES DE COMPONENTES ESTABELECIDOS"
+
+**Risco da alteração:** baixo
+**Reversibilidade:** total
+
+**Resultado esperado:**
+Todas as futuras tabelas com campos editáveis inline usam `InlineStatusSelect`.
+
+**Aprovado por:** Hélio (2026-05-30)
 **Status:** aplicada
 
 ---

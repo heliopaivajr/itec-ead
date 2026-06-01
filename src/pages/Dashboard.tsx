@@ -3,7 +3,8 @@ import {
   Book, User, Users, Tv, CalendarDays,
   FileText, CreditCard, HelpCircle, Bell,
   Settings, ShieldAlert, BookOpen, LayoutDashboard,
-  LogOut, ClipboardList, UserCheck, Building2, Shield, Megaphone, Home, GraduationCap, DollarSign
+  LogOut, ClipboardList, UserCheck, Building2, Shield, Megaphone, Home, GraduationCap, DollarSign,
+  ClipboardCheck, FolderOpen, Star, CalendarCheck, Award, UserCog, BarChart2
 } from 'lucide-react';
 import {
   SidebarProvider, Sidebar, SidebarHeader, SidebarContent, SidebarFooter,
@@ -50,7 +51,10 @@ const roleColor: Record<string, string> = {
 const menuByRole: Record<string, { icon: React.ElementType; label: string; href: string; tooltip: string; end?: boolean }[]> = {
   aluno: [
     { icon: LayoutDashboard, label: 'Dashboard',      href: '/dashboard',           tooltip: 'Visão geral',              end: true },
-    { icon: Book,            label: 'Meus Cursos',    href: '/dashboard/cursos',     tooltip: 'Cursos matriculados' },
+    { icon: Book,            label: 'Meus Cursos',      href: '/dashboard/cursos',             tooltip: 'Cursos matriculados' },
+    { icon: Star,            label: 'Minhas Notas',    href: '/dashboard/minhas-notas',       tooltip: 'Notas por disciplina e avaliação' },
+    { icon: CalendarCheck,   label: 'Minha Frequência',href: '/dashboard/minha-frequencia',   tooltip: 'Histórico de presença por disciplina' },
+    { icon: Award,           label: 'Meus Certificados',href: '/dashboard/meus-certificados', tooltip: 'Certificados de conclusão de curso' },
     // TODO: reabilitar quando tiver conteúdo real (Sprint N)
     // { icon: Tv,              label: 'Ao Vivo',        href: '/dashboard/ao-vivo',    tooltip: 'Transmissões ao vivo' },
     // { icon: Users,           label: 'Comunidade',     href: '/dashboard/comunidade', tooltip: 'Fóruns e grupos' },
@@ -62,12 +66,16 @@ const menuByRole: Record<string, { icon: React.ElementType; label: string; href:
     { icon: Settings,        label: 'Configurações',  href: '/dashboard/perfil',     tooltip: 'Perfil e preferências' },
   ],
   professor: [
-    { icon: LayoutDashboard, label: 'Dashboard',          href: '/dashboard',                    tooltip: 'Visão geral',              end: true },
-    { icon: BookOpen,        label: 'Minhas Disciplinas',  href: '/dashboard/professor',          tooltip: 'Disciplinas, frequência e notas' },
-    { icon: FileText,        label: 'Meus Contratos',      href: '/dashboard/professor/contratos', tooltip: 'Contratos por disciplina' },
-    { icon: Megaphone,       label: 'Avisos',              href: '/dashboard/avisos',             tooltip: 'Mural de avisos' },
-    { icon: Bell,            label: 'Notificações',        href: '/dashboard/notificacoes',       tooltip: 'Avisos e mensagens' },
-    { icon: Settings,        label: 'Configurações',       href: '/dashboard/perfil',             tooltip: 'Perfil e preferências' },
+    { icon: LayoutDashboard, label: 'Dashboard',           href: '/dashboard',                       tooltip: 'Visão geral',                     end: true },
+    { icon: BookOpen,        label: 'Minhas Disciplinas',  href: '/dashboard/professor',             tooltip: 'Disciplinas, frequência e notas' },
+    { icon: Users,           label: 'Meus Alunos',         href: '/dashboard/professor/alunos',      tooltip: 'Lista de alunos das suas turmas' },
+    { icon: ClipboardCheck,  label: 'Frequência',          href: '/dashboard/professor/frequencia',  tooltip: 'Lance presença por aula' },
+    { icon: BookOpen,        label: 'Notas',               href: '/dashboard/professor/notas',       tooltip: 'Notas e avaliações por disciplina' },
+    { icon: FolderOpen,      label: 'Materiais',           href: '/dashboard/professor/materiais',   tooltip: 'Apostilas e slides para alunos' },
+    { icon: FileText,        label: 'Avaliações',          href: '/dashboard/professor/avaliacoes',  tooltip: 'Provas e trabalhos das turmas' },
+    { icon: FileText,        label: 'Meus Contratos',      href: '/dashboard/professor/contratos',   tooltip: 'Contratos por disciplina' },
+    { icon: Megaphone,       label: 'Avisos',              href: '/dashboard/avisos',                tooltip: 'Mural de avisos' },
+    { icon: Settings,        label: 'Configurações',       href: '/dashboard/perfil',                tooltip: 'Perfil e preferências' },
   ],
   administracao: [
     { icon: LayoutDashboard, label: 'Dashboard',       href: '/dashboard',                  tooltip: 'Painel geral',             end: true },
@@ -78,9 +86,12 @@ const menuByRole: Record<string, { icon: React.ElementType; label: string; href:
     { icon: GraduationCap,   label: 'Turmas',          href: '/dashboard/turmas-admin',      tooltip: 'Gestão de turmas' },
     { icon: ClipboardList,   label: 'Leads',           href: '/dashboard/leads',             tooltip: 'Interessados cadastrados' },
     { icon: CreditCard,      label: 'Financeiro',      href: '/dashboard/financeiro',        tooltip: 'Mensalidades e pagamentos' },
-    { icon: BookOpen,        label: 'Convalidações',   href: '/dashboard/convalidacoes',     tooltip: 'Aproveitamento de disciplinas' },
-    { icon: Megaphone,       label: 'Avisos',          href: '/dashboard/avisos',            tooltip: 'Mural de avisos' },
-    { icon: Settings,        label: 'Configurações',   href: '/dashboard/perfil',            tooltip: 'Perfil' },
+    { icon: BookOpen,        label: 'Convalidações',        href: '/dashboard/convalidacoes',   tooltip: 'Aproveitamento de disciplinas' },
+    { icon: UserCog,         label: 'Gestão de Usuários',  href: '/dashboard/usuarios',        tooltip: 'Roles e acesso dos usuários' },
+    { icon: BarChart2,       label: 'Relatórios',           href: '/dashboard/relatorios',      tooltip: 'Relatórios acadêmicos e financeiros' },
+    { icon: CalendarDays,    label: 'Calendário Acadêmico', href: '/dashboard/calendario',      tooltip: 'Calendário de aulas e eventos' },
+    { icon: Megaphone,       label: 'Avisos',               href: '/dashboard/avisos',          tooltip: 'Mural de avisos' },
+    { icon: Settings,        label: 'Configurações',        href: '/dashboard/perfil',          tooltip: 'Perfil' },
   ],
   financeiro: [
     { icon: LayoutDashboard, label: 'Dashboard',     href: '/dashboard',             tooltip: 'Painel geral', end: true },
