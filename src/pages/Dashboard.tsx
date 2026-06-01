@@ -3,7 +3,8 @@ import {
   Book, User, Users, Tv, CalendarDays,
   FileText, CreditCard, HelpCircle, Bell,
   Settings, ShieldAlert, BookOpen, LayoutDashboard,
-  LogOut, ClipboardList, UserCheck, Building2, Shield, Megaphone, Home, GraduationCap, DollarSign
+  LogOut, ClipboardList, UserCheck, Building2, Shield, Megaphone, Home, GraduationCap, DollarSign,
+  ClipboardCheck, FolderOpen, Star, CalendarCheck, Award, UserCog, BarChart2
 } from 'lucide-react';
 import {
   SidebarProvider, Sidebar, SidebarHeader, SidebarContent, SidebarFooter,
@@ -62,12 +63,16 @@ const menuByRole: Record<string, { icon: React.ElementType; label: string; href:
     { icon: Settings,        label: 'Configurações',  href: '/dashboard/perfil',     tooltip: 'Perfil e preferências' },
   ],
   professor: [
-    { icon: LayoutDashboard, label: 'Dashboard',          href: '/dashboard',                    tooltip: 'Visão geral',              end: true },
-    { icon: BookOpen,        label: 'Minhas Disciplinas',  href: '/dashboard/professor',          tooltip: 'Disciplinas, frequência e notas' },
-    { icon: FileText,        label: 'Meus Contratos',      href: '/dashboard/professor/contratos', tooltip: 'Contratos por disciplina' },
-    { icon: Megaphone,       label: 'Avisos',              href: '/dashboard/avisos',             tooltip: 'Mural de avisos' },
-    { icon: Bell,            label: 'Notificações',        href: '/dashboard/notificacoes',       tooltip: 'Avisos e mensagens' },
-    { icon: Settings,        label: 'Configurações',       href: '/dashboard/perfil',             tooltip: 'Perfil e preferências' },
+    { icon: LayoutDashboard, label: 'Dashboard',           href: '/dashboard',                       tooltip: 'Visão geral',                     end: true },
+    { icon: BookOpen,        label: 'Minhas Disciplinas',  href: '/dashboard/professor',             tooltip: 'Disciplinas, frequência e notas' },
+    { icon: Users,           label: 'Meus Alunos',         href: '/dashboard/professor/alunos',      tooltip: 'Lista de alunos das suas turmas' },
+    { icon: ClipboardCheck,  label: 'Frequência',          href: '/dashboard/professor/frequencia',  tooltip: 'Lance presença por aula' },
+    { icon: BookOpen,        label: 'Notas',               href: '/dashboard/professor/notas',       tooltip: 'Notas e avaliações por disciplina' },
+    { icon: FolderOpen,      label: 'Materiais',           href: '/dashboard/professor/materiais',   tooltip: 'Apostilas e slides para alunos' },
+    { icon: FileText,        label: 'Avaliações',          href: '/dashboard/professor/avaliacoes',  tooltip: 'Provas e trabalhos das turmas' },
+    { icon: FileText,        label: 'Meus Contratos',      href: '/dashboard/professor/contratos',   tooltip: 'Contratos por disciplina' },
+    { icon: Megaphone,       label: 'Avisos',              href: '/dashboard/avisos',                tooltip: 'Mural de avisos' },
+    { icon: Settings,        label: 'Configurações',       href: '/dashboard/perfil',                tooltip: 'Perfil e preferências' },
   ],
   administracao: [
     { icon: LayoutDashboard, label: 'Dashboard',       href: '/dashboard',                  tooltip: 'Painel geral',             end: true },

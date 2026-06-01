@@ -8,7 +8,8 @@ import { ThemeProvider } from "./hooks/use-theme-mode";
 import {
   Tv, Users, CalendarDays, FileText,
   CreditCard, HelpCircle, ClipboardList, BookOpen,
-  Bell, ShieldAlert
+  Bell, ShieldAlert,
+  ClipboardCheck, FolderOpen, Star, CalendarCheck, Award, UserCog, BarChart2,
 } from 'lucide-react';
 
 import Index from "./pages/Index";
@@ -53,6 +54,7 @@ const GestaoTurmas       = lazy(() => import("./pages/dashboard/GestaoTurmas"));
 const FichaAluno         = lazy(() => import("./pages/dashboard/FichaAluno"));
 const Alunos             = lazy(() => import("./pages/dashboard/Alunos"));
 const LancarNotas        = lazy(() => import("./pages/dashboard/LancarNotas"));
+const ComingSoonPage     = lazy(() => import("./pages/dashboard/ComingSoonPage"));
 const ConsolidadoNotas   = lazy(() => import("./pages/dashboard/ConsolidadoNotas"));
 import ProtectedRoute from '@/components/ProtectedRoute';
 
@@ -128,7 +130,14 @@ const App = () => (
               <Route path="notificacoes"  element={<ComingSoon title="Notificações" icon={Bell} description="Envio de comunicados e avisos para alunos e professores em desenvolvimento." />} />
               <Route path="seguranca"     element={<ComingSoon title="Segurança & LGPD" icon={ShieldAlert} description="Logs de acesso, controle de permissões e conformidade LGPD em desenvolvimento." />} />
 
-              {/* Professor */}
+              {/* Professor — rotas de lista (sem parâmetros) */}
+              <Route path="professor/alunos"     element={<ComingSoonPage titulo="Meus Alunos"    descricao="Veja a lista de alunos das suas turmas e acesse as fichas individuais." previsao="Agosto 2026" icone={Users} />} />
+              <Route path="professor/frequencia" element={<ComingSoonPage titulo="Frequência"     descricao="Lance a presença dos alunos por aula de forma rápida."                previsao="Agosto 2026" icone={ClipboardCheck} />} />
+              <Route path="professor/notas"      element={<ComingSoonPage titulo="Notas"          descricao="Registre e gerencie as avaliações e notas por disciplina."            previsao="Agosto 2026" icone={BookOpen} />} />
+              <Route path="professor/materiais"  element={<ComingSoonPage titulo="Materiais de Aula" descricao="Faça upload de apostilas, slides e PDFs para seus alunos."        previsao="Agosto 2026" icone={FolderOpen} />} />
+              <Route path="professor/avaliacoes" element={<ComingSoonPage titulo="Avaliações"     descricao="Crie e gerencie provas, trabalhos e atividades das suas turmas."      previsao="Agosto 2026" icone={FileText} />} />
+
+              {/* Professor — rotas de ação (com parâmetros) */}
               <Route path="professor"                              element={<ProfessorHome />} />
               <Route path="professor/frequencia/:disciplinaId"              element={<LancarFrequencia />} />
               <Route path="professor/turma/:disciplinaId"                   element={<VerTurma />} />
