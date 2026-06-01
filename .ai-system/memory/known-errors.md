@@ -325,4 +325,25 @@ Ou criar um tipo separado `UserStatus` para os estados de matrícula.
 
 ---
 
+## TODO-SPRINT-L-001 — Upload real de documentos do aluno
+
+**Data:** 2026-06-01
+**Contexto:** Tabela `documentos_aluno` existe no banco. Bucket Storage não criado. Decisão de adiar registrada em DECISAO-PRODUTO-001.
+**Quando fazer:** Sprint L — após lançamento agosto 2026 e checklist visual em produção.
+
+**O que fazer:**
+1. Criar bucket privado `documentos-alunos` no Supabase Storage
+2. Adicionar coluna `arquivo_url TEXT` em `documentos_aluno`
+3. Signed URLs de 1 hora para download (obrigatório — dados pessoais, LGPD)
+4. Botão "Upload" na ficha do aluno (secretaria + admin)
+5. Botão "Download" na ficha do aluno (secretaria + admin + superadmin)
+
+**Pré-requisito obrigatório:** checklist visual do Sprint K em produção e validado pela Camila.
+
+**Referência:** `src/services/ficha-aluno.service.ts` → `documentos_aluno` já é lido e exibido.
+
+**Status:** pendente — Sprint L
+
+---
+
 *Mantido pelo agente-Osabio · ITEC-EAD · 2025*

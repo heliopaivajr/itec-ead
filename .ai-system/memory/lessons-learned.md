@@ -421,4 +421,27 @@ Adicionado ao SKILL.md do Agente 05:
 
 ---
 
+## DECISAO-PRODUTO-001 — Upload de documentos (B2) adiado para Sprint L
+
+**Data:** 2026-06-01
+**Tipo:** Decisão de produto aprovada pelo Hélio
+**Contexto:** Sprint K — análise de prioridade pelo Agente 19
+
+**Decisão:** Upload real de documentos adiado para Sprint L.
+
+**Motivo:** Não bloqueante para a operação da Camila no curto prazo. O volume de alunos antes do lançamento (agosto 2026) é pequeno o suficiente para controle manual.
+
+**Solução interim — Sprint K:**
+Checklist visual de documentos com controle de status por item:
+- Secretaria marca cada documento como "recebido" manualmente
+- Dados salvos em `documentos_aluno` com `status: 'recebido' | 'pendente' | 'ausente'`
+- Visual: checkbox clicável por documento, sem upload de arquivo
+- Sem necessidade de bucket no Supabase Storage ainda
+
+**Sprint L:** Adicionar botão de upload real quando o checklist estiver em uso e validado em produção.
+
+**Status:** registrada
+
+---
+
 *Mantido pelo agente-Osabio · ITEC-EAD · 2025*
