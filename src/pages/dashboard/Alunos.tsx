@@ -226,7 +226,7 @@ export default function Alunos() {
 
   const aprovar = async (userId: string) => {
     setAtualizando(userId);
-    const { error } = await updateRole(userId, 'aluno');
+    const { error } = await updateRole(userId, 'aluno', profile.id);
     if (error) {
       toast({ title: 'Erro ao aprovar', description: error, variant: 'destructive' });
     } else {
@@ -238,7 +238,7 @@ export default function Alunos() {
 
   const trancar = async (userId: string) => {
     setAtualizando(userId);
-    const { error } = await updateRole(userId, 'pendente');
+    const { error } = await updateRole(userId, 'pendente', profile.id);
     if (error) {
       toast({ title: 'Erro ao trancar', description: error, variant: 'destructive' });
     } else {
