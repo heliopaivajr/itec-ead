@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate, useOutletContext } from 'react-router-dom';
 import {
   ArrowLeft, Loader2, User, Phone, Mail, MapPin,
-  GraduationCap, FileText, CreditCard, Church, Home, Save,
+  GraduationCap, FileText, CreditCard, Church, Home, Save, Printer,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -80,7 +80,8 @@ export default function FichaAluno() {
     setSavingObs(false);
   };
 
-  const podeVerObs = ['superadmin', 'admin', 'administracao'].includes(adminProfile.role);
+  const podeVerObs  = ['superadmin', 'admin', 'administracao'].includes(adminProfile.role);
+  const podeVerDocs = ['superadmin', 'admin', 'administracao'].includes(adminProfile.role);
 
   if (loading) {
     return (
@@ -299,6 +300,38 @@ export default function FichaAluno() {
           </table>
         )}
       </Section>
+
+      {/* Documentos e Impressões — só para secretaria/admin */}
+      {podeVerDocs && (
+        <Section title="Documentos e Impressões" icon={<Printer className="h-4 w-4" />}>
+          <p className="text-xs text-muted-foreground mb-3">Gere e imprima documentos oficiais do aluno.</p>
+          <div className="space-y-2">
+            {[
+              'Declaração de Matrícula',
+              'Boletim de Notas',
+              'Situação Financeira',
+              'Certificado de Conclusão',
+              'Relatório Final do Aluno',
+            ].map(doc => (
+              <div key={doc} title="Disponível em Agosto 2026">
+                <Button
+                  variant="outline"
+                  disabled
+                  className="w-full justify-between text-left"
+                >
+                  <span className="flex items-center gap-2">
+                    <FileText className="h-4 w-4 shrink-0 text-muted-foreground" />
+                    {doc}
+                  </span>
+                  <span className="ml-3 shrink-0 rounded-full bg-yellow-100 px-2 py-0.5 text-xs font-medium text-yellow-800">
+                    Em breve
+                  </span>
+                </Button>
+              </div>
+            ))}
+          </div>
+        </Section>
+      )}
 
       {/* Observações internas — só para secretaria/admin */}
       {podeVerObs && (
