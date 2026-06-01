@@ -140,4 +140,41 @@ NUNCA adicionar campos não especificados no payload
 ```
 
 ---
+
+## REGRAS DE NEGÓCIO COMO FUNÇÕES PURAS (MELHORIA-006)
+
+Quando implementar lógica de hierarquia, permissão ou elegibilidade que envolva múltiplos casos:
+
+**Padrão obrigatório:** função pura exportada + testes unitários próprios.
+
+```typescript
+// ✅ CORRETO — função pura, testável, ponto único de verdade
+export function getRolesPermitidas(meuRole: string, roleAlvo: string): string[] {
+  if (meuRole === 'superadmin') return [...todasAsRoles];
+  if (meuRole === 'admin') {
+    if (roleAlvo === 'superadmin') return [];
+    return [...rolesParaAdmin];
+  }
+  // ...
+  return [];
+}
+
+// Usada no service (validação real):
+const permitidas = getRolesPermitidas(requester.role, alvo.role);
+if (!permitidas.includes(novaRole)) return { error: 'Permissão insuficiente' };
+
+// Usada no frontend (opções do dropdown):
+const options = getRolesPermitidas(profile.role, user.role).map(r => ({ value: r, ... }));
+```
+
+**Regras:**
+- Função pura = sem I/O, sem side effects, só lógica
+- Testada em `__tests__/` com todos os casos de borda
+- Exportada do service — não duplicada no componente
+- Service valida novamente no backend — nunca confiar só no frontend
+
+**Exemplo real (Sprint fix-menus-dashboard):**
+`getRolesPermitidas` em `usuarios.service.ts` — testada com 11 casos, usada no `updateRole` E no `InlineStatusSelect` do `Usuarios.tsx`.
+
+---
 *Sistema de Agentes IA para SaaS — Hélio Paiva Jr. — ObraIA 2025*

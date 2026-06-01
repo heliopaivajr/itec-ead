@@ -1,8 +1,8 @@
 # Mapa de Maturidade dos Agentes
 ## ITEC-EAD · Sistema de Agentes IA
 **Mantido por:** agente-Osabio  
-**Última atualização:** [preencher na primeira execução]  
-**Versão:** 1.0 — Estado Inicial
+**Última atualização:** 2026-06-01 — Primeira avaliação real (pós Sprint fix-ux + fix-menus)
+**Versão:** 1.1 — Primeira população com dados reais
 
 ---
 
@@ -29,13 +29,14 @@
 ### Agente 20 — Gestor de Projeto / Coordenador
 | Campo | Valor |
 |-------|-------|
-| **Nível atual** | A avaliar |
-| **Pontos fortes** | [preencher na primeira execução] |
-| **Pontos fracos** | [preencher na primeira execução] |
-| **Riscos identificados** | [preencher] |
+| **Nível atual** | 3 — Confiável |
+| **Pontos fortes** | Planos detalhados com agentes e critérios de aceite; identifica riscos antes da execução |
+| **Pontos fracos** | Não verificou CHECK constraint antes de especificar options de dropdown; ordenou componente base após consumidores |
+| **Riscos identificados** | Pode especificar colunas/constraints sem verificar o banco |
 | **Skills associadas** | SKILL.md em agents/20-project-manager/ |
-| **Próxima melhoria recomendada** | [preencher] |
-| **Status** | Aguardando primeira avaliação |
+| **Melhorias aplicadas** | MELHORIA-001, MELHORIA-003 — verificação de schema e ordenação de dependências |
+| **Próxima melhoria recomendada** | Verificar se já existe implementação antes de criar tasks de "adicionar" |
+| **Status** | Avaliado — 2026-06-01 |
 
 ### agente-Osabio — Mentor / Supervisor de Evolução
 | Campo | Valor |
@@ -51,13 +52,13 @@
 ### Agente 19 — Analista de Produto / Negócio
 | Campo | Valor |
 |-------|-------|
-| **Nível atual** | A avaliar |
-| **Pontos fortes** | [preencher na primeira execução] |
-| **Pontos fracos** | [preencher na primeira execução] |
-| **Riscos identificados** | [preencher] |
+| **Nível atual** | 4 — Sênior |
+| **Pontos fortes** | Análise completa por dimensões (D1-D10); classificação precisa essencial/importante/pode esperar; identifica gaps que o Hélio não listou (campo observações, PDF presença); perguntas certeiras antes de implementar |
+| **Pontos fracos** | Nenhum identificado neste sprint |
+| **Riscos identificados** | Pode sugerir features além do escopo MVP se não lembrarem de conter |
 | **Skills associadas** | SKILL.md em agents/19-product-analyst/ |
-| **Próxima melhoria recomendada** | [preencher] |
-| **Status** | Aguardando primeira avaliação |
+| **Próxima melhoria recomendada** | Nenhuma por ora — manter o nível |
+| **Status** | Avaliado — 2026-06-01 |
 
 ---
 
@@ -102,18 +103,22 @@
 ### Agente 05 — Backend Engineer
 | Campo | Valor |
 |-------|-------|
-| **Nível atual** | A avaliar |
-| **Função** | Use cases, services, integrações |
-| **Próxima melhoria recomendada** | [preencher] |
-| **Status** | Aguardando primeira avaliação |
+| **Nível atual** | 3 — Confiável |
+| **Pontos fortes** | Services limpos, sanitização de dados (sanitizeDate), validação hierárquica robusta |
+| **Pontos fracos** | Não tratou erro do upsert em user_roles (ERR-RISK-001) |
+| **Melhorias aplicadas** | MELHORIA-006 — função pura para regras de hierarquia |
+| **Próxima melhoria recomendada** | Sempre tratar retorno de operações de sync/cache |
+| **Status** | Avaliado — 2026-06-01 |
 
 ### Agente 06 — Frontend Engineer
 | Campo | Valor |
 |-------|-------|
-| **Nível atual** | A avaliar |
-| **Função** | Componentes React, pages, hooks |
-| **Próxima melhoria recomendada** | [preencher] |
-| **Status** | Aguardando primeira avaliação |
+| **Nível atual** | 4 — Sênior |
+| **Pontos fortes** | Componentes reutilizáveis (InlineStatusSelect, ComingSoonPage); dark mode automático; padrões consistentes com o projeto |
+| **Pontos fracos** | Havia entregado LancarNotas sem ponto de entrada (corrigido) |
+| **Melhorias aplicadas** | MELHORIA-002, MELHORIA-004, MELHORIA-005 |
+| **Próxima melhoria recomendada** | Nenhuma urgente |
+| **Status** | Avaliado — 2026-06-01 |
 
 ### Agente 07 — Auth Specialist
 | Campo | Valor |
@@ -146,10 +151,11 @@
 ### Agente 10 — Test Engineer
 | Campo | Valor |
 |-------|-------|
-| **Nível atual** | A avaliar |
-| **Função** | Unit, integration e E2E tests |
-| **Próxima melhoria recomendada** | [preencher] |
-| **Status** | Aguardando primeira avaliação |
+| **Nível atual** | 3 — Confiável |
+| **Pontos fortes** | Testes focados em comportamento (não implementação); casos de borda cobertos; mock correto de useToast |
+| **Pontos fracos** | Sem testes de integração ainda (apenas unitários) |
+| **Próxima melhoria recomendada** | Adicionar testes de integração para fluxo de matrícula e updateRole |
+| **Status** | Avaliado — 2026-06-01 |
 
 ### Agente 11 — Security Auditor
 | Campo | Valor |
@@ -229,19 +235,19 @@
 
 | Agente | Nível | Atualizado em |
 |--------|-------|---------------|
-| 19 — product-analyst | — | aguarda avaliação |
-| 20 — project-manager | — | aguarda avaliação |
-| Osabio — mentor | 3 | criação inicial |
+| 19 — product-analyst | **4 Sênior** | 2026-06-01 |
+| 20 — project-manager | **3 Confiável** | 2026-06-01 |
+| Osabio — mentor | **4 Sênior** | 2026-06-01 |
 | 01 — architect | — | aguarda avaliação |
 | 02 — domain-designer | — | aguarda avaliação |
 | 03 — api-designer | — | aguarda avaliação |
 | 04 — db-architect | — | aguarda avaliação |
-| 05 — backend-engineer | — | aguarda avaliação |
-| 06 — frontend-engineer | — | aguarda avaliação |
+| 05 — backend-engineer | **3 Confiável** | 2026-06-01 |
+| 06 — frontend-engineer | **4 Sênior** | 2026-06-01 |
 | 07 — auth-specialist | — | aguarda avaliação |
 | 08 — billing-engineer | — | aguarda avaliação |
 | 09 — infra-engineer | — | aguarda avaliação |
-| 10 — test-engineer | — | aguarda avaliação |
+| 10 — test-engineer | **3 Confiável** | 2026-06-01 |
 | 11 — security-auditor | — | aguarda avaliação |
 | 12 — code-reviewer | — | aguarda avaliação |
 | 13 — performance-eng | — | aguarda avaliação |

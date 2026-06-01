@@ -167,6 +167,34 @@
 
 ---
 
+## LICAO-010 — Regras de hierarquia em função pura testável, não inline
+
+**Data:** 2026-06-01
+**Contexto:** Sprint fix-menus-dashboard — implementação de hierarquia de roles em Usuarios.tsx
+**Problema:** Lógica de "quem pode alterar quem" poderia ter ficado inline no componente React ou numa policy SQL — ambos ilegíveis, não testáveis e difíceis de manter.
+**Decisão tomada:** `getRolesPermitidas(meuRole, roleAlvo)` como função pura exportada — usada no service (validação real) e no frontend (opções do dropdown).
+**Justificativa:** Função pura = testável em isolamento + sem mock de banco + lógica de negócio num único lugar. Qualquer mudança nas regras é feita em 1 arquivo.
+**Agentes impactados:** 05-backend-engineer, 06-frontend-engineer
+**Mudança aplicada:** MELHORIA-005 proposta — adicionar ao SKILL.md do Agente 05.
+**Como aplicar no futuro:** Toda regra de permissão hierárquica → função pura exportada + testes unitários. Nunca inline no componente, nunca só na policy SQL.
+**Status:** registrada
+
+---
+
+## LICAO-011 — Toda rota futura deve ter ComingSoonPage, não 404
+
+**Data:** 2026-06-01
+**Contexto:** Sprint fix-menus-dashboard — 10 novas rotas de features planejadas para sprints futuros
+**Problema:** Sem placeholder, menus novos retornariam 404 — transmite descuido institucional. Com `null` ou redirect, o usuário não sabe o que esperar.
+**Decisão tomada:** `ComingSoonPage` com `titulo`, `descricao` e `previsao` em toda rota de feature futura. Informativo e elegante.
+**Justificativa:** 404 em menu ativo é pior que "em breve". O `ComingSoonPage` comunica intenção, define prazo e mantém a UI coerente.
+**Agentes impactados:** 06-frontend-engineer, 20-project-manager
+**Mudança aplicada:** MELHORIA-005 no SKILL.md do Agente 06 — seção "Rotas de Feature Futura".
+**Como aplicar no futuro:** Nova rota planejada mas não implementada → `element={<ComingSoonPage titulo="..." descricao="..." previsao="..." icone={...} />}`. Nunca deixar rota sem element.
+**Status:** registrada
+
+---
+
 *Mantido pelo agente-Osabio · ITEC-EAD · 2025*
 
 
@@ -341,6 +369,54 @@ Adicionado ao SKILL.md do Agente 06:
 Todas as futuras tabelas com campos editáveis inline usam `InlineStatusSelect`.
 
 **Aprovado por:** Hélio (2026-05-30)
+**Status:** aplicada
+
+---
+
+## MELHORIA-005 — 06-frontend-engineer — ComingSoonPage como padrão para rotas futuras
+
+**Data:** 2026-06-01
+**Agente:** 06-frontend-engineer
+**Nível anterior:** 3 — Confiável
+**Nível novo:** sem mudança de nível
+
+**Problema identificado:**
+Sem convenção estabelecida, rotas de features planejadas poderiam ficar sem element no router, causando 404 silencioso — ou serem deixadas de fora do router completamente.
+
+**Melhoria aplicada:**
+Adicionado ao SKILL.md do Agente 06:
+> "Para toda rota de feature planejada mas ainda não implementada, usar `ComingSoonPage` com `titulo`, `descricao` e `previsao`. Nunca deixar rota sem element. 404 em menu ativo transmite descuido."
+
+**Arquivos alterados:**
+- `.ai-system/agents/06-frontend-engineer/SKILL.md` — nova subseção em "PADRÕES DE COMPONENTES ESTABELECIDOS"
+
+**Risco da alteração:** baixo
+**Resultado esperado:** Toda rota nova no router tem element definido, mesmo que seja `ComingSoonPage`.
+**Aprovado por:** Hélio (2026-06-01)
+**Status:** aplicada
+
+---
+
+## MELHORIA-006 — 05-backend-engineer — Regras de hierarquia em função pura testável
+
+**Data:** 2026-06-01
+**Agente:** 05-backend-engineer
+**Nível anterior:** 3 — Confiável
+**Nível novo:** sem mudança de nível
+
+**Problema identificado:**
+Regras de permissão hierárquica (`quem pode alterar quem`) tendem a ficar inline no componente ou numa policy SQL — ilegíveis, não testáveis e difíceis de manter.
+
+**Melhoria aplicada:**
+Adicionado ao SKILL.md do Agente 05:
+> "Regras de hierarquia de permissão → função pura exportada (`getFoo(param): string[]`) com testes unitários próprios. Usada no service (validação) e no frontend (opções do UI). Nunca inline no componente."
+
+**Arquivos alterados:**
+- `.ai-system/agents/05-backend-engineer/SKILL.md` — nova seção "REGRAS DE NEGÓCIO COMO FUNÇÕES PURAS"
+
+**Risco da alteração:** baixo
+**Resultado esperado:** Toda lógica de hierarquia/permissão tem teste unitário e ponto único de verdade.
+**Aprovado por:** Hélio (2026-06-01)
 **Status:** aplicada
 
 ---

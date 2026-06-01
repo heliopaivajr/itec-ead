@@ -63,6 +63,33 @@ const MINHAS_OPTIONS: StatusOption[] = [
 
 **Antes de usar:** verificar com o Agente 20 que os values das options estão no CHECK constraint da tabela.
 
+### Rotas de Feature Futura (MELHORIA-005)
+
+Para toda rota de feature planejada mas ainda não implementada, usar **obrigatoriamente** `ComingSoonPage`:
+
+```tsx
+// src/App.tsx
+import ComingSoonPage from './pages/dashboard/ComingSoonPage';
+import { BookOpen } from 'lucide-react';
+
+<Route
+  path="minha-feature"
+  element={
+    <ComingSoonPage
+      titulo="Minha Feature"
+      descricao="O que esta feature fará quando pronta."
+      previsao="Agosto 2026"
+      icone={BookOpen}
+    />
+  }
+/>
+```
+
+**NUNCA** deixar rota sem `element`. 404 em menu ativo transmite descuido institucional.
+**NUNCA** omitir `previsao` — informa o usuário de quando esperar.
+
+Quando a feature for implementada: substituir `ComingSoonPage` pelo componente real. Sem outras mudanças necessárias.
+
 ---
 
 ## Padrões Obrigatórios

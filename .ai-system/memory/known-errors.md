@@ -276,4 +276,53 @@ Regra: "Se tarefa B usa artefato criado por tarefa A, então A → B no plano."
 
 ---
 
+## ERR-RISK-001
+
+**Data:** 2026-06-01
+**Sprint:** fix-menus-dashboard
+**Contexto:** `updateRole` em `usuarios.service.ts` faz upsert em `user_roles` após update em `profiles`
+
+**Risco:**
+```typescript
+await supabase.from('user_roles').upsert({ user_id: userId, role });
+// ↑ resultado ignorado — se falhar, user_roles fica dessincronizado de profiles
+```
+O erro do upsert é descartado silenciosamente. Se `user_roles` for usado por policies RLS como fonte de verdade, o usuário terá permissões erradas até o próximo login ou sync manual.
+
+**Mitigação recomendada:**
+```typescript
+const { error: upsertErr } = await supabase.from('user_roles').upsert({ user_id: userId, role });
+if (upsertErr) {
+  // log ou alertar — não bloquear o fluxo, mas registrar
+  console.error('user_roles sync failed:', upsertErr.message);
+}
+```
+
+**Severidade:** Média — só impacta se `user_roles` for usado ativamente em policies. Hoje ADR-006 ainda não foi implementado.
+**Status:** identificado — aguarda Sprint de auth para mitigar
+
+---
+
+## ERR-TYPE-001
+
+**Data:** 2026-06-01
+**Sprint:** fix-menus-dashboard
+**Contexto:** `getRolesPermitidas` retorna `string[]` que pode incluir `'inativo'|'suspenso'|'trancado'`
+
+**Risco:**
+O type `UserRole` (em `use-profile.tsx`) não inclui esses valores. Componentes que fazem `user.role === 'inativo'` via TypeScript não terão suporte do compilador para esses casos.
+
+**Correto (futuro):**
+Ampliar `UserRole` para incluir os status de aluno inativo:
+```typescript
+export type UserRole = 'pendente' | 'aluno' | 'professor' | 'administracao' |
+  'financeiro' | 'admin' | 'superadmin' | 'inativo' | 'suspenso' | 'trancado';
+```
+Ou criar um tipo separado `UserStatus` para os estados de matrícula.
+
+**Severidade:** Baixa — aplicação funciona, apenas sem verificação TypeScript nesses casos.
+**Status:** registrado — Sprint futuro de tipagem
+
+---
+
 *Mantido pelo agente-Osabio · ITEC-EAD · 2025*
