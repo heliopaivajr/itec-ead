@@ -101,14 +101,50 @@ export async function getUsuariosStats(): Promise<UsuariosStats> {
   };
 }
 
-// Atualização de role — usado pelo admin em Usuarios.tsx
-export async function updateRole(userId: string, role: UserRole): Promise<ServiceResult> {
-  const { error } = await supabase
-    .from('profiles')
-    .update({ role })
-    .eq('id', userId);
+// Retorna as roles que `meuRole` pode atribuir a um usuário com `roleAtualDoUsuario`.
+// Retorna string[] porque inclui valores como 'inativo'/'suspenso'/'trancado'
+// que são tratados como roles de perfil mas não constam no type UserRole.
+export function getRolesPermitidas(meuRole: string, roleAtualDoUsuario: string): string[] {
+  if (meuRole === 'superadmin') {
+    return ['pendente', 'aluno', 'professor', 'administracao', 'financeiro', 'admin', 'superadmin'];
+  }
+  if (meuRole === 'admin') {
+    if (roleAtualDoUsuario === 'superadmin') return [];
+    return ['pendente', 'aluno', 'professor', 'administracao', 'financeiro', 'admin'];
+  }
+  if (meuRole === 'administracao') {
+    if (['admin', 'superadmin'].includes(roleAtualDoUsuario)) return [];
+    if (roleAtualDoUsuario === 'pendente') return ['aluno', 'professor'];
+    if (roleAtualDoUsuario === 'aluno') return ['inativo', 'suspenso', 'trancado'];
+    return [];
+  }
+  return [];
+}
 
+// Atualização de role — com validação de hierarquia + sync user_roles
+export async function updateRole(
+  userId: string,
+  role: string,
+  requesterId: string,
+): Promise<ServiceResult> {
+  const [requester, alvo] = await Promise.all([
+    supabase.from('profiles').select('role').eq('id', requesterId).single(),
+    supabase.from('profiles').select('role').eq('id', userId).single(),
+  ]);
+
+  if (requester.error || alvo.error) return { error: 'Erro ao verificar permissões' };
+
+  const permitidas = getRolesPermitidas(requester.data.role, alvo.data.role);
+
+  if (permitidas.length === 0) return { error: 'Você não tem permissão para alterar este usuário' };
+  if (!permitidas.includes(role)) return { error: 'Permissão insuficiente para esta role' };
+
+  const { error } = await supabase.from('profiles').update({ role }).eq('id', userId);
   if (error) return { error: error.message };
+
+  // Sincronizar cache user_roles
+  await supabase.from('user_roles').upsert({ user_id: userId, role });
+
   return { error: null };
 }
 
