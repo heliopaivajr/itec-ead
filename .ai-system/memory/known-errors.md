@@ -346,4 +346,43 @@ Ou criar um tipo separado `UserStatus` para os estados de matrícula.
 
 ---
 
+## TODO-SPRINT-L-002 — Ativar RLS em profiles (CRÍTICO antes de agosto 2026)
+
+**Data:** 2026-06-01
+**Prioridade:** 🔴 CRÍTICA — deve ser feito antes do lançamento de agosto 2026
+**Decisão:** Adiado intencionalmente — risco baixo no ambiente atual (poucos usuários, controlado)
+**Referência:** ADR-006 aprovado — SQL completo da migration 028 já documentado
+
+**Risco se não fizer antes de agosto:**
+Qualquer aluno pode fazer `supabase.from('profiles').update({role:'admin'}).eq('id', seuId)` diretamente via client, sem passar pelo service layer. CPF e RG de outros alunos acessíveis via SELECT direto.
+
+**Pré-requisitos antes de ativar:**
+
+1. Mapear todos os acessos diretos a `profiles` no código (nenhum pode bypassar o service):
+   ```powershell
+   Get-ChildItem -Recurse -Include *.ts,*.tsx src |
+     Select-String "from\('profiles'\)"
+   ```
+   Resultado esperado: apenas arquivos de `src/services/` — nunca pages ou components.
+
+2. Garantir que 100% dos acessos passam pelos services (`usuarios.service.ts`, `profile.service.ts`, etc.)
+
+3. Verificar backfill completo de `user_roles` antes de ativar RLS:
+   ```sql
+   SELECT COUNT(*) FROM public.profiles p
+   LEFT JOIN public.user_roles ur ON ur.user_id = p.id
+   WHERE ur.user_id IS NULL;
+   -- Deve retornar 0
+   ```
+
+4. Corrigir ERR-RISK-001 (`user_roles.upsert` sem tratamento de erro em `updateRole`)
+
+5. Testar fluxo completo em staging antes de aplicar em produção
+
+**SQL pronto:** Ver `.ai-system/adr/ADR-006-user-roles-cache-anti-recursao-rls.md` — seção "Implementação"
+
+**Status:** pendente — Sprint L
+
+---
+
 *Mantido pelo agente-Osabio · ITEC-EAD · 2025*

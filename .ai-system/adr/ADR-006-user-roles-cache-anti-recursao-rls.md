@@ -3,7 +3,7 @@
 
 ```
 Data:   2026-06-01
-Status: Proposta — aguardando aprovação do Hélio
+Status: Aceita — implementação adiada para Sprint L (antes de agosto 2026)
 Autor:  Agente 01 — Architect (via auditoria Agente 11 + LICAO-007)
 ```
 
