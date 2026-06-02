@@ -228,7 +228,8 @@ export interface UpdatePerfilPayload {
 }
 
 // ─── Criação de aluno pela secretaria ────────────────────────────────────────
-// TODO Sprint K fase 2: substituir por chamada real à Edge Function criar-aluno
+// Chama a Edge Function criar-aluno (requer service_role no backend)
+// Edge Function: supabase/functions/criar-aluno/index.ts
 export interface CriarAlunoPayload {
   email: string;
   senha_temporaria: string;
@@ -242,9 +243,18 @@ export interface CriarAlunoPayload {
   obs_retroativa?: string;
 }
 
-export async function criarAluno(_payload: CriarAlunoPayload): Promise<ServiceResult> {
-  // Edge Function não configurada ainda — implementar em Sprint K fase 2
-  return { error: 'Edge Function não configurada — Sprint K fase 2' };
+export async function criarAluno(payload: CriarAlunoPayload): Promise<ServiceResult & { user_id?: string; codigo_itec?: string; matricula_id?: string | null }> {
+  const { data, error } = await supabase.functions.invoke('criar-aluno', {
+    body: payload,
+  });
+
+  if (error) return { error: error.message };
+
+  // A Edge Function retorna { user_id, email, full_name, codigo_itec, matricula_id? }
+  // ou { error, field? } em caso de erro de validação
+  if (data?.error) return { error: data.error };
+
+  return { error: null, user_id: data.user_id, codigo_itec: data.codigo_itec, matricula_id: data.matricula_id };
 }
 
 // ─── Fila de exclusão (migration 025) ────────────────────────────────────────
