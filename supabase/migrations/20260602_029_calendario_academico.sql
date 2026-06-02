@@ -137,8 +137,8 @@ CREATE POLICY "aulas_rec_select" ON public.aulas_recorrentes
 CREATE POLICY "aulas_rec_staff_write" ON public.aulas_recorrentes
   FOR ALL TO authenticated
   USING (
-    EXISTS (SELECT 1 FROM public.profiles
-            WHERE id = auth.uid()
+    EXISTS (SELECT 1 FROM public.user_roles
+            WHERE user_id = auth.uid()
               AND role IN ('administracao', 'admin', 'superadmin'))
   );
 
@@ -150,7 +150,7 @@ CREATE POLICY "eventos_cal_select" ON public.eventos_calendario
 CREATE POLICY "eventos_cal_staff_write" ON public.eventos_calendario
   FOR ALL TO authenticated
   USING (
-    EXISTS (SELECT 1 FROM public.profiles
-            WHERE id = auth.uid()
+    EXISTS (SELECT 1 FROM public.user_roles
+            WHERE user_id = auth.uid()
               AND role IN ('administracao', 'admin', 'superadmin'))
   );

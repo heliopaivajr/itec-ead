@@ -427,4 +427,36 @@ Remover `statusConfig`, `sc`, `StatusIcon` e ícones não usados de `Alunos.tsx`
 
 ---
 
+## CORRIGIDO-029 — Policies do calendário usavam `profiles` diretamente
+
+**Data:** 2026-06-02
+**Sprint:** L
+**Contexto:** Migration 029 (`aulas_recorrentes` + `eventos_calendario`) criou policies que consultavam `public.profiles.role` diretamente para verificar permissão de escrita.
+
+**Problema:**
+```sql
+-- ❌ ORIGINAL — risco de recursão quando RLS em profiles for ativado
+USING (
+  EXISTS (SELECT 1 FROM public.profiles
+          WHERE id = auth.uid()
+            AND role IN ('administracao', 'admin', 'superadmin'))
+)
+```
+Quando o RLS for ativado em `profiles` (Sprint L), policies de outras tabelas que fazem `SELECT FROM profiles` podem causar recursão silenciosa (ERR-SUPABASE-003 / LICAO-007).
+
+**Correção aplicada no banco:**
+Policies reescritas para usar `user_roles` (sem RLS) como fonte de roles:
+```sql
+-- ✅ CORRIGIDO — usa user_roles (sem RLS, sem recursão)
+USING (
+  EXISTS (SELECT 1 FROM public.user_roles
+          WHERE user_id = auth.uid()
+            AND role IN ('administracao', 'admin', 'superadmin'))
+)
+```
+
+**Status:** ✅ Corrigido no banco (2026-06-02)
+
+---
+
 *Mantido pelo agente-Osabio · ITEC-EAD · 2025*
