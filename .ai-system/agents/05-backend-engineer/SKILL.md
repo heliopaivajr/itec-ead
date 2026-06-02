@@ -177,4 +177,39 @@ const options = getRolesPermitidas(profile.role, user.role).map(r => ({ value: r
 `getRolesPermitidas` em `usuarios.service.ts` — testada com 11 casos, usada no `updateRole` E no `InlineStatusSelect` do `Usuarios.tsx`.
 
 ---
+
+## CHECKLIST AO MUDAR ASSINATURA DE FUNÇÃO EXPORTADA (MELHORIA-008)
+
+Ao adicionar, remover ou reordenar parâmetros de qualquer função em `src/services/`:
+
+```
+1. Antes de commitar: grep -rn "nomeFuncao" src/
+2. Verificar todos os arquivos que importam a função
+3. Atualizar TODOS os chamadores na mesma sessão
+4. Nunca assumir que TypeScript vai capturar — args extras passam silenciosamente
+```
+
+Exemplo do erro real (Sprint K):
+- `updateRole(userId, role)` → `updateRole(userId, role, requesterId)`
+- `Alunos.tsx` ficou com 2 args → aprovação de alunos quebrada em produção
+- Zero erro de TypeScript, zero alerta no build
+
+## PLACEHOLDER PARA FUNCIONALIDADES COM service_role (MELHORIA-007)
+
+Quando a feature requer `auth.admin.*` (disponível só com `service_role`):
+
+```typescript
+// ✅ PADRÃO: placeholder com mensagem explicativa
+export async function minhaFuncao(_payload: Payload): Promise<ServiceResult> {
+  // TODO Sprint X: substituir por chamada real à Edge Function minha-funcao
+  return { error: 'Edge Function não configurada — Sprint X' };
+}
+```
+
+Junto com o placeholder:
+1. UI completa (modal, formulário, validações) — sem bloquear a entrega
+2. TODO em `.ai-system/memory/known-errors.md` com `TODO-SPRINT-X-NNN`
+3. Edge Function criada no próximo sprint sem refatoração na UI
+
+---
 *Sistema de Agentes IA para SaaS — Hélio Paiva Jr. — ObraIA 2025*

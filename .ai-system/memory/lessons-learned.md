@@ -444,4 +444,52 @@ Checklist visual de documentos com controle de status por item:
 
 ---
 
+## LICAO-012 — Filtro em memória após query paginada quebra o total
+
+**Data:** 2026-06-01
+**Contexto:** Sprint K — `getUsuarios + data.filter()` em `Alunos.tsx`
+**Problema:** `getUsuarios` retornava `total = N_todos_profiles`. Filtro em memória reduzia os dados exibidos mas o `total` continuava errado. Paginação calculava páginas erradas silenciosamente.
+**Decisão tomada:** Criar `getAlunos()` com filtro `.in('role', [...])` no banco — total correto vem do banco.
+**Como aplicar no futuro:** Filtro em memória pós-paginação = antipadrão. Filtrar sempre na query. `Array.filter()` só para dados já completos (sem paginação).
+**Agentes impactados:** 05-backend-engineer, 06-frontend-engineer
+**Status:** aplicada
+
+---
+
+## LICAO-013 — Mudança de assinatura de função exportada requer busca de todos os chamadores
+
+**Data:** 2026-06-01
+**Contexto:** Sprint K — `updateRole` mudou de 2 para 3 args; `Alunos.tsx` ficou com 2 args sem aviso de TS
+**Problema:** Aprovação de alunos quebrada silenciosamente em produção. Descoberta só no diagnóstico.
+**Decisão tomada:** Corrigir `Alunos.tsx:229,241`. Registrar regra para evitar recorrência.
+**Como aplicar no futuro:** Ao mudar assinatura de função exportada, executar `grep -rn "nomeFuncao" src/` e atualizar todos os chamadores antes do commit. Nunca assumir que o TypeScript vai capturar.
+**Agentes impactados:** 05-backend-engineer (MELHORIA-008)
+**Status:** aplicada
+
+---
+
+## LICAO-014 — CLI do Supabase incompatível com formato YYYYMMDD_NNN de migrations
+
+**Data:** 2026-06-01
+**Contexto:** Sprint K — `supabase db push` e `migration repair` falharam com "invalid version number"
+**Problema:** CLI espera formato `YYYYMMDDHHMMSS` (14 dígitos). O projeto usa `YYYYMMDD_NNN_descricao`.
+**Decisão tomada:** Migrations sempre via SQL Editor do Supabase (role: `service_role`). Ver `supabase/seed/RUNBOOK.md`.
+**Como aplicar no futuro:** Para este projeto, nunca usar `supabase db push` no projeto remoto. CLI só para desenvolvimento local com `supabase start`.
+**Agentes impactados:** 09-infra-engineer, 04-db-architect
+**Status:** registrada
+
+---
+
+## LICAO-015 — Funcionalidades que requerem service_role devem ter placeholder explícito
+
+**Data:** 2026-06-01
+**Contexto:** Sprint K — `executarExclusao` e `criarAluno` requerem `auth.admin.*` indisponível no frontend
+**Problema:** Bloquear UI enquanto Edge Function não existe impede entrega incremental.
+**Decisão tomada:** Placeholder no service com `{ error: 'Edge Function não configurada — Sprint X' }` + UI completa + TODO em `known-errors.md`.
+**Como aplicar no futuro:** Toda feature com `service_role`: (1) placeholder; (2) UI completa; (3) TODO documentado; (4) Edge Function no próximo sprint.
+**Agentes impactados:** 05-backend-engineer (MELHORIA-007)
+**Status:** registrada
+
+---
+
 *Mantido pelo agente-Osabio · ITEC-EAD · 2025*

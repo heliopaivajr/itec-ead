@@ -385,4 +385,46 @@ Qualquer aluno pode fazer `supabase.from('profiles').update({role:'admin'}).eq('
 
 ---
 
+## ERR-INFRA-001
+
+**Data:** 2026-06-01
+**Sprint:** K
+**Contexto:** Tentativa de usar Supabase CLI para aplicar migrations e reparar histórico
+
+**Erro:**
+`failed to parse 20260601_025_exclusao_profiles: invalid version number`
+O CLI do Supabase espera formato `YYYYMMDDHHMMSS` (14 dígitos).
+Este projeto usa `YYYYMMDD_NNN_descricao` — incompatível.
+
+**Impacto:**
+`supabase db push`, `supabase migration repair` e `supabase migration list`
+não funcionam corretamente com o formato de migration deste projeto.
+
+**Solução definitiva:**
+Migrations aplicadas sempre via **SQL Editor do Supabase** com role `service_role`.
+Ver procedimento completo em `supabase/seed/RUNBOOK.md`.
+
+**Status:** registrado — limitação permanente deste projeto
+
+---
+
+## ERR-DEBT-001 — Código morto em Alunos.tsx após substituição por InlineStatusSelect
+
+**Data:** 2026-06-01
+**Sprint:** K
+**Contexto:** `statusConfig`, `sc` e `StatusIcon` ainda existem em `Alunos.tsx` mas nunca são usados
+
+**Problema:**
+Após substituir o `<span>` de status pelo `InlineStatusSelect` (Sprint fix-ux-inline-edit),
+o `statusConfig` e as variáveis `sc`/`StatusIcon` ficaram no código como mortos.
+Causam hint TS6133 mas não error — passam no build e nos testes.
+
+**Correto:**
+Remover `statusConfig`, `sc`, `StatusIcon` e ícones não usados de `Alunos.tsx`.
+
+**Quando fazer:** Sprint L — limpeza de débito técnico (não urgente, não bloqueia).
+**Status:** registrado — Sprint L
+
+---
+
 *Mantido pelo agente-Osabio · ITEC-EAD · 2025*

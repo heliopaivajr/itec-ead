@@ -151,11 +151,11 @@
 ### Agente 10 — Test Engineer
 | Campo | Valor |
 |-------|-------|
-| **Nível atual** | 3 — Confiável |
-| **Pontos fortes** | Testes focados em comportamento (não implementação); casos de borda cobertos; mock correto de useToast |
-| **Pontos fracos** | Sem testes de integração ainda (apenas unitários) |
-| **Próxima melhoria recomendada** | Adicionar testes de integração para fluxo de matrícula e updateRole |
-| **Status** | Avaliado — 2026-06-01 |
+| **Nível atual** | **4 — Sênior** |
+| **Pontos fortes** | Testes focados em comportamento; mocks ajustados quando falham (thenable builder, spy handlers); casos negativos cobertos (permissão insuficiente, erro de banco); 213 testes sem falsos positivos |
+| **Pontos fracos** | Sem testes de integração (apenas unitários com mock) |
+| **Próxima melhoria recomendada** | Testes de integração para `updateRole` com RLS ativo (Sprint L) |
+| **Status** | Avaliado — 2026-06-01 **(subiu 3 → 4)** |
 
 ### Agente 11 — Security Auditor
 | Campo | Valor |
@@ -247,7 +247,7 @@
 | 07 — auth-specialist | — | aguarda avaliação |
 | 08 — billing-engineer | — | aguarda avaliação |
 | 09 — infra-engineer | — | aguarda avaliação |
-| 10 — test-engineer | **3 Confiável** | 2026-06-01 |
+| 10 — test-engineer | **4 Sênior** | 2026-06-01 |
 | 11 — security-auditor | — | aguarda avaliação |
 | 12 — code-reviewer | — | aguarda avaliação |
 | 13 — performance-eng | — | aguarda avaliação |
