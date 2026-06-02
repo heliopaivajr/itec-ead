@@ -85,6 +85,43 @@ export async function getUsuarios(
   return { data: rows, total: count ?? 0 };
 }
 
+// Lista paginada de alunos e pendentes — filtro de role feito no banco (não em memória)
+// Usar em Alunos.tsx em vez de getUsuarios + filtro client-side
+export async function getAlunos(
+  page = 1,
+  limit = 20,
+  search = '',
+): Promise<UsuariosPage> {
+  let query = supabase
+    .from('profiles')
+    .select('*, matriculas(id, status, created_at)', { count: 'exact' })
+    .in('role', ['aluno', 'pendente'])
+    .order('full_name', { ascending: true })
+    .range((page - 1) * limit, page * limit - 1);
+
+  if (search.trim()) {
+    query = query.or(`full_name.ilike.%${search.trim()}%,email.ilike.%${search.trim()}%`);
+  }
+
+  const { data, count, error } = await query;
+  if (error) return { data: [], total: 0 };
+
+  const rows: UserRow[] = (data ?? []).map((perfil: Record<string, unknown>) => {
+    const matriculas = perfil.matriculas as { id: string; status: string; created_at: string }[] | null;
+    const matriculaAtiva = matriculas
+      ?.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0]
+      ?? null;
+    return {
+      ...(perfil as UserRow),
+      matriculas: undefined,
+      matricula_id: matriculaAtiva?.id ?? null,
+      matricula_status: matriculaAtiva?.status ?? null,
+    };
+  });
+
+  return { data: rows, total: count ?? 0 };
+}
+
 // Contagens para os cards KPI — busca apenas a coluna role (leve)
 export async function getUsuariosStats(): Promise<UsuariosStats> {
   const { data, error } = await supabase
@@ -185,6 +222,71 @@ export interface UpdatePerfilPayload {
   cep?: string;
   igreja_local?: string;
   observacoes_internas?: string;
+}
+
+// ─── Fila de exclusão (migration 025) ────────────────────────────────────────
+
+// Secretaria/admin solicita exclusão → superadmin autoriza depois
+export async function solicitarExclusao(
+  userId: string,
+  motivo: string,
+  requesterId: string,
+): Promise<ServiceResult> {
+  const { data: req } = await supabase
+    .from('profiles').select('role').eq('id', requesterId).single();
+
+  if (!['administracao', 'admin', 'superadmin'].includes(req?.role ?? '')) {
+    return { error: 'Permissão insuficiente para solicitar exclusão' };
+  }
+
+  const { error } = await supabase
+    .from('profiles')
+    .update({ exclusao_solicitada_em: new Date().toISOString(), exclusao_motivo: motivo })
+    .eq('id', userId);
+
+  if (error) return { error: error.message };
+  return { error: null };
+}
+
+// Superadmin recusa exclusão — limpa os campos de fila
+export async function recusarExclusao(
+  userId: string,
+  requesterId: string,
+): Promise<ServiceResult> {
+  const { data: req } = await supabase
+    .from('profiles').select('role').eq('id', requesterId).single();
+
+  if (!['admin', 'superadmin'].includes(req?.role ?? '')) {
+    return { error: 'Permissão insuficiente' };
+  }
+
+  const { error } = await supabase
+    .from('profiles')
+    .update({ exclusao_solicitada_em: null, exclusao_motivo: null })
+    .eq('id', userId);
+
+  if (error) return { error: error.message };
+  return { error: null };
+}
+
+// TODO Sprint L: mover para Edge Function (requer service_role / auth.admin.deleteUser)
+// Por enquanto retorna erro explicativo — superadmin usará SQL direto no Supabase
+export async function executarExclusao(
+  _userId: string,
+  _requesterId: string,
+): Promise<ServiceResult> {
+  return { error: 'Exclusão definitiva requer Edge Function — implementar no Sprint L' };
+}
+
+// Lista usuários com exclusão pendente — usado no painel do superadmin
+export async function getExclusoesPendentes(): Promise<UserRow[]> {
+  const { data } = await supabase
+    .from('profiles')
+    .select('*')
+    .not('exclusao_solicitada_em', 'is', null)
+    .order('exclusao_solicitada_em', { ascending: true });
+
+  return (data as UserRow[]) ?? [];
 }
 
 // Atualização do próprio perfil — usado em Perfil.tsx
