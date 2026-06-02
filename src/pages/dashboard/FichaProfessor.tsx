@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import {
   ArrowLeft, Loader2, User, Phone, Mail, MapPin,
   GraduationCap, FileText, Church, Pencil, CheckCircle, XCircle,
+  Clock, AlertCircle,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -38,6 +39,13 @@ function Section({ title, icon, children }: { title: string; icon: React.ReactNo
     </div>
   );
 }
+
+const STATUS_PROFESSOR_CFG: Record<string, { label: string; color: string; icon: React.ElementType }> = {
+  ativo:      { label: 'Ativo',      color: 'bg-green-500/20 text-green-400 border-green-500/30',   icon: CheckCircle  },
+  aguardando: { label: 'Aguardando', color: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30', icon: Clock        },
+  afastado:   { label: 'Afastado',   color: 'bg-orange-500/20 text-orange-400 border-orange-500/30', icon: AlertCircle  },
+  desligado:  { label: 'Desligado',  color: 'bg-muted text-muted-foreground border-border',           icon: XCircle      },
+};
 
 const STATUS_CONTRATO: Record<string, { label: string; color: string }> = {
   pendente:   { label: 'Pendente',   color: 'bg-yellow-500/20 text-yellow-500 border-yellow-500/30' },
@@ -115,15 +123,15 @@ export default function FichaProfessor() {
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
               <h2 className="text-xl font-semibold">{professor.nome_completo}</h2>
-              <Badge variant="outline" className={professor.ativo
-                ? 'bg-green-500/20 text-green-400 border-green-500/30'
-                : 'bg-muted text-muted-foreground border-border'}>
-                {professor.ativo ? (
-                  <><CheckCircle className="h-3 w-3 mr-1 inline" />Ativo</>
-                ) : (
-                  <><XCircle className="h-3 w-3 mr-1 inline" />Inativo</>
-                )}
-              </Badge>
+              {(() => {
+                const cfg = STATUS_PROFESSOR_CFG[professor.status ?? (professor.ativo ? 'ativo' : 'desligado')] ?? STATUS_PROFESSOR_CFG.desligado;
+                const Icon = cfg.icon;
+                return (
+                  <Badge variant="outline" className={cfg.color}>
+                    <Icon className="h-3 w-3 mr-1 inline" />{cfg.label}
+                  </Badge>
+                );
+              })()}
             </div>
             <p className="text-xs text-muted-foreground mt-1">Cadastrado em {fmt(professor.criado_em)}</p>
           </div>
