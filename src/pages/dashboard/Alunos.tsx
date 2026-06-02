@@ -2,11 +2,11 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate, useOutletContext } from 'react-router-dom';
 import {
   ChevronLeft, ChevronRight, Search, User, GraduationCap,
-  Loader2, Edit, Eye, Lock, CheckCircle, Clock,
+  Loader2, Edit, Eye, Lock, CheckCircle, Clock, Plus, Trash2,
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { getUsuarios, updateRole, updateUsuario } from '@/services/usuarios.service';
+import { getAlunos, updateRole, updateUsuario } from '@/services/usuarios.service';
 import type { UserRow } from '@/services/usuarios.service';
 import { updateStatusMatricula } from '@/services/matriculas.service';
 import { InlineStatusSelect } from '@/components/dashboard/InlineStatusSelect';
@@ -210,17 +210,26 @@ export default function Alunos() {
     }, 300);
   };
 
+  // carregar — usado por aprovar/trancar/handleEditSave após ações manuais
   const carregar = useCallback(async () => {
-    setLoading(true);
-    const { data, total: t } = await getUsuarios(page, PAGE_SIZE, debouncedSearch);
-    // Filtra apenas alunos e pendentes
-    const filtrados = data.filter(u => u.role === 'aluno' || u.role === 'pendente');
-    setAlunos(filtrados);
-    setTotal(t);
-    setLoading(false);
+    const result = await getAlunos(page, PAGE_SIZE, debouncedSearch);
+    setAlunos(result.data);
+    setTotal(result.total);
   }, [page, debouncedSearch]);
 
-  useEffect(() => { carregar(); }, [carregar]);
+  // useEffect com cancellation token — evita loading infinito ao navegar
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    getAlunos(page, PAGE_SIZE, debouncedSearch).then(result => {
+      if (!cancelled) {
+        setAlunos(result.data);
+        setTotal(result.total);
+        setLoading(false);
+      }
+    });
+    return () => { cancelled = true; };
+  }, [page, debouncedSearch]);
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
@@ -270,9 +279,18 @@ export default function Alunos() {
 
   return (
     <div className="p-6 space-y-6 relative">
-      <div>
-        <h1 className="text-2xl font-merriweather font-bold text-primary">Alunos</h1>
-        <p className="text-muted-foreground mt-1">Ficha, dados e status dos alunos matriculados</p>
+      <div className="flex items-start justify-between gap-4 flex-wrap">
+        <div>
+          <h1 className="text-2xl font-merriweather font-bold text-primary">Alunos</h1>
+          <p className="text-muted-foreground mt-1">Ficha, dados e status dos alunos matriculados</p>
+        </div>
+        <Button
+          onClick={() => toast({ title: 'Em breve', description: 'Funcionalidade disponível em breve — Sprint K' })}
+          className="gap-2 shrink-0"
+          size="sm"
+        >
+          <Plus className="h-4 w-4" /> Novo Aluno
+        </Button>
       </div>
 
       {/* Busca */}
@@ -321,7 +339,12 @@ export default function Alunos() {
                             <User className="h-4 w-4 text-primary" />
                           </div>
                           <div>
-                            <p className="font-medium text-foreground">{aluno.full_name}</p>
+                            <button
+                              onClick={() => navigate(`/dashboard/aluno/${aluno.id}`)}
+                              className="font-medium text-left hover:text-primary hover:underline transition-colors"
+                            >
+                              {aluno.full_name}
+                            </button>
                             <p className="text-xs text-muted-foreground">{aluno.email ?? '—'}</p>
                           </div>
                         </div>

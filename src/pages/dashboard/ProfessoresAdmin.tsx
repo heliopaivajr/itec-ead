@@ -46,7 +46,9 @@ export default function ProfessoresAdmin() {
   const [processando, setProcessando]   = useState<string | null>(null);
 
   useEffect(() => {
-    getSolicitacoesPendentes().then(setSolicitacoes);
+    let cancelled = false;
+    getSolicitacoesPendentes().then(data => { if (!cancelled) setSolicitacoes(data); });
+    return () => { cancelled = true; };
   }, []);
 
   const handleAprovar = async (id: string) => {
@@ -89,15 +91,26 @@ export default function ProfessoresAdmin() {
     debRef.current = setTimeout(() => { setDebSearch(v); setPage(1); }, 300);
   };
 
+  // load — usado por handlers após ações manuais (aprovar, vincular, etc.)
   const load = useCallback(async () => {
-    setLoading(true);
     const { data, total: t } = await getProfessores(page, PAGE_SIZE, debSearch, !showInativos);
     setProfessores(data);
     setTotal(t);
-    setLoading(false);
   }, [page, debSearch, showInativos]);
 
-  useEffect(() => { load(); }, [load]);
+  // useEffect com cancellation token — evita loading infinito ao navegar
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    getProfessores(page, PAGE_SIZE, debSearch, !showInativos).then(({ data, total: t }) => {
+      if (!cancelled) {
+        setProfessores(data);
+        setTotal(t);
+        setLoading(false);
+      }
+    });
+    return () => { cancelled = true; };
+  }, [page, debSearch, showInativos]);
 
   // Carrega disciplinas uma vez no mount — não a cada abertura de modal
   useEffect(() => { getAllDisciplinas().then(setDisciplinas); }, []);
