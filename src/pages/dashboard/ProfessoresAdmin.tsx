@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { useOutletContext } from 'react-router-dom';
+import { useOutletContext, useNavigate } from 'react-router-dom';
 import {
   BookOpen, ChevronLeft, ChevronRight, Loader2,
   Plus, Search, UserX, Pencil, Link2,
@@ -31,6 +31,7 @@ const STATUS_PROFESSOR_OPTIONS: StatusOption[] = [
 
 export default function ProfessoresAdmin() {
   const { profile } = useOutletContext<DashboardContext>();
+  const navigate = useNavigate();
   const { toast } = useToast();
 
   const [professores, setProfessores] = useState<Professor[]>([]);
@@ -255,7 +256,12 @@ export default function ProfessoresAdmin() {
                 {professores.map((p, i) => (
                   <tr key={p.id} className={`border-b border-border last:border-0 hover:bg-muted/20 transition-colors ${i % 2 !== 0 ? 'bg-muted/5' : ''}`}>
                     <td className="px-4 py-3">
-                      <p className="font-medium text-foreground">{p.nome_completo}</p>
+                      <button
+                        onClick={() => navigate(`/dashboard/professor-ficha/${p.id}`)}
+                        className="font-medium text-left hover:text-primary hover:underline transition-colors"
+                      >
+                        {p.nome_completo}
+                      </button>
                       <p className="text-xs text-muted-foreground">{p.cpf}</p>
                     </td>
                     <td className="px-4 py-3">

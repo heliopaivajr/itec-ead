@@ -52,6 +52,7 @@ const ProfessoresAdmin   = lazy(() => import("./pages/dashboard/ProfessoresAdmin
 const EquipeITEC         = lazy(() => import("./pages/dashboard/EquipeITEC"));
 const GestaoTurmas       = lazy(() => import("./pages/dashboard/GestaoTurmas"));
 const FichaAluno         = lazy(() => import("./pages/dashboard/FichaAluno"));
+const FichaProfessor     = lazy(() => import("./pages/dashboard/FichaProfessor"));
 const Alunos             = lazy(() => import("./pages/dashboard/Alunos"));
 const LancarNotas        = lazy(() => import("./pages/dashboard/LancarNotas"));
 const ComingSoonPage     = lazy(() => import("./pages/dashboard/ComingSoonPage"));
@@ -153,6 +154,7 @@ const App = () => (
 
               {/* Admin — Professores e Equipe */}
               <Route path="professores-admin" element={<ProfessoresAdmin />} />
+              <Route path="professor-ficha/:professorId" element={<FichaProfessor />} />
               <Route path="equipe-itec"       element={<EquipeITEC />} />
 
               {/* Admin — Turmas */}
