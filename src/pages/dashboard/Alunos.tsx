@@ -11,6 +11,7 @@ import type { UserRow } from '@/services/usuarios.service';
 import { updateStatusMatricula } from '@/services/matriculas.service';
 import { InlineStatusSelect } from '@/components/dashboard/InlineStatusSelect';
 import type { StatusOption } from '@/components/dashboard/InlineStatusSelect';
+import { NovoAlunoModal } from '@/components/dashboard/NovoAlunoModal';
 import { useToast } from '@/hooks/use-toast';
 import type { DashboardContext } from '../Dashboard';
 
@@ -193,10 +194,11 @@ export default function Alunos() {
   const [search, setSearch]   = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
 
-  const [alunos, setAlunos]   = useState<UserRow[]>([]);
-  const [total, setTotal]     = useState(0);
-  const [loading, setLoading] = useState(true);
+  const [alunos, setAlunos]     = useState<UserRow[]>([]);
+  const [total, setTotal]       = useState(0);
+  const [loading, setLoading]   = useState(true);
   const [atualizando, setAtualizando] = useState<string | null>(null);
+  const [novoAlunoOpen, setNovoAlunoOpen] = useState(false);
 
   const [editAluno, setEditAluno] = useState<UserRow | null>(null);
 
@@ -285,7 +287,7 @@ export default function Alunos() {
           <p className="text-muted-foreground mt-1">Ficha, dados e status dos alunos matriculados</p>
         </div>
         <Button
-          onClick={() => toast({ title: 'Em breve', description: 'Funcionalidade disponível em breve — Sprint K' })}
+          onClick={() => setNovoAlunoOpen(true)}
           className="gap-2 shrink-0"
           size="sm"
         >
@@ -459,6 +461,12 @@ export default function Alunos() {
           onClose={() => setEditAluno(null)}
         />
       )}
+
+      <NovoAlunoModal
+        open={novoAlunoOpen}
+        onClose={() => setNovoAlunoOpen(false)}
+        onCriado={() => { setPage(1); }}
+      />
     </div>
   );
 }

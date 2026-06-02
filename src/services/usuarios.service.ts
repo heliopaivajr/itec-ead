@@ -75,7 +75,7 @@ export async function getUsuarios(
       ?.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0]
       ?? null;
     return {
-      ...(perfil as UserRow),
+      ...(perfil as unknown as UserRow),
       matriculas: undefined,
       matricula_id: matriculaAtiva?.id ?? null,
       matricula_status: matriculaAtiva?.status ?? null,
@@ -112,7 +112,7 @@ export async function getAlunos(
       ?.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0]
       ?? null;
     return {
-      ...(perfil as UserRow),
+      ...(perfil as unknown as UserRow),
       matriculas: undefined,
       matricula_id: matriculaAtiva?.id ?? null,
       matricula_status: matriculaAtiva?.status ?? null,
@@ -222,6 +222,26 @@ export interface UpdatePerfilPayload {
   cep?: string;
   igreja_local?: string;
   observacoes_internas?: string;
+}
+
+// ─── Criação de aluno pela secretaria ────────────────────────────────────────
+// TODO Sprint K fase 2: substituir por chamada real à Edge Function criar-aluno
+export interface CriarAlunoPayload {
+  email: string;
+  senha_temporaria: string;
+  full_name: string;
+  cpf?: string;
+  telefone?: string;
+  data_nascimento?: string | null;
+  turma_id?: string;
+  data_inicio?: string | null;
+  semestre_ingresso?: string;
+  obs_retroativa?: string;
+}
+
+export async function criarAluno(_payload: CriarAlunoPayload): Promise<ServiceResult> {
+  // Edge Function não configurada ainda — implementar em Sprint K fase 2
+  return { error: 'Edge Function não configurada — Sprint K fase 2' };
 }
 
 // ─── Fila de exclusão (migration 025) ────────────────────────────────────────
