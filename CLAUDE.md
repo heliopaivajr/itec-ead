@@ -286,3 +286,25 @@ Use Agente 20 (project-manager) quando:
 Agente 19 = O QUÊ e POR QUÊ
 Agente 20 = COMO e EM QUE ORDEM
 Hélio = decisão final sempre
+
+## Roadmap de Sprints (2026)
+
+Sprints planejados em ordem de execução (aprovados 2026-06-02):
+
+| Sprint | Foco | Obrigatório agosto? |
+|--------|------|---------------------|
+| **L** | RLS + Edge Function + Foto + DB Calendário | 🔴 Sim |
+| **M** | Histórico Acadêmico + Turmas + Declaração PDF | 🔴 Sim |
+| **N** | Calendário UI editável completo | 🟡 Básico |
+| **O** | Certificados por módulo e final | 🟢 Setembro |
+| **P** | Impressões e relatórios completos | 🟡 Parcial |
+
+Plano completo: `.ai-system/ROADMAP-SPRINTS.md`
+
+**Antes de implementar qualquer feature nova:**
+1. Verificar se já existe sprint planejado para ela em `ROADMAP-SPRINTS.md`
+2. Verificar dependências entre sprints
+3. Consultar ADR-007 para qualquer coisa relacionada ao calendário
+4. Calendário é EDITÁVEL pela secretaria/admin/superadmin
+5. Professor vê calendário em somente leitura
+6. RLS deve estar ativo (Sprint L) antes de qualquer nova tabela de dados sensíveis
