@@ -308,3 +308,34 @@ Plano completo: `.ai-system/ROADMAP-SPRINTS.md`
 4. Calendário é EDITÁVEL pela secretaria/admin/superadmin
 5. Professor vê calendário em somente leitura
 6. RLS deve estar ativo (Sprint L) antes de qualquer nova tabela de dados sensíveis
+
+## REGRA CRÍTICA — APIs Externas e Bibliotecas Novas
+
+ANTES de usar qualquer API externa, biblioteca nova ou recurso MCP não existente no projeto:
+
+1. **PARAR e avisar o Hélio**
+2. Informar:
+   - Nome da API/biblioteca
+   - Por que é necessária
+   - Se é gratuita ou paga
+   - Se tem limite de uso
+   - Alternativa sem dependência externa (se existir)
+3. **AGUARDAR aprovação explícita do Hélio**
+
+Repositório de APIs disponíveis do Hélio:
+https://github.com/heliopaivajr/public-apis.git
+→ Consultar ANTES de sugerir APIs externas — pode já existir algo disponível
+
+**Exemplos que requerem aviso obrigatório:**
+- Biblioteca de calendário (FullCalendar, React Big Calendar, etc.)
+- API de feriados nacionais
+- Biblioteca de PDF diferente do `@react-pdf/renderer`
+- Qualquer `npm install` de pacote não existente no `package.json`
+- Qualquer MCP novo não conectado
+
+**Exceções (não precisam de aviso):**
+- `@react-pdf/renderer` — já instalado
+- Todas as bibliotecas listadas no `package.json` atual
+- Shadcn/ui components — já configurado
+- Lucide React icons — já instalado
+- Recharts — já instalado

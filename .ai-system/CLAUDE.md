@@ -246,7 +246,30 @@ Contatos rápidos:
 
 ---
 
+## REGRA CRÍTICA — APIs Externas e Bibliotecas Novas
+
+ANTES de usar qualquer API externa, biblioteca nova ou recurso MCP não existente no projeto:
+
+1. **PARAR e avisar o Hélio**
+2. Informar: nome da API/biblioteca · por que é necessária · gratuita ou paga · limite de uso · alternativa sem dependência externa
+3. **AGUARDAR aprovação explícita do Hélio**
+
+Repositório de APIs do Hélio: https://github.com/heliopaivajr/public-apis.git
+→ Consultar ANTES de sugerir APIs externas
+
+**Requer aviso obrigatório:**
+- Biblioteca de calendário (FullCalendar, React Big Calendar, etc.)
+- API de feriados nacionais
+- Biblioteca de PDF diferente do `@react-pdf/renderer`
+- Qualquer `npm install` não existente no `package.json`
+- Qualquer MCP novo não conectado
+
+**Exceções (não precisam de aviso):**
+- `@react-pdf/renderer` · todas as libs do `package.json` · Shadcn/ui · Lucide React · Recharts
+
+---
+
 *CLAUDE.md — ITEC Instituto Teológico Educação Cristã*
 *Responsável: Pr. Hélio Paiva — Direção Acadêmica*
-*Versão: 1.0 — Maio/2026*
+*Versão: 1.1 — Junho/2026*
 *Qualquer alteração deve ser validada pela Direção Acadêmica*
