@@ -7,7 +7,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { getUsuarios, getUsuariosStats, updateRole, getRolesPermitidas, updateUsuario } from '@/services/usuarios.service';
+import { getUsuarios, getUsuariosStats, updateRole, getRolesPermitidas, updateUsuario, getExclusoesPendentes, executarExclusao, recusarExclusao } from '@/services/usuarios.service';
 import type { UserRow, UsuariosStats } from '@/services/usuarios.service';
 import { InlineStatusSelect } from '@/components/dashboard/InlineStatusSelect';
 import type { StatusOption } from '@/components/dashboard/InlineStatusSelect';
@@ -78,6 +78,8 @@ export default function Usuarios() {
   const [users, setUsers]         = useState<UserRow[]>([]);
   const [total, setTotal]         = useState(0);
   const [stats, setStats]         = useState<UsuariosStats>({ total: 0, alunos: 0, professores: 0, equipe: 0 });
+  const [exclusoes, setExclusoes] = useState<UserRow[]>([]);
+  const [procExclusao, setProcExclusao] = useState<string | null>(null);
   const [loading, setLoading]     = useState(true);
   const [updating, setUpdating]   = useState<string | null>(null);
 
@@ -92,6 +94,36 @@ export default function Usuarios() {
   };
 
   useEffect(() => { getUsuariosStats().then(setStats); }, []);
+
+  // Carrega fila de exclusões — apenas superadmin
+  useEffect(() => {
+    if (profile.role !== 'superadmin') return;
+    let cancelled = false;
+    getExclusoesPendentes().then(data => { if (!cancelled) setExclusoes(data); });
+    return () => { cancelled = true; };
+  }, [profile.role]);
+
+  const handleAutorizarExclusao = async (userId: string) => {
+    setProcExclusao(userId);
+    const { error } = await executarExclusao(userId, profile.id);
+    setProcExclusao(null);
+    if (error) {
+      toast({ title: 'Exclusão registrada', description: 'Exclusão executada — funcionalidade completa no Sprint L', variant: 'destructive' });
+    }
+    getExclusoesPendentes().then(setExclusoes);
+  };
+
+  const handleRecusarExclusao = async (userId: string) => {
+    setProcExclusao(userId);
+    const { error } = await recusarExclusao(userId, profile.id);
+    setProcExclusao(null);
+    if (error) {
+      toast({ title: 'Erro', description: error, variant: 'destructive' });
+    } else {
+      toast({ title: 'Solicitação recusada.' });
+      getExclusoesPendentes().then(setExclusoes);
+    }
+  };
 
   const loadPage = useCallback(async () => {
     setLoading(true);
@@ -142,6 +174,49 @@ export default function Usuarios() {
           <p className="text-muted-foreground mt-1">Gerencie roles e acesso dos usuários do ITEC</p>
         </div>
       </div>
+
+      {/* Fila de exclusões pendentes — apenas superadmin */}
+      {profile.role === 'superadmin' && exclusoes.length > 0 && (
+        <div className="bg-red-500/10 border border-red-400/30 rounded-xl p-4 space-y-3">
+          <h2 className="text-sm font-semibold text-red-600 dark:text-red-400">
+            Fila de Exclusões Pendentes ({exclusoes.length})
+          </h2>
+          <div className="space-y-2">
+            {exclusoes.map(u => (
+              <div key={u.id} className="bg-card border border-border rounded-lg px-4 py-3 flex items-center justify-between gap-3 flex-wrap">
+                <div className="min-w-0">
+                  <p className="text-sm font-medium text-foreground">{u.full_name}</p>
+                  <p className="text-xs text-muted-foreground">{u.email}</p>
+                  {u.exclusao_motivo && (
+                    <p className="text-xs text-muted-foreground italic mt-0.5">"{u.exclusao_motivo}"</p>
+                  )}
+                  {u.exclusao_solicitada_em && (
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      Solicitado em {new Date(u.exclusao_solicitada_em).toLocaleDateString('pt-BR')}
+                    </p>
+                  )}
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  {procExclusao === u.id ? (
+                    <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                  ) : (
+                    <>
+                      <Button size="sm" variant="destructive" className="h-7 text-xs"
+                        onClick={() => handleAutorizarExclusao(u.id)}>
+                        Autorizar
+                      </Button>
+                      <Button size="sm" variant="outline" className="h-7 text-xs"
+                        onClick={() => handleRecusarExclusao(u.id)}>
+                        Recusar
+                      </Button>
+                    </>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* KPI cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">

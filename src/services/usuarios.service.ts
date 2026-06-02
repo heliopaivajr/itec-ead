@@ -29,6 +29,9 @@ export interface UserRow {
   // matrícula mais recente (opcional — preenchido por getUsuarios)
   matricula_id?: string | null;
   matricula_status?: string | null;
+  // fila de exclusão (migration 025)
+  exclusao_solicitada_em?: string | null;
+  exclusao_motivo?: string | null;
 }
 
 export interface ServiceResult {

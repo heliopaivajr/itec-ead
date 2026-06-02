@@ -6,8 +6,13 @@ import {
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { getAlunos, updateRole, updateUsuario } from '@/services/usuarios.service';
+import { getAlunos, updateRole, updateUsuario, solicitarExclusao } from '@/services/usuarios.service';
 import type { UserRow } from '@/services/usuarios.service';
+import { Badge } from '@/components/ui/badge';
+import { Textarea } from '@/components/ui/textarea';
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
+} from '@/components/ui/dialog';
 import { updateStatusMatricula } from '@/services/matriculas.service';
 import { InlineStatusSelect } from '@/components/dashboard/InlineStatusSelect';
 import type { StatusOption } from '@/components/dashboard/InlineStatusSelect';
@@ -199,6 +204,9 @@ export default function Alunos() {
   const [loading, setLoading]   = useState(true);
   const [atualizando, setAtualizando] = useState<string | null>(null);
   const [novoAlunoOpen, setNovoAlunoOpen] = useState(false);
+  const [exclusaoAluno, setExclusaoAluno] = useState<UserRow | null>(null);
+  const [exclusaoMotivo, setExclusaoMotivo] = useState('');
+  const [enviandoExclusao, setEnviandoExclusao] = useState(false);
 
   const [editAluno, setEditAluno] = useState<UserRow | null>(null);
 
@@ -257,6 +265,21 @@ export default function Alunos() {
       await carregar();
     }
     setAtualizando(null);
+  };
+
+  const handleSolicitarExclusao = async () => {
+    if (!exclusaoAluno || !exclusaoMotivo.trim()) return;
+    setEnviandoExclusao(true);
+    const { error } = await solicitarExclusao(exclusaoAluno.id, exclusaoMotivo.trim(), profile.id);
+    setEnviandoExclusao(false);
+    if (error) {
+      toast({ title: 'Erro', description: error, variant: 'destructive' });
+    } else {
+      toast({ title: 'Solicitação enviada', description: 'O superadmin será notificado para autorizar a exclusão.' });
+      setExclusaoAluno(null);
+      setExclusaoMotivo('');
+      await carregar();
+    }
   };
 
   const handleEditSave = async (dados: ModalForm) => {
@@ -341,12 +364,19 @@ export default function Alunos() {
                             <User className="h-4 w-4 text-primary" />
                           </div>
                           <div>
-                            <button
-                              onClick={() => navigate(`/dashboard/aluno/${aluno.id}`)}
-                              className="font-medium text-left hover:text-primary hover:underline transition-colors"
-                            >
-                              {aluno.full_name}
-                            </button>
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <button
+                                onClick={() => navigate(`/dashboard/aluno/${aluno.id}`)}
+                                className="font-medium text-left hover:text-primary hover:underline transition-colors"
+                              >
+                                {aluno.full_name}
+                              </button>
+                              {aluno.exclusao_solicitada_em && (
+                                <Badge variant="outline" className="bg-red-500/20 text-red-500 border-red-500/30 text-xs">
+                                  Exclusão solicitada
+                                </Badge>
+                              )}
+                            </div>
                             <p className="text-xs text-muted-foreground">{aluno.email ?? '—'}</p>
                           </div>
                         </div>
@@ -395,6 +425,15 @@ export default function Alunos() {
                             >
                               <Edit className="h-4 w-4" />
                             </button>
+                            {['administracao', 'admin', 'superadmin'].includes(profile?.role ?? '') && !aluno.exclusao_solicitada_em && (
+                              <button
+                                onClick={() => { setExclusaoAluno(aluno); setExclusaoMotivo(''); }}
+                                className="p-1.5 hover:bg-muted rounded text-muted-foreground hover:text-red-500 transition-colors"
+                                title="Solicitar exclusão"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </button>
+                            )}
                             {aluno.role === 'pendente' ? (
                               <button
                                 onClick={() => aprovar(aluno.id)}
@@ -461,6 +500,41 @@ export default function Alunos() {
           onClose={() => setEditAluno(null)}
         />
       )}
+
+      {/* Dialog — Solicitar Exclusão */}
+      <Dialog open={!!exclusaoAluno} onOpenChange={v => { if (!v) { setExclusaoAluno(null); setExclusaoMotivo(''); } }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Solicitar Exclusão</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 py-1">
+            <p className="text-sm text-muted-foreground">
+              Esta solicitação será enviada para aprovação do superadmin.
+              O aluno <strong className="text-foreground">{exclusaoAluno?.full_name}</strong> não será excluído imediatamente.
+            </p>
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-muted-foreground">Motivo da exclusão *</label>
+              <Textarea
+                value={exclusaoMotivo}
+                onChange={e => setExclusaoMotivo(e.target.value)}
+                placeholder="Descreva o motivo da solicitação de exclusão..."
+                rows={3}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setExclusaoAluno(null); setExclusaoMotivo(''); }}>Cancelar</Button>
+            <Button
+              variant="destructive"
+              onClick={handleSolicitarExclusao}
+              disabled={!exclusaoMotivo.trim() || enviandoExclusao}
+            >
+              {enviandoExclusao ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+              Enviar Solicitação
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <NovoAlunoModal
         open={novoAlunoOpen}
