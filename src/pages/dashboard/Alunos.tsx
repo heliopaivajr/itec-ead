@@ -22,10 +22,6 @@ import type { DashboardContext } from '../Dashboard';
 
 const PAGE_SIZE = 20;
 
-const statusConfig: Record<string, { label: string; color: string; icon: React.ElementType }> = {
-  aluno:   { label: 'Aluno ativo',  color: 'bg-blue-500/20 text-blue-400 border-blue-500/30',   icon: GraduationCap },
-  pendente:{ label: 'Pendente',     color: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30', icon: Clock },
-};
 
 // ─── Modal editar aluno ───────────────────────────────────────────────────────
 
@@ -354,15 +350,18 @@ export default function Alunos() {
               </thead>
               <tbody>
                 {alunos.map((aluno, i) => {
-                  const sc = statusConfig[aluno.role] ?? statusConfig['pendente'];
-                  const StatusIcon = sc.icon;
                   return (
                     <tr key={aluno.id} className={`border-b border-border last:border-0 hover:bg-muted/20 transition-colors ${i % 2 !== 0 ? 'bg-muted/5' : ''}`}>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-3">
-                          <div className="h-8 w-8 rounded-full bg-primary/20 flex items-center justify-center shrink-0">
-                            <User className="h-4 w-4 text-primary" />
-                          </div>
+                          {aluno.avatar_url ? (
+                            <img src={aluno.avatar_url} alt={aluno.full_name}
+                              className="h-8 w-8 rounded-full object-cover shrink-0" />
+                          ) : (
+                            <div className="h-8 w-8 rounded-full bg-primary/20 flex items-center justify-center shrink-0">
+                              <User className="h-4 w-4 text-primary" />
+                            </div>
+                          )}
                           <div>
                             <div className="flex items-center gap-2 flex-wrap">
                               <button
