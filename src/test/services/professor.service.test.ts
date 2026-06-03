@@ -21,39 +21,39 @@ describe('professor.service', () => {
   describe('getProfessores', () => {
     it('retorna página 1 com total correto', async () => {
       vi.mocked(supabase.from).mockReset();
-      vi.mocked(supabase.from).mockReturnValue({
-        select: vi.fn().mockReturnValue({
-          eq: vi.fn().mockReturnValue({
-            order: vi.fn().mockReturnValue({
-              range: vi.fn().mockResolvedValue({
-                data: [
-                  { id: 'p1', nome_completo: 'Prof. João', ativo: true },
-                  { id: 'p2', nome_completo: 'Prof. Maria', ativo: true },
-                ],
-                count: 15,
-                error: null,
-              }),
-            }),
-          }),
+      // getProfessores(apenasAtivos=true) usa .not('status','eq','desligado') em vez de .eq('ativo',true)
+      const chain = {
+        not:   vi.fn().mockReturnThis(),
+        order: vi.fn().mockReturnThis(),
+        range: vi.fn().mockResolvedValue({
+          data: [
+            { id: 'p1', nome_completo: 'Prof. João', ativo: true, status: 'ativo' },
+            { id: 'p2', nome_completo: 'Prof. Maria', ativo: true, status: 'ativo' },
+          ],
+          count: 15,
+          error: null,
         }),
+      };
+      vi.mocked(supabase.from).mockReturnValue({
+        select: vi.fn().mockReturnValue(chain),
       } as any);
 
       const resultado = await getProfessores(1, 20);
 
       expect(resultado.data).toHaveLength(2);
       expect(resultado.total).toBe(15);
+      expect(chain.not).toHaveBeenCalledWith('status', 'eq', 'desligado');
     });
 
     it('retorna { data: [], total: 0 } quando Supabase retorna erro', async () => {
       vi.mocked(supabase.from).mockReset();
+      const chain = {
+        not:   vi.fn().mockReturnThis(),
+        order: vi.fn().mockReturnThis(),
+        range: vi.fn().mockResolvedValue({ data: null, count: null, error: { message: 'error' } }),
+      };
       vi.mocked(supabase.from).mockReturnValue({
-        select: vi.fn().mockReturnValue({
-          eq: vi.fn().mockReturnValue({
-            order: vi.fn().mockReturnValue({
-              range: vi.fn().mockResolvedValue({ data: null, count: null, error: { message: 'error' } }),
-            }),
-          }),
-        }),
+        select: vi.fn().mockReturnValue(chain),
       } as any);
 
       const resultado = await getProfessores();

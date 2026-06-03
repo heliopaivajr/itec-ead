@@ -427,4 +427,79 @@ Remover `statusConfig`, `sc`, `StatusIcon` e ícones não usados de `Alunos.tsx`
 
 ---
 
+## CORRIGIDO-029 — Policies do calendário usavam `profiles` diretamente
+
+**Data:** 2026-06-02
+**Sprint:** L
+**Contexto:** Migration 029 (`aulas_recorrentes` + `eventos_calendario`) criou policies que consultavam `public.profiles.role` diretamente para verificar permissão de escrita.
+
+**Problema:**
+```sql
+-- ❌ ORIGINAL — risco de recursão quando RLS em profiles for ativado
+USING (
+  EXISTS (SELECT 1 FROM public.profiles
+          WHERE id = auth.uid()
+            AND role IN ('administracao', 'admin', 'superadmin'))
+)
+```
+Quando o RLS for ativado em `profiles` (Sprint L), policies de outras tabelas que fazem `SELECT FROM profiles` podem causar recursão silenciosa (ERR-SUPABASE-003 / LICAO-007).
+
+**Correção aplicada no banco:**
+Policies reescritas para usar `user_roles` (sem RLS) como fonte de roles:
+```sql
+-- ✅ CORRIGIDO — usa user_roles (sem RLS, sem recursão)
+USING (
+  EXISTS (SELECT 1 FROM public.user_roles
+          WHERE user_id = auth.uid()
+            AND role IN ('administracao', 'admin', 'superadmin'))
+)
+```
+
+**Status:** ✅ Corrigido no banco (2026-06-02)
+
+---
+
+## ERR-EDGE-001 — Race condition na geração de codigo_itec
+
+**Data:** 2026-06-02
+**Sprint:** L
+**Contexto:** Edge Function `criar-aluno` gera `codigo_itec` via `COUNT + 1`
+
+**Risco:**
+Duas requisições simultâneas para o mesmo ano contam o mesmo total → geram o mesmo código → a segunda falha com erro de unique violation na constraint `UNIQUE(codigo_itec)`. O usuário auth é criado mas o perfil não — estado parcialmente corrompido.
+
+**Probabilidade:** Baixa hoje (poucos usuários). Aumenta com volume.
+
+**Mitigação recomendada (Sprint futuro):**
+```typescript
+// Tratar o erro de unique violation e tentar sequencial +1
+if (profileError?.code === '23505') {
+  // tentar com COUNT + 2, + 3, até conseguir
+}
+```
+
+**Status:** documentado — mitigar no Sprint M ou quando volume aumentar
+
+---
+
+## ERR-EDGE-002 — Rollback incompleto se deleteUser falha após profiles.upsert falhar
+
+**Data:** 2026-06-02
+**Sprint:** L
+**Contexto:** Edge Function `criar-aluno` — passo 6 (profiles.upsert) com rollback
+
+**Risco:**
+Se `profiles.upsert` falha, o código tenta `auth.admin.deleteUser` para rollback. Se o `deleteUser` também falhar (timeout, erro de rede), o usuário fica em `auth.users` sem perfil correspondente — estado corrompido que só pode ser corrigido manualmente.
+
+**Detecção:** usuário aparece em `auth.users` mas não em `profiles`. Query de diagnóstico:
+```sql
+SELECT u.email FROM auth.users u
+LEFT JOIN public.profiles p ON p.id = u.id
+WHERE p.id IS NULL AND u.email LIKE '%@%';
+```
+
+**Status:** documentado — risco baixo, monitorar
+
+---
+
 *Mantido pelo agente-Osabio · ITEC-EAD · 2025*

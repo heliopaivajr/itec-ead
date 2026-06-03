@@ -103,12 +103,12 @@
 ### Agente 05 — Backend Engineer
 | Campo | Valor |
 |-------|-------|
-| **Nível atual** | 3 — Confiável |
-| **Pontos fortes** | Services limpos, sanitização de dados (sanitizeDate), validação hierárquica robusta |
-| **Pontos fracos** | Não tratou erro do upsert em user_roles (ERR-RISK-001) |
-| **Melhorias aplicadas** | MELHORIA-006 — função pura para regras de hierarquia |
-| **Próxima melhoria recomendada** | Sempre tratar retorno de operações de sync/cache |
-| **Status** | Avaliado — 2026-06-01 |
+| **Nível atual** | **4 — Sênior** |
+| **Pontos fortes** | Edge Function completa com rollback, geração de codigo_itec, validação em camadas, updateStatusProfessor com trigger sync, funções puras testáveis |
+| **Pontos fracos** | Race condition não tratada em codigo_itec (ERR-EDGE-001); rollback incompleto possível (ERR-EDGE-002) |
+| **Melhorias aplicadas** | MELHORIA-006, MELHORIA-007, MELHORIA-008 |
+| **Próxima melhoria recomendada** | Tratar unique violation no codigo_itec com retry |
+| **Status** | Avaliado — 2026-06-02 **(subiu 3 → 4)** |
 
 ### Agente 06 — Frontend Engineer
 | Campo | Valor |
@@ -123,7 +123,11 @@
 ### Agente 07 — Auth Specialist
 | Campo | Valor |
 |-------|-------|
-| **Nível atual** | A avaliar |
+| **Nível atual** | **3 — Confiável** |
+| **Pontos fortes** | Identificou recursão em policies RLS antes de acontecer, ADR-006 bem fundamentado, validação de Edge Function por curl (não Studio) |
+| **Pontos fracos** | Primeira avaliação real — pouca base histórica |
+| **Próxima melhoria recomendada** | Documentar checklist de auditoria de RLS para novas tabelas |
+| **Status** | Avaliado — 2026-06-02 (primeira avaliação real) |
 | **Função** | Login, roles, permissões, middleware |
 | **Próxima melhoria recomendada** | [preencher] |
 | **Status** | Aguardando primeira avaliação |
@@ -242,9 +246,9 @@
 | 02 — domain-designer | — | aguarda avaliação |
 | 03 — api-designer | — | aguarda avaliação |
 | 04 — db-architect | — | aguarda avaliação |
-| 05 — backend-engineer | **3 Confiável** | 2026-06-01 |
+| 05 — backend-engineer | **4 Sênior** | 2026-06-02 |
 | 06 — frontend-engineer | **4 Sênior** | 2026-06-01 |
-| 07 — auth-specialist | — | aguarda avaliação |
+| 07 — auth-specialist | **3 Confiável** | 2026-06-02 |
 | 08 — billing-engineer | — | aguarda avaliação |
 | 09 — infra-engineer | — | aguarda avaliação |
 | 10 — test-engineer | **4 Sênior** | 2026-06-01 |

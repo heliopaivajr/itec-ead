@@ -6,7 +6,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { getProfessores, desativarProfessor, reativarProfessor, vincularDisciplina } from '@/services/professor.service';
+import { getProfessores, updateStatusProfessor, vincularDisciplina } from '@/services/professor.service';
 import type { Professor } from '@/services/professor.service';
 import { InlineStatusSelect } from '@/components/dashboard/InlineStatusSelect';
 import type { StatusOption } from '@/components/dashboard/InlineStatusSelect';
@@ -23,10 +23,11 @@ import type { DashboardContext } from '../Dashboard';
 
 const PAGE_SIZE = 20;
 
-// TODO Sprint futuro: adicionar 'afastado' e 'suspenso' quando professores tiver coluna status TEXT
 const STATUS_PROFESSOR_OPTIONS: StatusOption[] = [
-  { value: 'ativo',   label: 'Ativo',   color: 'bg-green-100 text-green-800' },
-  { value: 'inativo', label: 'Inativo', color: 'bg-gray-100 text-gray-600'  },
+  { value: 'ativo',      label: 'Ativo',      color: 'bg-green-100 text-green-800'   },
+  { value: 'aguardando', label: 'Aguardando', color: 'bg-yellow-100 text-yellow-800' },
+  { value: 'afastado',   label: 'Afastado',   color: 'bg-orange-100 text-orange-800' },
+  { value: 'desligado',  label: 'Desligado',  color: 'bg-gray-100 text-gray-600'     },
 ];
 
 export default function ProfessoresAdmin() {
@@ -227,7 +228,7 @@ export default function ProfessoresAdmin() {
             onChange={e => { setShowInativos(e.target.checked); setPage(1); }}
             className="rounded"
           />
-          Mostrar inativos
+          Mostrar desligados
         </label>
       </div>
 
@@ -275,13 +276,14 @@ export default function ProfessoresAdmin() {
                     <td className="px-4 py-3 text-xs text-muted-foreground">{p.igreja_local ?? '—'}</td>
                     <td className="px-4 py-3">
                       <InlineStatusSelect
-                        value={p.ativo ? 'ativo' : 'inativo'}
+                        value={p.status ?? (p.ativo ? 'ativo' : 'desligado')}
                         options={STATUS_PROFESSOR_OPTIONS}
                         disabled={!['administracao', 'admin', 'superadmin'].includes(profile.role)}
                         onSave={async (novoStatus) => {
-                          const { error } = novoStatus === 'ativo'
-                            ? await reativarProfessor(p.id)
-                            : await desativarProfessor(p.id);
+                          const { error } = await updateStatusProfessor(
+                            p.id,
+                            novoStatus as 'ativo' | 'aguardando' | 'afastado' | 'desligado'
+                          );
                           if (error) throw new Error(error);
                           load();
                         }}

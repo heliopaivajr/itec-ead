@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate, useOutletContext } from 'react-router-dom';
 import {
   ArrowLeft, Loader2, User, Phone, Mail, MapPin,
-  GraduationCap, FileText, CreditCard, Church, Home, Save, Printer,
+  GraduationCap, FileText, CreditCard, Church, Home, Save, Printer, Camera,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -15,6 +15,8 @@ import {
   type MensalidadeFicha,
 } from '@/services/ficha-aluno.service';
 import { updatePerfil } from '@/services/usuarios.service';
+import { uploadAvatar } from '@/services/profile.service';
+import { useToast } from '@/hooks/use-toast';
 import type { DashboardContext } from '../Dashboard';
 
 // ─── Helpers ─────────────────────────────────────────────────
@@ -56,6 +58,31 @@ export default function FichaAluno() {
 
   const [obsEdit,    setObsEdit]    = useState('');
   const [savingObs,  setSavingObs]  = useState(false);
+  const [uploading,  setUploading]  = useState(false);
+  const { toast } = useToast();
+
+  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !perfil) return;
+    const tiposPermitidos = ['image/jpeg', 'image/png', 'image/webp'];
+    if (!tiposPermitidos.includes(file.type)) {
+      toast({ title: 'Formato inválido', description: 'Use JPG, PNG ou WebP.', variant: 'destructive' });
+      return;
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      toast({ title: 'Imagem muito grande', description: 'Tamanho máximo: 2MB.', variant: 'destructive' });
+      return;
+    }
+    setUploading(true);
+    const { url, error } = await uploadAvatar(perfil.id, file);
+    setUploading(false);
+    if (error) {
+      toast({ title: 'Erro ao salvar foto', description: error, variant: 'destructive' });
+      return;
+    }
+    setPerfil(prev => prev ? { ...prev, avatar_url: url } : prev);
+    toast({ title: 'Foto atualizada com sucesso!' });
+  };
 
   useEffect(() => {
     if (!alunoId) return;
@@ -126,17 +153,32 @@ export default function FichaAluno() {
       {/* Dados pessoais */}
       <div className="bg-card border rounded-xl p-5 space-y-4">
         <div className="flex items-start gap-4">
-          {perfil.avatar_url ? (
-            <img
-              src={perfil.avatar_url}
-              alt={perfil.full_name}
-              className="h-16 w-16 rounded-full object-cover border"
+          <label className="cursor-pointer group relative w-16 h-16 block shrink-0">
+            <input
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              className="hidden"
+              onChange={handleUpload}
+              disabled={uploading}
             />
-          ) : (
-            <div className="h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center text-2xl font-bold text-primary border">
-              {perfil.full_name.charAt(0).toUpperCase()}
+            {perfil.avatar_url ? (
+              <img
+                src={perfil.avatar_url}
+                alt={perfil.full_name}
+                className="h-16 w-16 rounded-full object-cover border"
+              />
+            ) : (
+              <div className="h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center text-2xl font-bold text-primary border">
+                {perfil.full_name.charAt(0).toUpperCase()}
+              </div>
+            )}
+            <div className="absolute inset-0 rounded-full bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+              {uploading
+                ? <Loader2 className="h-5 w-5 text-white animate-spin" />
+                : <Camera className="h-5 w-5 text-white" />
+              }
             </div>
-          )}
+          </label>
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
               <h2 className="text-xl font-semibold">{perfil.full_name}</h2>

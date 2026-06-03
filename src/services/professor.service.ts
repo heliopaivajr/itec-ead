@@ -15,6 +15,8 @@ export interface Professor {
   experiencia_ministerial: string | null;
   igreja_local: string | null;
   ativo: boolean;
+  // migration 028 — status expandido (sincronizado com ativo via trigger)
+  status?: 'ativo' | 'aguardando' | 'afastado' | 'desligado';
   criado_em: string;
   atualizado_em: string;
 }
@@ -59,7 +61,7 @@ export async function getProfessores(
     .from('professores')
     .select('*', { count: 'exact' });
 
-  if (apenasAtivos) query = query.eq('ativo', true);
+  if (apenasAtivos) query = query.not('status', 'eq', 'desligado');
   if (search.trim()) {
     query = query.or(
       `nome_completo.ilike.%${search.trim()}%,email.ilike.%${search.trim()}%`
@@ -204,8 +206,18 @@ export async function reativarProfessor(id: string): Promise<ServiceResult> {
   if (error) return { error: error.message };
   return { error: null };
 }
-// TODO Sprint futuro: adicionar coluna status TEXT em professores
-// para suportar 'afastado' e 'suspenso' além de ativo/inativo
+// Atualiza status via campo status (trigger migration 028 sincroniza ativo automaticamente)
+export async function updateStatusProfessor(
+  professorId: string,
+  status: 'ativo' | 'aguardando' | 'afastado' | 'desligado',
+): Promise<ServiceResult> {
+  const { error } = await supabase
+    .from('professores')
+    .update({ status })
+    .eq('id', professorId);
+  if (error) return { error: error.message };
+  return { error: null };
+}
 
 export async function vincularDisciplina(
   professorId: string,
