@@ -366,7 +366,7 @@ export async function getHistoricoAluno(
     const notas = notasMap.get(row.disciplina_id) ?? { n1: null, n2: null, recuperacao: null, media: null };
     const freq = freqMap.get(row.disciplina_id);
 
-    const percentual = freq?.percentual_presenca ?? 0;
+    const percentual = freq?.percentual_presenca ?? 100;
     const status = mapStatusHistorico(notas.n1, notas.n2, notas.media, percentual);
 
     const disc: DisciplinaHistorico = {
@@ -403,7 +403,6 @@ export async function getHistoricoAluno(
   const modulos: ModuloHistorico[] = [...modulosMap.values()]
     .sort((a, b) => a.meta.ordem - b.meta.ordem)
     .map(({ meta, disciplinas }) => {
-      const aprovadas_mod = disciplinas.filter(d => d.status === 'aprovado_direto').length;
       const comMedia = disciplinas.filter(d => d.notas.media_final !== null);
       const media_modulo = comMedia.length > 0
         ? Math.round((comMedia.reduce((s, d) => s + (d.notas.media_final ?? 0), 0) / comMedia.length) * 10) / 10
@@ -425,7 +424,6 @@ export async function getHistoricoAluno(
         }
       }
 
-      void aprovadas_mod;
       return { id: meta.id, nome: meta.nome, ordem: meta.ordem, disciplinas, media_modulo, status_modulo };
     });
 

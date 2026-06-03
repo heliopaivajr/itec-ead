@@ -119,12 +119,13 @@ export async function aprovarMatricula(
   requesterId: string
 ): Promise<ServiceResult> {
   // Verifica role do requester via user_roles (sem recursão de RLS)
-  const { data: roleData } = await supabase
+  const { data: roleData, error: roleError } = await supabase
     .from('user_roles')
     .select('role')
     .eq('user_id', requesterId)
     .single();
 
+  if (roleError) return { error: 'Erro ao verificar permissão' };
   const role = (roleData as { role: string } | null)?.role ?? '';
   if (!['administracao', 'admin', 'superadmin'].includes(role)) {
     return { error: 'Permissão insuficiente para aprovar matrículas' };
