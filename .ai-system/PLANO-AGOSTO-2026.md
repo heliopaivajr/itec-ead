@@ -10,7 +10,7 @@ Status: EM EXECUÇÃO
 
 | Semana | Sprint | Foco | Entrega |
 |--------|--------|------|---------|
-| 1 | Sprint M | Histórico + Turmas + Declaração | Camila opera completo |
+| 1 | Sprint M ✅ | Histórico + Turmas + Declaração | Camila opera completo |
 | 2 | Sprint N | Calendário UI editável | Grade de aulas visível |
 | 3 | Sprint RLS | RLS + correções críticas | Segurança antes de alunos reais |
 | 4 | Sprint PDF | PDFs essenciais | Documentos impressos |
@@ -22,13 +22,13 @@ Status: EM EXECUÇÃO
 ## O que entra em agosto (escopo fechado)
 
 ### Sistema Web
-- Histórico acadêmico completo (notas N1/N2/Rec, faltas %, aprovação/reprovação)
-- Declaração de Matrícula PDF
-- Lista de alunos por turma imprimível
+- ✅ Histórico acadêmico completo (notas N1/N2/Rec, faltas %, aprovação/reprovação)
+- ✅ Declaração de Matrícula PDF
+- ✅ Lista de alunos por turma imprimível
 - Calendário UI editável (secretaria edita, todos visualizam)
-- Aprovação de matrícula (pendente → ativa)
-- Alerta de alunos em risco no dashboard da secretaria
-- RLS em `profiles` (segurança obrigatória com alunos reais)
+- ✅ Aprovação de matrícula (pendente → ativa)
+- ✅ Alerta de alunos em risco no dashboard da secretaria
+- ✅ RLS em `profiles` + policies notas/frequencia/avaliacoes migradas para user_roles
 - Boletim de Notas PDF
 - Relatório de Turma PDF
 

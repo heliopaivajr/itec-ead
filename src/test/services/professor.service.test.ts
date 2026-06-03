@@ -13,6 +13,7 @@ import {
   updateStatusContrato,
   vincularDisciplina,
   preencherContrato,
+  getDisciplinasAtivasProfessor,
 } from '@/services/professor.service';
 
 beforeEach(() => { vi.clearAllMocks(); });
@@ -461,5 +462,142 @@ describe('professor.service', () => {
 
       expect(resultado.error).toBe('update failed');
     });
+  });
+});
+
+// ─── getDisciplinasAtivasProfessor ────────────────────────────────────────────
+
+describe('getDisciplinasAtivasProfessor', () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it('professor sem contratos assinados → retorna []', async () => {
+    vi.mocked(supabase.from).mockReset();
+    const eqStatusFn = vi.fn().mockReturnValue({
+      limit: vi.fn().mockResolvedValue({ data: [], error: null }),
+    });
+    vi.mocked(supabase.from).mockReturnValueOnce({
+      select: vi.fn().mockReturnValue({
+        eq: vi.fn().mockReturnValue({ eq: eqStatusFn }),
+      }),
+    } as any);
+
+    const resultado = await getDisciplinasAtivasProfessor('prof-1');
+
+    expect(resultado).toEqual([]);
+    // Verifica que filtrou por status = 'assinado'
+    expect(eqStatusFn).toHaveBeenCalledWith('status', 'assinado');
+  });
+
+  it('contratos pendentes NÃO aparecem — busca apenas status assinado', async () => {
+    vi.mocked(supabase.from).mockReset();
+    const eqStatusFn = vi.fn().mockReturnValue({
+      limit: vi.fn().mockResolvedValue({ data: [], error: null }),
+    });
+    vi.mocked(supabase.from).mockReturnValueOnce({
+      select: vi.fn().mockReturnValue({
+        eq: vi.fn().mockReturnValue({ eq: eqStatusFn }),
+      }),
+    } as any);
+
+    await getDisciplinasAtivasProfessor('prof-sem-assinado');
+
+    expect(eqStatusFn).toHaveBeenCalledWith('status', 'assinado');
+    // Retorna vazio — nenhum contrato assinado retornado pelo mock
+    // mesmo que existam pendentes no banco (que este mock ignora)
+  });
+
+  it('professor com 1 contrato assinado → retorna disciplina com turma', async () => {
+    vi.mocked(supabase.from).mockReset();
+
+    // Call 1: contratos_professor com join
+    vi.mocked(supabase.from).mockReturnValueOnce({
+      select: vi.fn().mockReturnValue({
+        eq: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            limit: vi.fn().mockResolvedValue({
+              data: [{
+                id: 'cont-1',
+                disciplina_id: 'disc-1',
+                disciplinas_v2: {
+                  nome: 'Novo Testamento I',
+                  modulos: { curso_id: 'curso-1' },
+                },
+              }],
+              error: null,
+            }),
+          }),
+        }),
+      }),
+    } as any);
+
+    // Call 2: turmas ativas por curso
+    vi.mocked(supabase.from).mockReturnValueOnce({
+      select: vi.fn().mockReturnValue({
+        in: vi.fn().mockReturnValue({
+          in: vi.fn().mockReturnValue({
+            order: vi.fn().mockReturnValue({
+              limit: vi.fn().mockResolvedValue({
+                data: [{
+                  id: 'turma-1', nome: '2ª Turma Teologia — 2026',
+                  ano: 2026, semestre: 1, curso_id: 'curso-1',
+                }],
+                error: null,
+              }),
+            }),
+          }),
+        }),
+      }),
+    } as any);
+
+    const resultado = await getDisciplinasAtivasProfessor('prof-1');
+
+    expect(resultado).toHaveLength(1);
+    expect(resultado[0].contrato_id).toBe('cont-1');
+    expect(resultado[0].disciplina_id).toBe('disc-1');
+    expect(resultado[0].disciplina_nome).toBe('Novo Testamento I');
+    expect(resultado[0].turma_nome).toBe('2ª Turma Teologia — 2026');
+    expect(resultado[0].turma_ano).toBe(2026);
+    expect(resultado[0].turma_semestre).toBe(1);
+  });
+
+  it('professor com contrato assinado mas sem turma ativa → retorna disciplina com turma null', async () => {
+    vi.mocked(supabase.from).mockReset();
+
+    // Call 1: contratos com disciplina + modulo
+    vi.mocked(supabase.from).mockReturnValueOnce({
+      select: vi.fn().mockReturnValue({
+        eq: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            limit: vi.fn().mockResolvedValue({
+              data: [{
+                id: 'cont-2', disciplina_id: 'disc-2',
+                disciplinas_v2: { nome: 'AT I', modulos: { curso_id: 'curso-1' } },
+              }],
+              error: null,
+            }),
+          }),
+        }),
+      }),
+    } as any);
+
+    // Call 2: nenhuma turma ativa para esse curso
+    vi.mocked(supabase.from).mockReturnValueOnce({
+      select: vi.fn().mockReturnValue({
+        in: vi.fn().mockReturnValue({
+          in: vi.fn().mockReturnValue({
+            order: vi.fn().mockReturnValue({
+              limit: vi.fn().mockResolvedValue({ data: [], error: null }),
+            }),
+          }),
+        }),
+      }),
+    } as any);
+
+    const resultado = await getDisciplinasAtivasProfessor('prof-2');
+
+    expect(resultado).toHaveLength(1);
+    expect(resultado[0].disciplina_nome).toBe('AT I');
+    expect(resultado[0].turma_id).toBeNull();
+    expect(resultado[0].turma_nome).toBeNull();
   });
 });
