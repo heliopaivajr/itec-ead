@@ -340,6 +340,26 @@ https://github.com/heliopaivajr/public-apis.git
 - Lucide React icons — já instalado
 - Recharts — já instalado
 
+## PRAZO CRÍTICO
+
+**Lançamento:** Agosto 2026
+**Hoje:** Junho 2026
+**Tempo restante:** ~8 semanas
+
+Plano completo semana a semana: `.ai-system/PLANO-AGOSTO-2026.md`
+
+**Sprints restantes para o lançamento:**
+- Semana 1: Sprint M — Histórico + Turmas + Declaração PDF
+- Semana 2: Sprint N — Calendário Acadêmico UI
+- Semana 3: RLS + Infraestrutura crítica
+- Semana 4: Sprint P-reduzido — PDFs essenciais
+- Semanas 5-7: **App Mobile v1** (React Native + Expo)
+- Semana 8: Testes integrados + deploy
+
+**O que SAI do lançamento (V2):** Certificados, relatórios avançados, upload real de documentos.
+
+---
+
 ## Visão de Futuro ITEC-EAD
 
 Planejamento completo pós-Sprint P: `.ai-system/ROADMAP-FUTURO.md`
