@@ -503,6 +503,31 @@ Checklist visual de documentos com controle de status por item:
 
 ---
 
+## LICAO-018 — Frequência padrão deve ser 100%, não 0%, quando sem registros
+
+**Data:** 2026-06-03
+**Contexto:** Sprint M — `getHistoricoAluno` usava `freq?.percentual_presenca ?? 0`
+**Problema:** Sem dados de frequência (professor ainda não lançou), o padrão 0% fazia `calcularStatus(media, 0)` retornar `reprovado_falta` incorretamente para disciplinas com notas já lançadas.
+**Decisão tomada:** Trocar fallback para `?? 100` — consistente com `getResumoFrequencia` que já retorna 100% quando `total_aulas === 0`.
+**Justificativa:** Sem dados não significa ausência — significa que ninguém registrou ainda. Punir o aluno por falta de lançamento seria erro de negócio grave.
+**Como aplicar no futuro:** Sempre que usar `freq?.percentual_presenca`, usar `?? 100` — não `?? 0`.
+**Agentes impactados:** 05-backend-engineer, 10-test-engineer
+**Status:** aplicada
+
+---
+
+## LICAO-019 — Map/variável construída mas nunca consumida é query desperdiçada
+
+**Data:** 2026-06-03
+**Contexto:** Sprint M — `getAlunosEmRiscoByTurma` construía `alunoByMatricula` Map (Query 4) que nunca era consultado
+**Problema:** A query extra executava sem propósito a cada chamada da função, multiplicada pelo número de turmas ativas no dashboard.
+**Decisão tomada:** Remover a query e o Map completamente — a função já tinha as informações necessárias de queries anteriores.
+**Como aplicar no futuro:** Antes de commitar, verificar se cada variável/Map construído é efetivamente lido em algum ponto da função. Map construído + nunca `.get()` = dead code.
+**Agentes impactados:** 05-backend-engineer, 12-code-reviewer
+**Status:** aplicada
+
+---
+
 ## LICAO-017 — Supabase Studio usa contexto postgres — não valida JWT de usuários
 
 **Data:** 2026-06-02

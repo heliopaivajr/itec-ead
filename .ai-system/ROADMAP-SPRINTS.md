@@ -43,28 +43,31 @@ Status: Em execução
 
 ---
 
-## Sprint M — Histórico + Turmas + Declaração
+## Sprint M — Histórico + Turmas + Declaração ✅ CONCLUÍDO 2026-06-03
 **Obrigatório para agosto · Core operacional da secretaria**
 
 ### Itens
-- [ ] Histórico acadêmico completo na `FichaAluno.tsx`
+- [x] Histórico acadêmico completo na `FichaAluno.tsx`
   - Notas N1/N2/Rec por disciplina
   - Frequência % por disciplina
-  - Status: aprovado / recuperação / reprovado nota / reprovado falta / em andamento
-- [ ] Rendimento médio por módulo e geral
-- [ ] Alerta de aluno em risco no dashboard da secretaria (frequência < 75%)
-- [ ] Gestão de turmas: aba "Alunos Matriculados" com lista
-- [ ] Lista imprimível de alunos por turma
-- [ ] Ficha do professor: disciplinas ativas (contratos `assinado`)
-- [ ] Fluxo de aprovação de matrícula: pendente → ativa (Camila aprova)
-- [ ] **DECLARAÇÃO DE MATRÍCULA PDF** ← prioritário (mais solicitado)
+  - Status: aprovado_direto / recuperacao / reprovado_nota / reprovado_falta / em_andamento / pendente
+- [x] Rendimento médio por módulo e geral
+- [x] Alerta de aluno em risco no dashboard da secretaria (frequência < 75%)
+- [x] Gestão de turmas: painel "Alunos Matriculados" com lista
+- [x] Lista imprimível de alunos por turma (print window)
+- [x] Ficha do professor: disciplinas ativas (contratos `assinado`)
+- [x] Fluxo de aprovação de matrícula: pendente → ativa (Camila aprova)
+- [x] **DECLARAÇÃO DE MATRÍCULA PDF** — `@react-pdf/renderer` ✅
 
-### Dependências
-- Sprint L deve estar concluído (RLS ativo, Edge Function disponível)
-- Services `notas.service.ts` e `frequencia.service.ts` já existem ✅
-- `calcularResultado()` e `calcularStatus()` já existem ✅
+### Entregáveis técnicos
+- 5 funções backend novas + testes (241/241 ✅)
+- 6 features frontend (6 commits feat)
+- 1 fix de bug (frequência padrão)
+- 1 migration RLS (031) — policies migradas para user_roles
+- Score pós-sprint: **9.3/10** (era 9.2)
+- Branch: `sprint-m-historico-turmas` → mergeado em `main`
 
-### O que a Camila pode usar após Sprint M
+### O que a Camila pode usar após Sprint M ✅
 - Ver histórico completo do aluno na ficha (notas, faltas, aprovação)
 - Identificar alunos em risco sem cálculo manual
 - Ver lista de alunos por turma e imprimir

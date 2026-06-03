@@ -219,6 +219,94 @@ export async function updateStatusProfessor(
   return { error: null };
 }
 
+export interface DisciplinaAtiva {
+  contrato_id: string;
+  disciplina_id: string;
+  disciplina_nome: string;
+  turma_id: string | null;
+  turma_nome: string | null;
+  turma_ano: number | null;
+  turma_semestre: number | null;
+}
+
+// Disciplinas ativas do professor — contratos com status 'assinado'
+// Resolve turma via: contrato → disciplina → modulo → curso → turmas ativas
+export async function getDisciplinasAtivasProfessor(
+  professorId: string
+): Promise<DisciplinaAtiva[]> {
+  // Query 1: contratos assinados com disciplina + módulo + curso
+  type ContratoRow = {
+    id: string;
+    disciplina_id: string;
+    disciplinas_v2: {
+      nome: string;
+      modulos: { curso_id: string };
+    } | null;
+  };
+
+  const { data: contratos } = await supabase
+    .from('contratos_professor')
+    .select('id, disciplina_id, disciplinas_v2(nome, modulos(curso_id))')
+    .eq('professor_id', professorId)
+    .eq('status', 'assinado')
+    .limit(20);
+
+  if (!contratos || contratos.length === 0) return [];
+
+  const rows = contratos as unknown as ContratoRow[];
+
+  // Coleta curso_ids únicos
+  const cursoIds = [
+    ...new Set(
+      rows
+        .map(r => r.disciplinas_v2?.modulos?.curso_id)
+        .filter((id): id is string => !!id)
+    ),
+  ];
+
+  if (cursoIds.length === 0) {
+    return rows.map(r => ({
+      contrato_id: r.id,
+      disciplina_id: r.disciplina_id,
+      disciplina_nome: r.disciplinas_v2?.nome ?? r.disciplina_id,
+      turma_id: null,
+      turma_nome: null,
+      turma_ano: null,
+      turma_semestre: null,
+    }));
+  }
+
+  // Query 2: turmas ativas para esses cursos
+  const { data: turmasData } = await supabase
+    .from('turmas')
+    .select('id, nome, ano, semestre, curso_id')
+    .in('curso_id', cursoIds)
+    .in('status', ['ativa', 'planejada'])
+    .order('ano', { ascending: false })
+    .limit(10);
+
+  type TurmaRow = { id: string; nome: string; ano: number; semestre: number; curso_id: string };
+  const turmaByCurso = new Map<string, TurmaRow>();
+  for (const t of (turmasData ?? []) as TurmaRow[]) {
+    // Mantém a turma mais recente por curso
+    if (!turmaByCurso.has(t.curso_id)) turmaByCurso.set(t.curso_id, t);
+  }
+
+  return rows.map(r => {
+    const cursoId = r.disciplinas_v2?.modulos?.curso_id ?? null;
+    const turma = cursoId ? turmaByCurso.get(cursoId) ?? null : null;
+    return {
+      contrato_id: r.id,
+      disciplina_id: r.disciplina_id,
+      disciplina_nome: r.disciplinas_v2?.nome ?? r.disciplina_id,
+      turma_id: turma?.id ?? null,
+      turma_nome: turma?.nome ?? null,
+      turma_ano: turma?.ano ?? null,
+      turma_semestre: turma?.semestre ?? null,
+    };
+  });
+}
+
 export async function vincularDisciplina(
   professorId: string,
   disciplinaId: string,

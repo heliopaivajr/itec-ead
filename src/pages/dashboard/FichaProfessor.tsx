@@ -7,8 +7,8 @@ import {
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { getProfessorById, getContratosByProfessor } from '@/services/professor.service';
-import type { Professor, ContratoProfessor } from '@/services/professor.service';
+import { getProfessorById, getContratosByProfessor, getDisciplinasAtivasProfessor } from '@/services/professor.service';
+import type { Professor, ContratoProfessor, DisciplinaAtiva } from '@/services/professor.service';
 import { ProfessorModal } from '@/components/dashboard/ProfessorModal';
 
 function fmt(iso: string | null | undefined) {
@@ -59,19 +59,22 @@ export default function FichaProfessor() {
   const { professorId } = useParams<{ professorId: string }>();
   const navigate = useNavigate();
 
-  const [loading,   setLoading]   = useState(true);
-  const [professor, setProfessor] = useState<Professor | null>(null);
-  const [contratos, setContratos] = useState<ContratoProfessor[]>([]);
-  const [editando,  setEditando]  = useState(false);
+  const [loading,    setLoading]    = useState(true);
+  const [professor,  setProfessor]  = useState<Professor | null>(null);
+  const [contratos,  setContratos]  = useState<ContratoProfessor[]>([]);
+  const [disciplinas, setDisciplinas] = useState<DisciplinaAtiva[]>([]);
+  const [editando,   setEditando]   = useState(false);
 
   const load = async (id: string) => {
     setLoading(true);
-    const [prof, conts] = await Promise.all([
+    const [prof, conts, discs] = await Promise.all([
       getProfessorById(id),
       getContratosByProfessor(id),
+      getDisciplinasAtivasProfessor(id),
     ]);
     setProfessor(prof);
     setContratos(conts);
+    setDisciplinas(discs);
     setLoading(false);
   };
 
@@ -165,6 +168,36 @@ export default function FichaProfessor() {
             <InfoRow icon={<Church className="h-4 w-4" />} label="Igreja local" value={professor.igreja_local} />
           )}
         </div>
+      </Section>
+
+      {/* Disciplinas Ativas */}
+      <Section title="Disciplinas Ativas" icon={<GraduationCap className="h-4 w-4" />}>
+        {disciplinas.length === 0 ? (
+          <p className="text-sm text-muted-foreground">Nenhuma disciplina ativa no momento.</p>
+        ) : (
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="text-left text-muted-foreground border-b">
+                <th className="pb-2 font-medium">Disciplina</th>
+                <th className="pb-2 font-medium">Turma</th>
+                <th className="pb-2 font-medium">Período</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y">
+              {disciplinas.map(d => (
+                <tr key={d.contrato_id}>
+                  <td className="py-2 font-medium">{d.disciplina_nome}</td>
+                  <td className="py-2">{d.turma_nome ?? <span className="text-muted-foreground">—</span>}</td>
+                  <td className="py-2 text-muted-foreground">
+                    {d.turma_ano && d.turma_semestre
+                      ? `${d.turma_ano} · ${d.turma_semestre}º sem.`
+                      : '—'}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
       </Section>
 
       {/* Contratos */}

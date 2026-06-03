@@ -8,6 +8,7 @@ import {
   justificarFalta,
   calcularResumosPorAluno,
   getResumoFrequenciaBatch,
+  getAlunosEmRiscoByTurma,
   type RegistroFrequencia,
 } from '@/services/frequencia.service';
 
@@ -322,5 +323,153 @@ describe('frequencia.service', () => {
       expect(resultado[0].email).toBe('b@itec.com');
       expect(resultado[0].percentual).toBe(60);
     });
+  });
+});
+
+// ─── getAlunosEmRiscoByTurma ──────────────────────────────────────────────────
+
+// Helper: monta os 5 from() calls em ordem para getAlunosEmRiscoByTurma:
+//   1. matriculas (profiles join) → alunos
+//   2. matriculas_disciplina (outer) → discs
+//   3. matriculas (inner subquery) → IDs
+//   4. matriculas (para alunoByMatricula)
+//   5. frequencia → freq data
+function mockEmRiscoQueries({
+  alunos = [{ aluno_id: 'a1', profiles: { full_name: 'João', avatar_url: null } }] as unknown[],
+  discs = [{ matricula_id: 'mat-1', disciplina_id: 'disc-1', disciplinas_v2: { nome: 'NT I' } }] as unknown[],
+  matRows = [{ id: 'mat-1', aluno_id: 'a1' }] as unknown[],
+  freqData = [] as unknown[],
+} = {}) {
+  vi.mocked(supabase.from).mockReset();
+
+  // 1. matriculas + profiles
+  vi.mocked(supabase.from).mockReturnValueOnce({
+    select: vi.fn().mockReturnValue({
+      eq: vi.fn().mockReturnValue({
+        in: vi.fn().mockReturnValue({
+          limit: vi.fn().mockResolvedValue({ data: alunos, error: null }),
+        }),
+      }),
+    }),
+  } as any);
+
+  // 2. matriculas_disciplina (outer): select → in → limit
+  vi.mocked(supabase.from).mockReturnValueOnce({
+    select: vi.fn().mockReturnValue({
+      in: vi.fn().mockReturnValue({
+        limit: vi.fn().mockResolvedValue({ data: discs, error: null }),
+      }),
+    }),
+  } as any);
+
+  // 3. matriculas (inner subquery): select → eq → in → limit
+  vi.mocked(supabase.from).mockReturnValueOnce({
+    select: vi.fn().mockReturnValue({
+      eq: vi.fn().mockReturnValue({
+        in: vi.fn().mockReturnValue({
+          limit: vi.fn().mockResolvedValue({ data: [{ id: 'mat-1' }], error: null }),
+        }),
+      }),
+    }),
+  } as any);
+
+  // 4. matriculas (alunoByMatricula): select → eq → in → limit
+  vi.mocked(supabase.from).mockReturnValueOnce({
+    select: vi.fn().mockReturnValue({
+      eq: vi.fn().mockReturnValue({
+        in: vi.fn().mockReturnValue({
+          limit: vi.fn().mockResolvedValue({ data: matRows, error: null }),
+        }),
+      }),
+    }),
+  } as any);
+
+  // 5. frequencia: select → in → in → limit
+  vi.mocked(supabase.from).mockReturnValueOnce({
+    select: vi.fn().mockReturnValue({
+      in: vi.fn().mockReturnValue({
+        in: vi.fn().mockReturnValue({
+          limit: vi.fn().mockResolvedValue({ data: freqData, error: null }),
+        }),
+      }),
+    }),
+  } as any);
+}
+
+describe('getAlunosEmRiscoByTurma', () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it('retorna [] quando nenhum aluno matriculado na turma', async () => {
+    vi.mocked(supabase.from).mockReset();
+    vi.mocked(supabase.from).mockReturnValueOnce({
+      select: vi.fn().mockReturnValue({
+        eq: vi.fn().mockReturnValue({
+          in: vi.fn().mockReturnValue({
+            limit: vi.fn().mockResolvedValue({ data: [], error: null }),
+          }),
+        }),
+      }),
+    } as any);
+
+    const resultado = await getAlunosEmRiscoByTurma('turma-vazia');
+
+    expect(resultado).toEqual([]);
+  });
+
+  it('aluno com 1 disciplina abaixo do limite (60% < 75%) → aparece na lista', async () => {
+    // 10 aulas, 6 presenças = 60%
+    const freqData = Array.from({ length: 10 }, (_, i) => ({
+      aluno_id: 'a1', disciplina_id: 'disc-1', presente: i < 6, justificada: false,
+    }));
+    mockEmRiscoQueries({ freqData });
+
+    const resultado = await getAlunosEmRiscoByTurma('turma-1');
+
+    expect(resultado).toHaveLength(1);
+    expect(resultado[0].aluno_id).toBe('a1');
+    expect(resultado[0].full_name).toBe('João');
+    expect(resultado[0].disciplinas_em_risco).toHaveLength(1);
+    expect(resultado[0].disciplinas_em_risco[0].disciplina_nome).toBe('NT I');
+    expect(resultado[0].disciplinas_em_risco[0].frequencia_percent).toBe(60);
+  });
+
+  it('aluno com todas as disciplinas acima do limite (80%) → NÃO aparece', async () => {
+    // 10 aulas, 8 presenças = 80% — acima do limite padrão 75%
+    const freqData = Array.from({ length: 10 }, (_, i) => ({
+      aluno_id: 'a1', disciplina_id: 'disc-1', presente: i < 8, justificada: false,
+    }));
+    mockEmRiscoQueries({ freqData });
+
+    const resultado = await getAlunosEmRiscoByTurma('turma-1');
+
+    expect(resultado).toHaveLength(0);
+  });
+
+  it('ordenação: aluno com menor percentual aparece primeiro', async () => {
+    // a1: 50% na disc-1; a2: 65% na disc-1
+    const alunos = [
+      { aluno_id: 'a1', profiles: { full_name: 'Ana', avatar_url: null } },
+      { aluno_id: 'a2', profiles: { full_name: 'Bruno', avatar_url: null } },
+    ];
+    const discs = [
+      { matricula_id: 'mat-1', disciplina_id: 'disc-1', disciplinas_v2: { nome: 'NT I' } },
+      { matricula_id: 'mat-2', disciplina_id: 'disc-1', disciplinas_v2: { nome: 'NT I' } },
+    ];
+    const matRows = [
+      { id: 'mat-1', aluno_id: 'a1' },
+      { id: 'mat-2', aluno_id: 'a2' },
+    ];
+    // a1: 5/10 = 50%; a2: 13/20 = 65%
+    const freqData = [
+      ...Array.from({ length: 10 }, (_, i) => ({ aluno_id: 'a1', disciplina_id: 'disc-1', presente: i < 5, justificada: false })),
+      ...Array.from({ length: 20 }, (_, i) => ({ aluno_id: 'a2', disciplina_id: 'disc-1', presente: i < 13, justificada: false })),
+    ];
+    mockEmRiscoQueries({ alunos, discs, matRows, freqData });
+
+    const resultado = await getAlunosEmRiscoByTurma('turma-1');
+
+    expect(resultado).toHaveLength(2);
+    expect(resultado[0].full_name).toBe('Ana');   // 50% — menor primeiro
+    expect(resultado[1].full_name).toBe('Bruno'); // 65%
   });
 });

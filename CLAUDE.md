@@ -1,12 +1,12 @@
 # CLAUDE.md — ITEC-EAD
 # Lido automaticamente pelo Claude Code
-# Atualizado: 2026-05-28
+# Atualizado: 2026-06-03
 
 ## Projeto
 Plataforma EAD do Instituto de Teologia Cristã
 Site: https://www.itecedu.com
 Dev: Hélio Paiva Jr. (superadmin)
-Score atual: **9.2/10** 🟢
+Score atual: **9.3/10** 🟢
 
 ## Comandos
 
@@ -94,10 +94,9 @@ TEO-2026-2 → 3ª turma planejada (Ago/2026)
 ```
 
 ## Próximo Sprint
-Sprint I:
-- Tabela turmas + vincular matriculas (migrations 018-019)
-- Ficha completa do aluno (secretaria)
-- Gestão de turmas no dashboard
+Sprint N:
+- Calendário acadêmico UI editável (sobre migrations 029 do Sprint L)
+- Secretaria cria/edita eventos; professor e aluno leem
 
 ## Banco de dados — 19 tabelas (RLS em todas)
 
@@ -148,8 +147,8 @@ pnpm test:run   # deve sempre passar 163/163
 - ADR-005: sistema de certificados — PROPOSTA
 
 ## Auditoria
-- Última: 2026-05-28 pós-Sprint I
-- Score: 9.2/10
+- Última: 2026-06-03 pós-Sprint M
+- Score: 9.3/10
 - Relatório: `.ai-system/audit/2026-05-dashboard-performance/report.md`
 - Próxima meta: 9.5/10
 
@@ -166,6 +165,10 @@ Não misturar com o código da plataforma web.
 - Sprint G+H: CRUD professores + equipe ITEC
 - Sprint I: turmas + ficha aluno + role financeiro
 - Sprint F2: performance N+1 + rotas + LIMITs
+- Sprint J: notas + lançamento professor
+- Sprint K: ficha aluno + menus + checklist docs
+- Sprint L: RLS profiles + Edge Function criar-aluno + foto + status professor + calendário DB
+- Sprint M: histórico acadêmico + alunos em risco + lista turma + aprovação matrícula + disciplinas ativas + declaração PDF
 
 ### Ordem dos Próximos Sprints (aprovado 2026-05-28)
 
@@ -347,7 +350,7 @@ https://github.com/heliopaivajr/public-apis.git
 **Plano completo:** `.ai-system/PLANO-AGOSTO-2026.md`
 
 ### Semanas restantes
-- Semana 1: Sprint M (histórico + turmas + declaração)
+- ~~Semana 1: Sprint M (histórico + turmas + declaração)~~ ✅ CONCLUÍDO
 - Semana 2: Sprint N (calendário UI)
 - Semana 3: RLS + correções críticas
 - Semana 4: PDFs essenciais

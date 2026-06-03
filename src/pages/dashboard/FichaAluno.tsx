@@ -3,6 +3,7 @@ import { useParams, useNavigate, useOutletContext } from 'react-router-dom';
 import {
   ArrowLeft, Loader2, User, Phone, Mail, MapPin,
   GraduationCap, FileText, CreditCard, Church, Home, Save, Printer, Camera,
+  ChevronDown, ChevronRight, BookOpen,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -16,6 +17,13 @@ import {
 } from '@/services/ficha-aluno.service';
 import { updatePerfil } from '@/services/usuarios.service';
 import { uploadAvatar } from '@/services/profile.service';
+import { getHistoricoAluno, type HistoricoAluno, type StatusHistorico } from '@/services/academico.service';
+import { aprovarMatricula } from '@/services/matriculas.service';
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
+} from '@/components/ui/dialog';
+import { PDFDownloadLink } from '@react-pdf/renderer';
+import { DeclaracaoMatriculaPDF } from '@/components/dashboard/DeclaracaoMatriculaPDF';
 import { useToast } from '@/hooks/use-toast';
 import type { DashboardContext } from '../Dashboard';
 
@@ -59,6 +67,10 @@ export default function FichaAluno() {
   const [obsEdit,    setObsEdit]    = useState('');
   const [savingObs,  setSavingObs]  = useState(false);
   const [uploading,  setUploading]  = useState(false);
+  const [historico,  setHistorico]  = useState<HistoricoAluno | null>(null);
+  const [loadingHist, setLoadingHist] = useState(false);
+  const [aprovandoId, setAprovandoId] = useState<string | null>(null);
+  const [confirmDialog, setConfirmDialog] = useState<{ matriculaId: string; turma: string } | null>(null);
   const { toast } = useToast();
 
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -98,6 +110,18 @@ export default function FichaAluno() {
     setMensalidades(ficha.mensalidades);
     setObsEdit(ficha.perfil?.observacoes_internas ?? '');
     setLoading(false);
+
+    // Carrega histórico após dados básicos prontos
+    if (['superadmin', 'admin', 'administracao', 'professor'].includes(adminProfile.role)) {
+      const matriculaAtiva = ficha.matriculas.find(m => m.status === 'ativa' && m.turma_id)
+        ?? ficha.matriculas.find(m => m.turma_id);
+      if (matriculaAtiva?.turma_id) {
+        setLoadingHist(true);
+        const hist = await getHistoricoAluno(id, matriculaAtiva.turma_id);
+        setHistorico(hist);
+        setLoadingHist(false);
+      }
+    }
   };
 
   const salvarObs = async () => {
@@ -107,8 +131,26 @@ export default function FichaAluno() {
     setSavingObs(false);
   };
 
-  const podeVerObs  = ['superadmin', 'admin', 'administracao'].includes(adminProfile.role);
-  const podeVerDocs = ['superadmin', 'admin', 'administracao'].includes(adminProfile.role);
+  const podeAprovar     = ['superadmin', 'admin', 'administracao'].includes(adminProfile.role);
+
+  const handleAprovar = async () => {
+    if (!confirmDialog || !alunoId) return;
+    setAprovandoId(confirmDialog.matriculaId);
+    const { error } = await aprovarMatricula(confirmDialog.matriculaId, adminProfile.id);
+    setAprovandoId(null);
+    setConfirmDialog(null);
+    if (error) {
+      toast({ title: 'Erro ao aprovar', description: error, variant: 'destructive' });
+    } else {
+      toast({ title: 'Matrícula aprovada com sucesso!' });
+      setMatriculas(prev => prev.map(m =>
+        m.id === confirmDialog.matriculaId ? { ...m, status: 'ativa' } : m
+      ));
+    }
+  };
+  const podeVerObs      = ['superadmin', 'admin', 'administracao'].includes(adminProfile.role);
+  const podeVerDocs     = ['superadmin', 'admin', 'administracao'].includes(adminProfile.role);
+  const podeVerHistorico = ['superadmin', 'admin', 'administracao', 'professor'].includes(adminProfile.role);
 
   if (loading) {
     return (
@@ -250,6 +292,7 @@ export default function FichaAluno() {
                 <th className="pb-2 font-medium">Turma</th>
                 <th className="pb-2 font-medium">Data</th>
                 <th className="pb-2 font-medium">Status</th>
+                {podeAprovar && <th className="pb-2 font-medium">Ação</th>}
               </tr>
             </thead>
             <tbody className="divide-y">
@@ -263,12 +306,82 @@ export default function FichaAluno() {
                       {m.status}
                     </Badge>
                   </td>
+                  {podeAprovar && (
+                    <td className="py-2">
+                      {m.status === 'pendente' && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-6 text-xs px-2 text-green-400 border-green-500/30 hover:bg-green-500/10"
+                          disabled={aprovandoId === m.id}
+                          onClick={() => setConfirmDialog({
+                            matriculaId: m.id,
+                            turma: m.turma?.nome ?? m.turma?.codigo ?? 'turma',
+                          })}
+                        >
+                          Aprovar
+                        </Button>
+                      )}
+                    </td>
+                  )}
                 </tr>
               ))}
             </tbody>
           </table>
         )}
       </Section>
+
+      {/* Dialog: confirmar aprovação de matrícula */}
+      <Dialog open={!!confirmDialog} onOpenChange={open => { if (!open) setConfirmDialog(null); }}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Confirmar aprovação</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground py-2">
+            Aprovar a matrícula de <strong className="text-foreground">{perfil?.full_name}</strong> para{' '}
+            <strong className="text-foreground">{confirmDialog?.turma}</strong>?
+            O status será atualizado de <em>pendente</em> para <em>ativa</em>.
+          </p>
+          <DialogFooter>
+            <Button variant="outline" size="sm" onClick={() => setConfirmDialog(null)}>
+              Cancelar
+            </Button>
+            <Button size="sm" onClick={handleAprovar} disabled={!!aprovandoId}>
+              {aprovandoId ? 'Aprovando…' : 'Confirmar'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Histórico Acadêmico */}
+      {podeVerHistorico && (
+        <Section title="Histórico Acadêmico" icon={<BookOpen className="h-4 w-4" />}>
+          {loadingHist ? (
+            <div className="flex items-center gap-2 py-4 text-sm text-muted-foreground">
+              <Loader2 className="h-4 w-4 animate-spin" /> Carregando histórico…
+            </div>
+          ) : !historico || historico.modulos.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              {matriculas.find(m => m.turma_id) ? 'Nenhuma disciplina matriculada.' : 'Aluno sem matrícula ativa.'}
+            </p>
+          ) : (
+            <div className="space-y-3">
+              {historico.modulos.map(mod => (
+                <ModuloAccordion key={mod.id} modulo={mod} />
+              ))}
+              {/* Rodapé */}
+              <div className="flex flex-wrap gap-4 pt-3 border-t text-sm">
+                <span className="text-muted-foreground">
+                  Média geral: <strong className="text-foreground">{historico.media_geral?.toFixed(1) ?? '—'}</strong>
+                </span>
+                <span className="text-green-400">✓ {historico.disciplinas_aprovadas} aprovadas</span>
+                <span className="text-red-400">✗ {historico.disciplinas_reprovadas} reprovadas</span>
+                <span className="text-muted-foreground">{historico.disciplinas_em_andamento} em andamento</span>
+              </div>
+            </div>
+          )}
+        </Section>
+      )}
 
       {/* Documentos */}
       <Section title="Documentos" icon={<FileText className="h-4 w-4" />}>
@@ -348,19 +461,60 @@ export default function FichaAluno() {
         <Section title="Documentos e Impressões" icon={<Printer className="h-4 w-4" />}>
           <p className="text-xs text-muted-foreground mb-3">Gere e imprima documentos oficiais do aluno.</p>
           <div className="space-y-2">
-            {[
-              'Declaração de Matrícula',
-              'Boletim de Notas',
-              'Situação Financeira',
-              'Certificado de Conclusão',
-              'Relatório Final do Aluno',
-            ].map(doc => (
-              <div key={doc} title="Disponível em Agosto 2026">
-                <Button
-                  variant="outline"
-                  disabled
-                  className="w-full justify-between text-left"
+            {/* Declaração de Matrícula — habilitada */}
+            {(() => {
+              const matAtiva = matriculas.find(m => m.status === 'ativa' && m.turma_id)
+                ?? matriculas.find(m => m.turma_id);
+              const turma = matAtiva?.turma;
+              const cursoPDF = (turma as any)?.cursos?.nome ?? 'Graduação em Teologia Livre';
+              const canPDF = !!matAtiva && !!perfil;
+
+              return canPDF ? (
+                <PDFDownloadLink
+                  document={
+                    <DeclaracaoMatriculaPDF
+                      aluno={{ full_name: perfil!.full_name, cpf: perfil!.cpf, codigo_itec: perfil!.codigo_itec }}
+                      matricula={{
+                        turma_nome: turma?.nome ?? matAtiva?.turma?.codigo ?? '—',
+                        curso_nome: cursoPDF,
+                        data_inicio: matAtiva.data_inicio ?? turma?.data_inicio,
+                      }}
+                    />
+                  }
+                  fileName={`declaracao-matricula-${perfil!.full_name.replace(/\s+/g, '-').toLowerCase()}.pdf`}
+                  className="block w-full"
                 >
+                  {({ loading: pdfLoading }) => (
+                    <Button variant="outline" className="w-full justify-between text-left" disabled={pdfLoading}>
+                      <span className="flex items-center gap-2">
+                        <FileText className="h-4 w-4 shrink-0 text-muted-foreground" />
+                        Declaração de Matrícula
+                      </span>
+                      <span className="ml-3 shrink-0 rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-800">
+                        {pdfLoading ? 'Gerando…' : 'Baixar PDF'}
+                      </span>
+                    </Button>
+                  )}
+                </PDFDownloadLink>
+              ) : (
+                <div title="Aluno sem matrícula ativa com turma">
+                  <Button variant="outline" disabled className="w-full justify-between text-left">
+                    <span className="flex items-center gap-2">
+                      <FileText className="h-4 w-4 shrink-0 text-muted-foreground" />
+                      Declaração de Matrícula
+                    </span>
+                    <span className="ml-3 shrink-0 rounded-full bg-yellow-100 px-2 py-0.5 text-xs font-medium text-yellow-800">
+                      Sem matrícula ativa
+                    </span>
+                  </Button>
+                </div>
+              );
+            })()}
+
+            {/* Demais documentos — Sprint P */}
+            {['Boletim de Notas', 'Situação Financeira', 'Certificado de Conclusão', 'Relatório Final do Aluno'].map(doc => (
+              <div key={doc} title="Disponível em Sprint P">
+                <Button variant="outline" disabled className="w-full justify-between text-left">
                   <span className="flex items-center gap-2">
                     <FileText className="h-4 w-4 shrink-0 text-muted-foreground" />
                     {doc}
@@ -398,6 +552,82 @@ export default function FichaAluno() {
 }
 
 // ─── Sub-componentes ──────────────────────────────────────────
+
+const STATUS_HIST_CFG: Record<StatusHistorico, { label: string; cls: string }> = {
+  aprovado_direto:  { label: 'Aprovado',       cls: 'bg-green-500/20 text-green-400 border-green-500/30' },
+  recuperacao:      { label: 'Recuperação',     cls: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30' },
+  reprovado_nota:   { label: 'Repr. nota',      cls: 'bg-red-500/20 text-red-400 border-red-500/30' },
+  reprovado_falta:  { label: 'Repr. falta',     cls: 'bg-red-500/20 text-red-400 border-red-500/30' },
+  em_andamento:     { label: 'Em andamento',    cls: 'bg-blue-500/20 text-blue-400 border-blue-500/30' },
+  pendente:         { label: 'Pendente',         cls: 'bg-muted text-muted-foreground border-border' },
+};
+
+function StatusHistBadge({ status }: { status: StatusHistorico }) {
+  const cfg = STATUS_HIST_CFG[status];
+  return (
+    <Badge variant="outline" className={`text-xs shrink-0 ${cfg.cls}`}>{cfg.label}</Badge>
+  );
+}
+
+function ModuloAccordion({ modulo }: { modulo: HistoricoAluno['modulos'][0] }) {
+  const [open, setOpen] = useState(true);
+  const mediaCls = modulo.media_modulo === null ? 'text-muted-foreground'
+    : modulo.media_modulo >= 7 ? 'text-green-400'
+    : modulo.media_modulo >= 5 ? 'text-yellow-400'
+    : 'text-red-400';
+
+  return (
+    <div className="border rounded-lg overflow-hidden">
+      <button
+        type="button"
+        onClick={() => setOpen(o => !o)}
+        className="w-full flex items-center justify-between px-4 py-2.5 bg-muted/30 hover:bg-muted/50 transition-colors text-left"
+      >
+        <div className="flex items-center gap-2 text-sm font-medium">
+          {open ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronRight className="h-4 w-4 text-muted-foreground" />}
+          {modulo.nome}
+        </div>
+        <span className={`text-xs font-semibold ${mediaCls}`}>
+          {modulo.media_modulo !== null ? `Média: ${modulo.media_modulo.toFixed(1)}` : 'Sem notas'}
+        </span>
+      </button>
+      {open && (
+        <div className="overflow-x-auto">
+          <table className="w-full text-xs">
+            <thead>
+              <tr className="text-left text-muted-foreground border-b">
+                <th className="px-4 py-2 font-medium">Disciplina</th>
+                <th className="px-2 py-2 font-medium text-center">N1</th>
+                <th className="px-2 py-2 font-medium text-center">N2</th>
+                <th className="px-2 py-2 font-medium text-center">Rec</th>
+                <th className="px-2 py-2 font-medium text-center">Média</th>
+                <th className="px-2 py-2 font-medium text-center">Freq %</th>
+                <th className="px-4 py-2 font-medium">Status</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y">
+              {modulo.disciplinas.map(d => (
+                <tr key={d.id} className="hover:bg-muted/10">
+                  <td className="px-4 py-2 font-medium">{d.nome}</td>
+                  <td className="px-2 py-2 text-center">{d.notas.n1?.toFixed(1) ?? '—'}</td>
+                  <td className="px-2 py-2 text-center">{d.notas.n2?.toFixed(1) ?? '—'}</td>
+                  <td className="px-2 py-2 text-center">{d.notas.recuperacao?.toFixed(1) ?? '—'}</td>
+                  <td className="px-2 py-2 text-center font-semibold">{d.notas.media_final?.toFixed(1) ?? '—'}</td>
+                  <td className="px-2 py-2 text-center">
+                    <span className={d.frequencia.percentual < 75 ? 'text-red-400 font-semibold' : ''}>
+                      {d.frequencia.total_aulas > 0 ? `${d.frequencia.percentual}%` : '—'}
+                    </span>
+                  </td>
+                  <td className="px-4 py-2"><StatusHistBadge status={d.status} /></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
 
 function InfoRow({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
   return (

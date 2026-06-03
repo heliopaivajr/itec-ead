@@ -23,13 +23,23 @@ export interface PerfilAluno {
   cep?: string | null;
   igreja_local?: string | null;
   observacoes_internas?: string | null;
+  // migration 030 — código institucional único
+  codigo_itec?: string | null;
 }
 
 export interface MatriculaFicha {
   id: string;
   status: string;
   created_at: string;
-  turma?: { codigo: string; nome: string } | null;
+  turma_id?: string | null;
+  data_inicio?: string | null;
+  turma?: {
+    id: string;
+    codigo: string;
+    nome: string;
+    data_inicio?: string | null;
+    cursos?: { nome: string } | null;
+  } | null;
 }
 
 export interface DocumentoFicha {
@@ -61,13 +71,13 @@ export async function getFichaAluno(alunoId: string): Promise<FichaAlunoData> {
   const [perfilRes, matRes, docRes, mensRes] = await Promise.all([
     supabase
       .from('profiles')
-      .select('id, full_name, email, role, telefone, bio, avatar_url, created_at, cpf, rg, data_nascimento, sexo, endereco, numero, complemento, bairro, cidade, estado, cep, igreja_local, observacoes_internas')
+      .select('id, full_name, email, role, telefone, bio, avatar_url, created_at, cpf, rg, data_nascimento, sexo, endereco, numero, complemento, bairro, cidade, estado, cep, igreja_local, observacoes_internas, codigo_itec')
       .eq('id', alunoId)
       .single(),
 
     supabase
       .from('matriculas')
-      .select('id, status, created_at, turma:turmas(codigo, nome)')
+      .select('id, status, created_at, turma_id, data_inicio, turma:turmas(id, codigo, nome, data_inicio, cursos(nome))')
       .eq('aluno_id', alunoId)
       .order('created_at', { ascending: false })
       .limit(10),
@@ -89,7 +99,7 @@ export async function getFichaAluno(alunoId: string): Promise<FichaAlunoData> {
 
   return {
     perfil:       perfilRes.data as PerfilAluno | null,
-    matriculas:   (matRes.data ?? []) as MatriculaFicha[],
+    matriculas:   (matRes.data ?? []) as unknown as MatriculaFicha[],
     documentos:   (docRes.data ?? []) as DocumentoFicha[],
     mensalidades: (mensRes.data ?? []) as MensalidadeFicha[],
   };

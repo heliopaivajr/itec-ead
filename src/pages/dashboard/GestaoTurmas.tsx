@@ -1,9 +1,13 @@
 import React, { useEffect, useState } from 'react';
-import { Users, Plus, Pencil, Trash2, Loader2, RefreshCw, GraduationCap } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { Users, Plus, Pencil, Trash2, Loader2, RefreshCw, GraduationCap, Printer } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { getTurmas, deleteTurma } from '@/services/turmas.service';
-import type { Turma } from '@/services/turmas.service';
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle,
+} from '@/components/ui/dialog';
+import { getTurmas, deleteTurma, getAlunosByTurma } from '@/services/turmas.service';
+import type { Turma, AlunoTurma } from '@/services/turmas.service';
 import { TurmaModal } from '@/components/dashboard/TurmaModal';
 import { useToast } from '@/hooks/use-toast';
 
@@ -28,9 +32,12 @@ function formatDate(iso: string | null | undefined) {
 
 export default function GestaoTurmas() {
   const { toast } = useToast();
-  const [turmas, setTurmas]   = useState<Turma[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [modal, setModal]     = useState<Turma | 'new' | null>(null);
+  const [turmas, setTurmas]       = useState<Turma[]>([]);
+  const [loading, setLoading]     = useState(true);
+  const [modal, setModal]         = useState<Turma | 'new' | null>(null);
+  const [alunosModal, setAlunosModal] = useState<Turma | null>(null);
+  const [alunos, setAlunos]       = useState<AlunoTurma[]>([]);
+  const [loadingAlunos, setLoadingAlunos] = useState(false);
 
   const load = async () => {
     setLoading(true);
@@ -39,6 +46,34 @@ export default function GestaoTurmas() {
   };
 
   useEffect(() => { load(); }, []);
+
+  const handleVerAlunos = async (t: Turma) => {
+    setAlunosModal(t);
+    setLoadingAlunos(true);
+    setAlunos(await getAlunosByTurma(t.id));
+    setLoadingAlunos(false);
+  };
+
+  const handlePrintAlunos = () => {
+    if (!alunosModal) return;
+    const w = window.open('', '_blank');
+    if (!w) return;
+    w.document.write(`<!DOCTYPE html><html><head>
+      <title>Lista de Alunos — ${alunosModal.nome}</title>
+      <style>body{font-family:Arial,sans-serif;padding:24px}h1{font-size:15px;margin-bottom:2px}
+      p{font-size:12px;color:#666;margin-bottom:12px}
+      table{width:100%;border-collapse:collapse}th,td{border:1px solid #ddd;padding:7px 10px;font-size:12px;text-align:left}
+      th{background:#f5f5f5;font-weight:600}</style>
+    </head><body>
+      <h1>ITEC — Instituto de Teologia Cristã</h1>
+      <p>${alunosModal.nome} · ${alunos.length} aluno${alunos.length !== 1 ? 's' : ''} matriculado${alunos.length !== 1 ? 's' : ''}</p>
+      <table><thead><tr><th>#</th><th>Nome</th><th>Cód. ITEC</th><th>Status</th></tr></thead>
+      <tbody>${alunos.map((a, i) => `<tr><td>${i + 1}</td><td>${a.full_name}</td><td>${a.codigo_itec ?? '—'}</td><td>${a.status}</td></tr>`).join('')}
+      </tbody></table>
+    </body></html>`);
+    w.document.close();
+    w.print();
+  };
 
   const handleDelete = async (t: Turma) => {
     if (!confirm(`Excluir a turma "${t.nome}"? Esta ação não pode ser desfeita.`)) return;
@@ -116,9 +151,12 @@ export default function GestaoTurmas() {
               )}
 
               <div className="flex gap-2 pt-1">
-                <Button variant="outline" size="sm" className="flex-1" onClick={() => setModal(t)}>
-                  <Pencil className="h-3.5 w-3.5 mr-1.5" />
-                  Editar
+                <Button variant="outline" size="sm" className="flex-1" onClick={() => handleVerAlunos(t)}>
+                  <Users className="h-3.5 w-3.5 mr-1.5" />
+                  Alunos
+                </Button>
+                <Button variant="outline" size="sm" onClick={() => setModal(t)}>
+                  <Pencil className="h-3.5 w-3.5" />
                 </Button>
                 <Button
                   variant="outline"
@@ -133,6 +171,75 @@ export default function GestaoTurmas() {
           ))}
         </div>
       )}
+
+      {/* Dialog: alunos matriculados */}
+      <Dialog open={!!alunosModal} onOpenChange={open => { if (!open) setAlunosModal(null); }}>
+        <DialogContent className="max-w-2xl max-h-[80vh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <GraduationCap className="h-5 w-5 text-primary" />
+              {alunosModal?.nome}
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-sm text-muted-foreground">
+              {loadingAlunos ? 'Carregando…' : `${alunos.length} aluno${alunos.length !== 1 ? 's' : ''} matriculado${alunos.length !== 1 ? 's' : ''}`}
+            </p>
+            <Button variant="outline" size="sm" onClick={handlePrintAlunos} disabled={loadingAlunos || alunos.length === 0}>
+              <Printer className="h-3.5 w-3.5 mr-1.5" />
+              Imprimir Lista
+            </Button>
+          </div>
+
+          <div className="overflow-y-auto flex-1">
+            {loadingAlunos ? (
+              <div className="flex items-center justify-center py-10">
+                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+              </div>
+            ) : alunos.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-10">Nenhum aluno matriculado nesta turma.</p>
+            ) : (
+              <table className="w-full text-sm">
+                <thead className="sticky top-0 bg-card">
+                  <tr className="text-left text-muted-foreground border-b">
+                    <th className="pb-2 font-medium">#</th>
+                    <th className="pb-2 font-medium">Nome</th>
+                    <th className="pb-2 font-medium">Cód. ITEC</th>
+                    <th className="pb-2 font-medium">Status</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y">
+                  {alunos.map((a, i) => (
+                    <tr key={a.aluno_id} className="hover:bg-muted/20">
+                      <td className="py-2 text-muted-foreground text-xs">{i + 1}</td>
+                      <td className="py-2">
+                        <Link
+                          to={`/dashboard/alunos/${a.aluno_id}`}
+                          className="font-medium hover:text-primary hover:underline"
+                          onClick={() => setAlunosModal(null)}
+                        >
+                          {a.full_name}
+                        </Link>
+                      </td>
+                      <td className="py-2 font-mono text-xs text-muted-foreground">{a.codigo_itec ?? '—'}</td>
+                      <td className="py-2">
+                        <span className={`text-xs px-2 py-0.5 rounded-full border font-medium ${
+                          a.status === 'ativa' ? 'bg-green-500/20 text-green-400 border-green-500/30'
+                          : a.status === 'pendente' ? 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30'
+                          : 'bg-muted text-muted-foreground border-border'
+                        }`}>
+                          {a.status}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <TurmaModal
         turma={modal}
