@@ -22,6 +22,8 @@ import { aprovarMatricula } from '@/services/matriculas.service';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from '@/components/ui/dialog';
+import { PDFDownloadLink } from '@react-pdf/renderer';
+import { DeclaracaoMatriculaPDF } from '@/components/dashboard/DeclaracaoMatriculaPDF';
 import { useToast } from '@/hooks/use-toast';
 import type { DashboardContext } from '../Dashboard';
 
@@ -459,19 +461,60 @@ export default function FichaAluno() {
         <Section title="Documentos e Impressões" icon={<Printer className="h-4 w-4" />}>
           <p className="text-xs text-muted-foreground mb-3">Gere e imprima documentos oficiais do aluno.</p>
           <div className="space-y-2">
-            {[
-              'Declaração de Matrícula',
-              'Boletim de Notas',
-              'Situação Financeira',
-              'Certificado de Conclusão',
-              'Relatório Final do Aluno',
-            ].map(doc => (
-              <div key={doc} title="Disponível em Agosto 2026">
-                <Button
-                  variant="outline"
-                  disabled
-                  className="w-full justify-between text-left"
+            {/* Declaração de Matrícula — habilitada */}
+            {(() => {
+              const matAtiva = matriculas.find(m => m.status === 'ativa' && m.turma_id)
+                ?? matriculas.find(m => m.turma_id);
+              const turma = matAtiva?.turma;
+              const cursoPDF = (turma as any)?.cursos?.nome ?? 'Graduação em Teologia Livre';
+              const canPDF = !!matAtiva && !!perfil;
+
+              return canPDF ? (
+                <PDFDownloadLink
+                  document={
+                    <DeclaracaoMatriculaPDF
+                      aluno={{ full_name: perfil!.full_name, cpf: perfil!.cpf, codigo_itec: perfil!.codigo_itec }}
+                      matricula={{
+                        turma_nome: turma?.nome ?? matAtiva?.turma?.codigo ?? '—',
+                        curso_nome: cursoPDF,
+                        data_inicio: matAtiva.data_inicio ?? turma?.data_inicio,
+                      }}
+                    />
+                  }
+                  fileName={`declaracao-matricula-${perfil!.full_name.replace(/\s+/g, '-').toLowerCase()}.pdf`}
+                  className="block w-full"
                 >
+                  {({ loading: pdfLoading }) => (
+                    <Button variant="outline" className="w-full justify-between text-left" disabled={pdfLoading}>
+                      <span className="flex items-center gap-2">
+                        <FileText className="h-4 w-4 shrink-0 text-muted-foreground" />
+                        Declaração de Matrícula
+                      </span>
+                      <span className="ml-3 shrink-0 rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-800">
+                        {pdfLoading ? 'Gerando…' : 'Baixar PDF'}
+                      </span>
+                    </Button>
+                  )}
+                </PDFDownloadLink>
+              ) : (
+                <div title="Aluno sem matrícula ativa com turma">
+                  <Button variant="outline" disabled className="w-full justify-between text-left">
+                    <span className="flex items-center gap-2">
+                      <FileText className="h-4 w-4 shrink-0 text-muted-foreground" />
+                      Declaração de Matrícula
+                    </span>
+                    <span className="ml-3 shrink-0 rounded-full bg-yellow-100 px-2 py-0.5 text-xs font-medium text-yellow-800">
+                      Sem matrícula ativa
+                    </span>
+                  </Button>
+                </div>
+              );
+            })()}
+
+            {/* Demais documentos — Sprint P */}
+            {['Boletim de Notas', 'Situação Financeira', 'Certificado de Conclusão', 'Relatório Final do Aluno'].map(doc => (
+              <div key={doc} title="Disponível em Sprint P">
+                <Button variant="outline" disabled className="w-full justify-between text-left">
                   <span className="flex items-center gap-2">
                     <FileText className="h-4 w-4 shrink-0 text-muted-foreground" />
                     {doc}
