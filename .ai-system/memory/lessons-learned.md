@@ -492,4 +492,26 @@ Checklist visual de documentos com controle de status por item:
 
 ---
 
+## LICAO-016 — Mock encadeado quebra silenciosamente quando filtro de query muda
+
+**Data:** 2026-06-02
+**Contexto:** Sprint L — `getProfessores` migrou de `.eq('ativo', true)` para `.not('status', 'eq', 'desligado')`
+**Problema:** Mock do teste encadeava `.eq` — sem `.not`, o método retornava `undefined` e lançava `TypeError` só na execução, não no build.
+**Como aplicar no futuro:** Ao mudar método de query no service (`.eq` → `.not`, etc.), buscar todos os testes que mockam essa função e verificar o encadeamento. Não confiar no build — rodar `pnpm test:run`.
+**Agentes impactados:** 10-test-engineer (MELHORIA-009)
+**Status:** aplicada
+
+---
+
+## LICAO-017 — Supabase Studio usa contexto postgres — não valida JWT de usuários
+
+**Data:** 2026-06-02
+**Contexto:** Sprint L — testes de RLS e Edge Function via Studio
+**Problema:** Studio opera com role `postgres` (superusuário) — bypassa RLS e ignora JWTs. Testes de autorização via Studio sempre passam, mesmo que o acesso real esteja bloqueado.
+**Como aplicar no futuro:** Sempre testar RLS e autorização via `curl` com Bearer token real. Studio não é confiável para validar políticas de acesso.
+**Agentes impactados:** 07-auth-specialist, 11-security-auditor
+**Status:** registrada
+
+---
+
 *Mantido pelo agente-Osabio · ITEC-EAD · 2025*

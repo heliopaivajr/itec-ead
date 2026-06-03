@@ -85,4 +85,28 @@ NUNCA usar dados reais de produção em testes
 ```
 
 ---
+
+## MELHORIA-009 — Verificar mocks após mudança de método de query
+
+Quando um service muda o método de filtro de query (`eq` → `not`, `filter` → `or`, etc.):
+
+```
+CHECKLIST OBRIGATÓRIO:
+1. grep -rn "nomeDaFuncao" src/test/
+2. Para cada teste encontrado: verificar se o encadeamento de métodos ainda bate
+3. Se o mock encadeia .eq() mas o service usa .not() → ATUALIZAR O MOCK
+4. Rodar pnpm test:run — não confiar no build (TypeScript não detecta esta quebra)
+```
+
+Exemplo do erro real (Sprint L):
+- Service mudou de `.eq('ativo', true)` para `.not('status', 'eq', 'desligado')`
+- Mock antigo só tinha `eq` no chain → `TypeError: query.not is not a function`
+- Só visível na execução dos testes, não no build
+
+Boa prática — sempre adicionar asserção do método chamado:
+```typescript
+expect(chain.not).toHaveBeenCalledWith('status', 'eq', 'desligado')
+```
+
+---
 *Sistema de Agentes IA para SaaS — Hélio Paiva Jr. — ObraIA 2025*
