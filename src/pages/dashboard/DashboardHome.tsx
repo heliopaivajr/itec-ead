@@ -3,7 +3,7 @@ import { useOutletContext } from 'react-router-dom';
 import { Link } from 'react-router-dom';
 import {
   GraduationCap, BookOpen, Book, UserCheck,
-  CalendarDays, ClipboardCheck, FileText, Bell, Users, ClipboardList
+  CalendarDays, ClipboardCheck, FileText, Bell, Users, ClipboardList, AlertTriangle,
 } from 'lucide-react';
 import {
   PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis,
@@ -13,6 +13,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { KpiCard } from '@/components/dashboard/KpiCard';
 import { StatusBadge } from '@/components/dashboard/StatusBadge';
 import { getKpis, getLeadsRecentes, getMatriculasRecentes, getLeadsPorCurso } from '@/services/dashboard.service';
+import { getTurmasAtivas } from '@/services/turmas.service';
+import { getAlunosEmRiscoByTurma, type AlunoEmRiscoTurma } from '@/services/frequencia.service';
 import type { DashboardContext } from '../Dashboard';
 
 // ─── Admin ───────────────────────────────────────────────────
@@ -43,14 +45,16 @@ function AdminView({ name }: { name: string }) {
   const [ultimosLeads, setUltimosLeads] = useState<any[]>([]);
   const [matriculasRecentes, setMatriculasRecentes] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [alunosEmRisco, setAlunosEmRisco] = useState<(AlunoEmRiscoTurma & { turma_nome: string })[]>([]);
 
   useEffect(() => {
     async function carregarDados() {
-      const [kpisData, leadsRecentes, matsRecentes, leadsCurso] = await Promise.all([
+      const [kpisData, leadsRecentes, matsRecentes, leadsCurso, turmasAtivas] = await Promise.all([
         getKpis(),
         getLeadsRecentes(5),
         getMatriculasRecentes(5),
         getLeadsPorCurso(),
+        getTurmasAtivas(),
       ]);
 
       setKpis(kpisData);
@@ -64,6 +68,18 @@ function AdminView({ name }: { name: string }) {
         }))
       );
       setIsLoading(false);
+
+      // Carrega alunos em risco em background (não bloqueia o render principal)
+      if (turmasAtivas.length > 0) {
+        const resultados = await Promise.all(
+          turmasAtivas.map(t =>
+            getAlunosEmRiscoByTurma(t.id).then(lista =>
+              lista.map(a => ({ ...a, turma_nome: t.nome }))
+            )
+          )
+        );
+        setAlunosEmRisco(resultados.flat());
+      }
     }
     carregarDados();
   }, []);
@@ -194,6 +210,50 @@ function AdminView({ name }: { name: string }) {
           )}
         </div>
       </div>
+
+      {/* Widget: Alunos em Risco */}
+      {alunosEmRisco.length > 0 && (
+        <div className="bg-card border border-red-500/30 rounded-xl overflow-hidden">
+          <div className="flex items-center gap-2 px-5 py-3 border-b border-red-500/20 bg-red-500/5">
+            <AlertTriangle className="h-4 w-4 text-red-400" />
+            <h2 className="text-sm font-semibold text-foreground">Alunos em Risco de Reprovação por Falta</h2>
+            <span className="ml-auto shrink-0 inline-flex items-center justify-center h-5 min-w-5 rounded-full bg-red-500/20 text-red-400 text-xs font-bold px-1.5">
+              {alunosEmRisco.length}
+            </span>
+          </div>
+          <div className="divide-y">
+            {alunosEmRisco.slice(0, 8).map((a, i) => (
+              <Link
+                key={`${a.aluno_id}-${i}`}
+                to={`/dashboard/alunos/${a.aluno_id}`}
+                className="flex items-center gap-3 px-5 py-2.5 hover:bg-muted/30 transition-colors"
+              >
+                <div className="h-7 w-7 rounded-full bg-primary/10 flex items-center justify-center text-xs font-bold text-primary shrink-0">
+                  {a.full_name.charAt(0).toUpperCase()}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium truncate">{a.full_name}</p>
+                  <p className="text-xs text-muted-foreground truncate">{a.turma_nome}</p>
+                </div>
+                <div className="shrink-0 text-right">
+                  <p className="text-xs text-red-400 font-semibold">
+                    {a.disciplinas_em_risco[0]?.frequencia_percent}% freq.
+                  </p>
+                  <p className="text-xs text-muted-foreground truncate max-w-32">
+                    {a.disciplinas_em_risco[0]?.disciplina_nome}
+                    {a.disciplinas_em_risco.length > 1 ? ` +${a.disciplinas_em_risco.length - 1}` : ''}
+                  </p>
+                </div>
+              </Link>
+            ))}
+          </div>
+          {alunosEmRisco.length > 8 && (
+            <p className="px-5 py-2 text-xs text-muted-foreground border-t">
+              + {alunosEmRisco.length - 8} aluno{alunosEmRisco.length - 8 !== 1 ? 's' : ''} em risco
+            </p>
+          )}
+        </div>
+      )}
     </div>
   );
 }
