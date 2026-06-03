@@ -106,6 +106,46 @@ export async function deleteTurma(id: string): Promise<ServiceResult> {
   return {};
 }
 
+export interface AlunoTurma {
+  matricula_id: string;
+  aluno_id: string;
+  status: string;
+  full_name: string;
+  avatar_url: string | null;
+  codigo_itec: string | null;
+}
+
+// Lista de alunos matriculados numa turma — exibida na gestão de turmas e impressão
+export async function getAlunosByTurma(turmaId: string): Promise<AlunoTurma[]> {
+  const { data, error } = await supabase
+    .from('matriculas')
+    .select('id, aluno_id, status, profiles!matriculas_aluno_id_fkey(full_name, avatar_url, codigo_itec)')
+    .eq('turma_id', turmaId)
+    .order('created_at', { ascending: true })
+    .limit(60);
+
+  if (error) return [];
+
+  type Row = {
+    id: string;
+    aluno_id: string;
+    status: string;
+    profiles: { full_name: string; avatar_url: string | null; codigo_itec: string | null } | null;
+  };
+
+  return ((data ?? []) as unknown as Row[]).map(r => {
+    const p = Array.isArray(r.profiles) ? r.profiles[0] : r.profiles;
+    return {
+      matricula_id: r.id,
+      aluno_id: r.aluno_id,
+      status: r.status,
+      full_name: p?.full_name ?? '—',
+      avatar_url: p?.avatar_url ?? null,
+      codigo_itec: p?.codigo_itec ?? null,
+    };
+  });
+}
+
 export async function getVagasDisponiveis(turmaId: string): Promise<number> {
   const { data: turma } = await supabase
     .from('turmas')
