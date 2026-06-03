@@ -18,6 +18,10 @@ import {
 import { updatePerfil } from '@/services/usuarios.service';
 import { uploadAvatar } from '@/services/profile.service';
 import { getHistoricoAluno, type HistoricoAluno, type StatusHistorico } from '@/services/academico.service';
+import { aprovarMatricula } from '@/services/matriculas.service';
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
+} from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import type { DashboardContext } from '../Dashboard';
 
@@ -63,6 +67,8 @@ export default function FichaAluno() {
   const [uploading,  setUploading]  = useState(false);
   const [historico,  setHistorico]  = useState<HistoricoAluno | null>(null);
   const [loadingHist, setLoadingHist] = useState(false);
+  const [aprovandoId, setAprovandoId] = useState<string | null>(null);
+  const [confirmDialog, setConfirmDialog] = useState<{ matriculaId: string; turma: string } | null>(null);
   const { toast } = useToast();
 
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -123,6 +129,23 @@ export default function FichaAluno() {
     setSavingObs(false);
   };
 
+  const podeAprovar     = ['superadmin', 'admin', 'administracao'].includes(adminProfile.role);
+
+  const handleAprovar = async () => {
+    if (!confirmDialog || !alunoId) return;
+    setAprovandoId(confirmDialog.matriculaId);
+    const { error } = await aprovarMatricula(confirmDialog.matriculaId, adminProfile.id);
+    setAprovandoId(null);
+    setConfirmDialog(null);
+    if (error) {
+      toast({ title: 'Erro ao aprovar', description: error, variant: 'destructive' });
+    } else {
+      toast({ title: 'Matrícula aprovada com sucesso!' });
+      setMatriculas(prev => prev.map(m =>
+        m.id === confirmDialog.matriculaId ? { ...m, status: 'ativa' } : m
+      ));
+    }
+  };
   const podeVerObs      = ['superadmin', 'admin', 'administracao'].includes(adminProfile.role);
   const podeVerDocs     = ['superadmin', 'admin', 'administracao'].includes(adminProfile.role);
   const podeVerHistorico = ['superadmin', 'admin', 'administracao', 'professor'].includes(adminProfile.role);
@@ -267,6 +290,7 @@ export default function FichaAluno() {
                 <th className="pb-2 font-medium">Turma</th>
                 <th className="pb-2 font-medium">Data</th>
                 <th className="pb-2 font-medium">Status</th>
+                {podeAprovar && <th className="pb-2 font-medium">Ação</th>}
               </tr>
             </thead>
             <tbody className="divide-y">
@@ -280,12 +304,52 @@ export default function FichaAluno() {
                       {m.status}
                     </Badge>
                   </td>
+                  {podeAprovar && (
+                    <td className="py-2">
+                      {m.status === 'pendente' && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-6 text-xs px-2 text-green-400 border-green-500/30 hover:bg-green-500/10"
+                          disabled={aprovandoId === m.id}
+                          onClick={() => setConfirmDialog({
+                            matriculaId: m.id,
+                            turma: m.turma?.nome ?? m.turma?.codigo ?? 'turma',
+                          })}
+                        >
+                          Aprovar
+                        </Button>
+                      )}
+                    </td>
+                  )}
                 </tr>
               ))}
             </tbody>
           </table>
         )}
       </Section>
+
+      {/* Dialog: confirmar aprovação de matrícula */}
+      <Dialog open={!!confirmDialog} onOpenChange={open => { if (!open) setConfirmDialog(null); }}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Confirmar aprovação</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground py-2">
+            Aprovar a matrícula de <strong className="text-foreground">{perfil?.full_name}</strong> para{' '}
+            <strong className="text-foreground">{confirmDialog?.turma}</strong>?
+            O status será atualizado de <em>pendente</em> para <em>ativa</em>.
+          </p>
+          <DialogFooter>
+            <Button variant="outline" size="sm" onClick={() => setConfirmDialog(null)}>
+              Cancelar
+            </Button>
+            <Button size="sm" onClick={handleAprovar} disabled={!!aprovandoId}>
+              {aprovandoId ? 'Aprovando…' : 'Confirmar'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Histórico Acadêmico */}
       {podeVerHistorico && (

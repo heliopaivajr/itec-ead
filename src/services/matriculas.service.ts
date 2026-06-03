@@ -112,6 +112,49 @@ export async function createTaxaMatricula(
   return { error: null };
 }
 
+// Aprova matrícula pendente — apenas administracao/admin/superadmin
+// Requer status atual = 'pendente'; seta validado_por e validado_em
+export async function aprovarMatricula(
+  matriculaId: string,
+  requesterId: string
+): Promise<ServiceResult> {
+  // Verifica role do requester via user_roles (sem recursão de RLS)
+  const { data: roleData } = await supabase
+    .from('user_roles')
+    .select('role')
+    .eq('user_id', requesterId)
+    .single();
+
+  const role = (roleData as { role: string } | null)?.role ?? '';
+  if (!['administracao', 'admin', 'superadmin'].includes(role)) {
+    return { error: 'Permissão insuficiente para aprovar matrículas' };
+  }
+
+  // Verifica status atual — deve ser 'pendente'
+  const { data: mat } = await supabase
+    .from('matriculas')
+    .select('status')
+    .eq('id', matriculaId)
+    .single();
+
+  if (!mat) return { error: 'Matrícula não encontrada' };
+  if ((mat as { status: string }).status !== 'pendente') {
+    return { error: 'Apenas matrículas com status pendente podem ser aprovadas' };
+  }
+
+  const { error } = await supabase
+    .from('matriculas')
+    .update({
+      status: 'ativa',
+      validado_por: requesterId,
+      validado_em: new Date().toISOString(),
+    })
+    .eq('id', matriculaId);
+
+  if (error) return { error: error.message };
+  return { error: null };
+}
+
 // Atualização de status — aprovação, recusa, trancamento
 export async function updateStatusMatricula(
   matriculaId: string,
