@@ -339,3 +339,19 @@ https://github.com/heliopaivajr/public-apis.git
 - Shadcn/ui components — já configurado
 - Lucide React icons — já instalado
 - Recharts — já instalado
+
+## Visão de Futuro ITEC-EAD
+
+Planejamento completo pós-Sprint P: `.ai-system/ROADMAP-FUTURO.md`
+
+| Fase | Foco | Período |
+|------|------|---------|
+| **Q** | Lançamento e estabilização | Agosto-Setembro 2026 |
+| **R** | Automação de processos + IA | 2º semestre 2026 |
+| **S** | EAD completo (vídeo, ao vivo, mobile) | 2027 |
+| **T** | Multi-campus, marketplace, comunidade | 2027-2028 |
+
+Antes de implementar qualquer feature das fases R-T:
+- Verificar APIs em `github.com/heliopaivajr/public-apis`
+- Confirmar que os Sprints L-P estão concluídos
+- RLS ativo (TODO-SPRINT-L-002) antes de qualquer expansão
