@@ -340,38 +340,26 @@ https://github.com/heliopaivajr/public-apis.git
 - Lucide React icons — já instalado
 - Recharts — já instalado
 
-## PRAZO CRÍTICO
+## ⚠️ PRAZO CRÍTICO — LANÇAMENTO AGOSTO 2026
 
-**Lançamento:** Agosto 2026
 **Hoje:** Junho 2026
 **Tempo restante:** ~8 semanas
+**Plano completo:** `.ai-system/PLANO-AGOSTO-2026.md`
 
-Plano completo semana a semana: `.ai-system/PLANO-AGOSTO-2026.md`
-
-**Sprints restantes para o lançamento:**
-- Semana 1: Sprint M — Histórico + Turmas + Declaração PDF
-- Semana 2: Sprint N — Calendário Acadêmico UI
-- Semana 3: RLS + Infraestrutura crítica
-- Semana 4: Sprint P-reduzido — PDFs essenciais
+### Semanas restantes
+- Semana 1: Sprint M (histórico + turmas + declaração)
+- Semana 2: Sprint N (calendário UI)
+- Semana 3: RLS + correções críticas
+- Semana 4: PDFs essenciais
 - Semanas 5-7: **App Mobile v1** (React Native + Expo)
-- Semana 8: Testes integrados + deploy
+- Semana 8: Testes + Deploy → GO LIVE
 
-**O que SAI do lançamento (V2):** Certificados, relatórios avançados, upload real de documentos.
+### V2 (setembro/outubro)
+Certificados, upload de documentos, relatórios avançados, EAD, lançamento de notas pelo app
 
----
+### Regra de ouro
+**NUNCA adicionar escopo novo durante uma semana de sprint.**
+Se surgir ideia nova → registrar em `.ai-system/ROADMAP-FUTURO.md` → avaliar para V2.
 
-## Visão de Futuro ITEC-EAD
-
-Planejamento completo pós-Sprint P: `.ai-system/ROADMAP-FUTURO.md`
-
-| Fase | Foco | Período |
-|------|------|---------|
-| **Q** | Lançamento e estabilização | Agosto-Setembro 2026 |
-| **R** | Automação de processos + IA | 2º semestre 2026 |
-| **S** | EAD completo (vídeo, ao vivo, mobile) | 2027 |
-| **T** | Multi-campus, marketplace, comunidade | 2027-2028 |
-
-Antes de implementar qualquer feature das fases R-T:
-- Verificar APIs em `github.com/heliopaivajr/public-apis`
-- Confirmar que os Sprints L-P estão concluídos
-- RLS ativo (TODO-SPRINT-L-002) antes de qualquer expansão
+### Visão pós-lançamento
+Fases Q → R → S → T: `.ai-system/ROADMAP-FUTURO.md`
