@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
   getEventosMes,
+  getEventosSemana,
   getAulasRecorrentes,
   expandirAulasParaPeriodo,
   type EventoCalendario,
@@ -14,6 +15,7 @@ import { getTurmasAtivas, type Turma } from '@/services/turmas.service';
 import { getProfessorByUserId } from '@/services/professor.service';
 import { EventoModal } from '@/components/dashboard/EventoModal';
 import { GradeRapidaModal } from '@/components/dashboard/GradeRapidaModal';
+import { ImpressaoModal } from '@/components/dashboard/ImpressaoModal';
 import type { DashboardContext } from '../Dashboard';
 
 // ─── Cores ───────────────────────────────────────────────────────────────────
@@ -64,9 +66,14 @@ function gerarGrade(ano: number, mes: number): CalendarioDia[] {
   return dias;
 }
 
+// Semana começa na Segunda-feira (ISO) para evitar que semanas que começam
+// no domingo de um mês carregue o mês errado
 function startOfWeek(d: Date): Date {
-  const r = new Date(d); r.setHours(12,0,0,0);
-  r.setDate(d.getDate() - d.getDay()); // recua para o Domingo
+  const r = new Date(d);
+  r.setHours(12, 0, 0, 0);
+  const day = r.getDay(); // 0=Dom
+  const diff = day === 0 ? -6 : 1 - day; // recua para Segunda
+  r.setDate(r.getDate() + diff);
   return r;
 }
 
@@ -86,57 +93,81 @@ export default function CalendarioAcademico() {
   const [loading, setLoading] = useState(true);
   const [calError, setCalError] = useState<string | null>(null);
   const [eventoEditando, setEventoEditando] = useState<EventoCalendario | null>(null);
-  const [modalAberto, setModalAberto]       = useState(false);
-  const [gradeOpen,   setGradeOpen]         = useState(false);
+  const [modalAberto,  setModalAberto]  = useState(false);
+  const [gradeOpen,    setGradeOpen]    = useState(false);
+  const [printOpen,    setPrintOpen]    = useState(false);
   const [dataSelecionada, setDataSelecionada] = useState('');
   const [professorId, setProfessorId] = useState<string | null>(null);
 
   const podeEditar  = ['superadmin','admin','administracao'].includes(profile.role);
   const isProfessor = profile.role === 'professor';
 
+  // Carregamentos iniciais
   useEffect(() => {
     getTurmasAtivas().then(setTurmas);
     if (isProfessor) getProfessorByUserId(profile.id).then(p => setProfessorId(p?.id ?? null));
   }, [isProfessor, profile.id]);
 
-  useEffect(() => { carregarEventos(); }, [ano, mes, turmaId, professorId]);
-
-  // Quando muda de semana, sincroniza ano/mes
+  // BUG 3: recarregar ao voltar para a aba (sessão pode ter expirado)
   useEffect(() => {
-    if (view !== 'semana') return;
-    setAno(semanaBase.getFullYear());
-    setMes(semanaBase.getMonth() + 1);
-  }, [semanaBase, view]);
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') carregarEventos();
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => document.removeEventListener('visibilitychange', onVisible);
+  }, [view, ano, mes, turmaId, professorId, semanaBase]);
+
+  // Carregar eventos ao mudar parâmetros
+  useEffect(() => {
+    carregarEventos();
+  }, [view, ano, mes, turmaId, professorId, semanaBase]);
 
   const carregarEventos = async () => {
     setLoading(true); setCalError(null);
     try {
       const turmaFiltro = turmaId || undefined;
       const profFiltro  = isProfessor ? (professorId ?? undefined) : undefined;
-      const [eventosBanco, aulas] = await Promise.all([
-        getEventosMes(ano, mes, turmaFiltro),
-        getAulasRecorrentes(turmaFiltro, profFiltro),
-      ]);
-      const inicio = new Date(ano, mes-1, 1, 12, 0, 0);
-      const fim    = new Date(ano, mes-1, new Date(ano, mes, 0).getDate(), 12, 0, 0);
-      const aulasExpandidas = expandirAulasParaPeriodo(aulas, inicio, fim);
 
-      // FIX 3: remover aulas que caem em dias com cancelar_aula=true
-      const datasComCancelamento = new Set(
-        eventosBanco.filter(ev => ev.cancelar_aula).map(ev => ev.data)
-      );
-      const aulasValidas = aulasExpandidas.filter(a => !datasComCancelamento.has(a.data));
+      if (view === 'semana') {
+        // BUG 2: usar range exato da semana (evita problema de mês-limite)
+        const fimSemana = new Date(semanaBase);
+        fimSemana.setDate(semanaBase.getDate() + 6);
+        const inicioStr = toDateStrLocal(semanaBase);
+        const fimStr    = toDateStrLocal(fimSemana);
 
-      setEventos([...aulasValidas, ...eventosBanco]);
+        const [eventosBanco, aulas] = await Promise.all([
+          getEventosSemana(inicioStr, fimStr, turmaFiltro),
+          getAulasRecorrentes(turmaFiltro, profFiltro),
+        ]);
+
+        const inicio = new Date(semanaBase); inicio.setHours(12,0,0,0);
+        const fim    = new Date(fimSemana);  fim.setHours(12,0,0,0);
+        const aulasExpandidas = expandirAulasParaPeriodo(aulas, inicio, fim);
+        const datasComCancelamento = new Set(eventosBanco.filter(ev => ev.cancelar_aula).map(ev => ev.data));
+        const aulasValidas = aulasExpandidas.filter(a => !datasComCancelamento.has(a.data));
+        setEventos([...aulasValidas, ...eventosBanco]);
+      } else {
+        // Visão mês: comportamento original
+        const [eventosBanco, aulas] = await Promise.all([
+          getEventosMes(ano, mes, turmaFiltro),
+          getAulasRecorrentes(turmaFiltro, profFiltro),
+        ]);
+        const inicio = new Date(ano, mes-1, 1, 12, 0, 0);
+        const fim    = new Date(ano, mes-1, new Date(ano, mes, 0).getDate(), 12, 0, 0);
+        const aulasExpandidas = expandirAulasParaPeriodo(aulas, inicio, fim);
+        const datasComCancelamento = new Set(eventosBanco.filter(ev => ev.cancelar_aula).map(ev => ev.data));
+        const aulasValidas = aulasExpandidas.filter(a => !datasComCancelamento.has(a.data));
+        setEventos([...aulasValidas, ...eventosBanco]);
+      }
     } catch {
       setCalError('Erro ao carregar calendário. Tente recarregar a página.');
     } finally { setLoading(false); }
   };
 
-  // FIX 1: handlers separados para evento vs dia
+  // BUG 1: handlers separados e explícitos
   const handleEventoClick = (e: React.MouseEvent, evento: EventoCalendario) => {
-    e.stopPropagation();
-    if (evento.tipo === 'aula_recorrente') return; // aulas recorrentes são somente leitura
+    e.stopPropagation(); // impede propagar para o dia
+    if (evento.tipo === 'aula_recorrente') return; // somente leitura
     if (!podeEditar) return;
     setEventoEditando(evento);
     setDataSelecionada('');
@@ -166,10 +197,8 @@ export default function CalendarioAcademico() {
     }
   };
 
-  // Grade mensal
+  // Grade mensal e agrupamento
   const grade = useMemo(() => gerarGrade(ano, mes), [ano, mes]);
-
-  // Agrupamento por data
   const eventosPorDia = useMemo(() => {
     const map = new Map<string, EventoCalendario[]>();
     for (const ev of eventos) {
@@ -180,7 +209,7 @@ export default function CalendarioAcademico() {
     return map;
   }, [eventos]);
 
-  // Semana atual (7 dias a partir de semanaBase)
+  // Semana atual (7 dias a partir de semanaBase = Segunda)
   const diasDaSemana = useMemo(() => {
     const hojeStr = toDateStrLocal(new Date());
     return Array.from({length:7}, (_, i) => {
@@ -190,37 +219,15 @@ export default function CalendarioAcademico() {
     });
   }, [semanaBase]);
 
-  // Impressão
-  const handlePrint = () => {
-    const turmaNome = turmas.find(t => t.id === turmaId)?.nome ?? 'Todas as turmas';
-    const w = window.open('', '_blank');
-    if (!w) return;
-    const rows = eventos.sort((a,b) => a.data.localeCompare(b.data)).map(e => {
-      const hora = (!e.dia_inteiro && e.horario_inicio)
-        ? `${e.horario_inicio.slice(0,5)}–${(e.horario_fim??'').slice(0,5)}` : 'Dia inteiro';
-      return `<tr><td>${new Date(e.data+'T12:00:00').toLocaleDateString('pt-BR')}</td><td>${e.titulo}</td><td>${hora}</td></tr>`;
-    }).join('');
-    w.document.write(`<!DOCTYPE html><html><head><title>Calendário — ${MESES_PT[mes-1]} ${ano}</title>
-      <style>body{font-family:Arial,sans-serif;padding:24px}h1{font-size:15px}p{font-size:12px;color:#666;margin-bottom:12px}
-      table{width:100%;border-collapse:collapse}th,td{border:1px solid #ddd;padding:7px 10px;font-size:12px;text-align:left}
-      th{background:#f5f5f5;font-weight:600}</style></head><body>
-      <h1>ITEC — Instituto de Teologia Cristã</h1>
-      <p>${MESES_PT[mes-1]} ${ano} · ${turmaNome}</p>
-      <table><thead><tr><th>Data</th><th>Evento</th><th>Horário</th></tr></thead>
-      <tbody>${rows}</tbody></table></body></html>`);
-    w.document.close(); w.print();
-  };
+  // ─── Badge de evento (BUG 1 fix: stopPropagation explícito no onClick) ──────
 
-  // ─── Render: badge de evento (reutilizado em mês e semana) ─────────────────
-
-  const EventoBadge = ({ ev, compact = false }: { ev: EventoCalendario; compact?: boolean }) => (
+  const EventoBadge = ({ ev }: { ev: EventoCalendario }) => (
     <div
-      onClick={e => handleEventoClick(e as React.MouseEvent, ev)}
+      onClick={e => { e.stopPropagation(); handleEventoClick(e as React.MouseEvent, ev); }}
       title={ev.titulo}
       className={[
-        'text-xs rounded px-1 py-0.5 text-white leading-tight truncate',
+        'text-xs rounded px-1 py-0.5 text-white leading-tight truncate mb-0.5',
         ev.tipo !== 'aula_recorrente' && podeEditar ? 'cursor-pointer hover:opacity-80' : 'cursor-default',
-        compact ? '' : 'mb-0.5',
       ].join(' ')}
       style={{ backgroundColor: ev.cor || COR_POR_TIPO[ev.tipo] || '#3B82F6' }}>
       {!ev.dia_inteiro && ev.horario_inicio ? `${ev.horario_inicio.slice(0,5)} ` : ''}
@@ -228,11 +235,12 @@ export default function CalendarioAcademico() {
     </div>
   );
 
-  // ─── Render ──────────────────────────────────────────────────────────────────
-
+  // Título de navegação
   const tituloNavegacao = view === 'semana'
-    ? `${diasDaSemana[0].data.getDate()}/${diasDaSemana[0].data.getMonth()+1} – ${diasDaSemana[6].data.getDate()}/${diasDaSemana[6].data.getMonth()+1}/${diasDaSemana[6].data.getFullYear()}`
+    ? `${DIAS_SEMANA[diasDaSemana[0].data.getDay()]} ${diasDaSemana[0].data.getDate()}/${diasDaSemana[0].data.getMonth()+1} – ${DIAS_SEMANA[diasDaSemana[6].data.getDay()]} ${diasDaSemana[6].data.getDate()}/${diasDaSemana[6].data.getMonth()+1}/${diasDaSemana[6].data.getFullYear()}`
     : `${MESES_PT[mes-1]} ${ano}`;
+
+  // ─── Render ──────────────────────────────────────────────────────────────────
 
   return (
     <div className="space-y-4 max-w-6xl">
@@ -258,7 +266,7 @@ export default function CalendarioAcademico() {
               </Button>
             </>
           )}
-          <Button variant="outline" size="sm" onClick={handlePrint}>
+          <Button variant="outline" size="sm" onClick={() => setPrintOpen(true)}>
             <Printer className="h-4 w-4 mr-1.5" /> Imprimir
           </Button>
         </div>
@@ -266,32 +274,25 @@ export default function CalendarioAcademico() {
 
       {/* Controles */}
       <div className="flex items-center justify-between gap-3 flex-wrap bg-card border rounded-xl px-4 py-3">
-        {/* Navegação */}
         <div className="flex items-center gap-2">
           <button onClick={mesAnterior}
             className="h-8 w-8 flex items-center justify-center rounded-md border hover:bg-muted transition-colors"
             aria-label="Anterior"><ChevronLeft className="h-4 w-4" /></button>
-          <span className="text-sm font-semibold min-w-44 text-center">{tituloNavegacao}</span>
+          <span className="text-sm font-semibold min-w-52 text-center">{tituloNavegacao}</span>
           <button onClick={proximoMes}
             className="h-8 w-8 flex items-center justify-center rounded-md border hover:bg-muted transition-colors"
             aria-label="Próximo"><ChevronRight className="h-4 w-4" /></button>
         </div>
-
         <div className="flex items-center gap-3">
-          {/* Toggle mês/semana */}
           <div className="flex rounded-md border overflow-hidden text-sm">
             {(['mes','semana'] as const).map(v => (
-              <button key={v} onClick={() => {
-                setView(v);
-                if (v === 'semana') setSemanaBase(startOfWeek(new Date()));
-              }}
-                className={`px-3 py-1.5 transition-colors capitalize ${view === v ? 'bg-primary text-primary-foreground' : 'hover:bg-muted'}`}>
+              <button key={v}
+                onClick={() => { setView(v); if (v === 'semana') setSemanaBase(startOfWeek(new Date())); }}
+                className={`px-3 py-1.5 transition-colors ${view === v ? 'bg-primary text-primary-foreground' : 'hover:bg-muted'}`}>
                 {v === 'mes' ? 'Mês' : 'Semana'}
               </button>
             ))}
           </div>
-
-          {/* Filtro turma */}
           {!isProfessor && (
             <select value={turmaId} onChange={e => setTurmaId(e.target.value)}
               className="text-sm border rounded-md px-3 py-1.5 bg-background focus:outline-none focus:ring-1 focus:ring-primary"
@@ -342,20 +343,20 @@ export default function CalendarioAcademico() {
               <div key={d} className="bg-muted/50 p-2 text-center text-xs font-semibold text-muted-foreground uppercase tracking-wide">{d}</div>
             ))}
             {grade.map((dia, i) => {
-              const evsDia = eventosPorDia.get(dia.dataStr) ?? [];
+              const evsDia  = eventosPorDia.get(dia.dataStr) ?? [];
               const visivel = evsDia.slice(0, 3);
               const extra   = evsDia.length - visivel.length;
               return (
                 <div key={i}
                   onClick={() => { if (podeEditar && dia.mesAtual) handleDiaClick(dia.dataStr); }}
                   className={[
-                    'bg-card min-h-[90px] p-1 flex flex-col gap-0.5 transition-colors',
+                    'bg-card min-h-[90px] p-1 flex flex-col gap-0 transition-colors',
                     dia.mesAtual && podeEditar ? 'cursor-pointer hover:bg-muted/30' : '',
                     !dia.mesAtual ? 'opacity-40' : '',
                     dia.isHoje ? 'ring-2 ring-inset ring-primary' : '',
                   ].filter(Boolean).join(' ')}>
                   <span className={[
-                    'text-xs font-medium self-end px-1 rounded-full',
+                    'text-xs font-medium self-end px-1 rounded-full mb-0.5',
                     dia.isHoje ? 'bg-primary text-primary-foreground' : 'text-muted-foreground',
                   ].join(' ')}>{dia.data.getDate()}</span>
                   {visivel.map(ev => <EventoBadge key={ev.id} ev={ev} />)}
@@ -370,9 +371,8 @@ export default function CalendarioAcademico() {
           // ── VISÃO SEMANA ──────────────────────────────────────────────────
           <div className="overflow-x-auto">
             <div className="min-w-[600px]">
-              {/* Header dias */}
               <div className="grid grid-cols-7 gap-px bg-border">
-                {diasDaSemana.map((d) => (
+                {diasDaSemana.map(d => (
                   <div key={d.dataStr}
                     onClick={() => { if (podeEditar) handleDiaClick(d.dataStr); }}
                     className={[
@@ -387,22 +387,21 @@ export default function CalendarioAcademico() {
                   </div>
                 ))}
               </div>
-
-              {/* Eventos da semana */}
               <div className="grid grid-cols-7 gap-px bg-border">
-                {diasDaSemana.map((d) => {
+                {diasDaSemana.map(d => {
                   const evsDia = (eventosPorDia.get(d.dataStr) ?? [])
-                    .sort((a, b) => (a.horario_inicio ?? '00:00').localeCompare(b.horario_inicio ?? '00:00'));
+                    .sort((a,b) => (a.horario_inicio ?? '').localeCompare(b.horario_inicio ?? ''));
                   return (
                     <div key={d.dataStr}
                       onClick={() => { if (podeEditar) handleDiaClick(d.dataStr); }}
                       className={[
-                        'bg-card min-h-[300px] p-1 space-y-0.5 cursor-pointer hover:bg-muted/20 transition-colors',
+                        'bg-card min-h-[200px] p-1 cursor-pointer hover:bg-muted/20 transition-colors',
                         d.isHoje ? 'ring-1 ring-inset ring-primary/30' : '',
                       ].join(' ')}>
-                      {evsDia.length === 0 ? (
-                        <p className="text-xs text-muted-foreground/40 text-center pt-4">—</p>
-                      ) : evsDia.map(ev => <EventoBadge key={ev.id} ev={ev} />)}
+                      {evsDia.length === 0
+                        ? <p className="text-xs text-muted-foreground/30 text-center pt-6">—</p>
+                        : evsDia.map(ev => <EventoBadge key={ev.id} ev={ev} />)
+                      }
                     </div>
                   );
                 })}
@@ -433,6 +432,15 @@ export default function CalendarioAcademico() {
           />
         </>
       )}
+      <ImpressaoModal
+        open={printOpen}
+        eventos={eventos}
+        turmas={turmas}
+        turmaIdAtual={turmaId}
+        mesAtual={mes}
+        anoAtual={ano}
+        onClose={() => setPrintOpen(false)}
+      />
     </div>
   );
 }

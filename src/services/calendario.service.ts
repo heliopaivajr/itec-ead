@@ -141,6 +141,30 @@ export async function getEventosMes(
   }));
 }
 
+// Eventos para uma semana específica (ou qualquer range de datas)
+// Usado pela visão semana para evitar problema de mês-limite
+export async function getEventosSemana(
+  dataInicio: string,
+  dataFim: string,
+  turmaId?: string
+): Promise<EventoCalendario[]> {
+  let query = supabase
+    .from('eventos_calendario')
+    .select('id, titulo, descricao, data, tipo, turma_id, disciplina_id, professor_id, cancelar_aula, dia_inteiro, horario_inicio, horario_fim, cor')
+    .gte('data', dataInicio)
+    .lte('data', dataFim)
+    .order('data', { ascending: true })
+    .limit(100);
+
+  if (turmaId) {
+    query = query.or(`turma_id.is.null,turma_id.eq.${turmaId}`);
+  }
+
+  const { data, error } = await query;
+  if (error || !data) return [];
+  return (data as unknown as EventoCalendario[]).map(e => ({ ...e, professor_nome: null }));
+}
+
 // ─── Aulas recorrentes ────────────────────────────────────────────────────────
 
 // Aulas recorrentes ativas com nomes de disciplina e professor via join.
