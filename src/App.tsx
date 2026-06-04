@@ -59,6 +59,7 @@ const ComingSoonPage     = lazy(() => import("./pages/dashboard/ComingSoonPage")
 const ConsolidadoNotas   = lazy(() => import("./pages/dashboard/ConsolidadoNotas"));
 const CalendarioAcademico = lazy(() => import("./pages/dashboard/CalendarioAcademico"));
 import ProtectedRoute from '@/components/ProtectedRoute';
+import RoleGuard from '@/components/auth/RoleGuard';
 
 const queryClient = new QueryClient();
 
@@ -122,17 +123,16 @@ const App = () => (
               {/* Admin */}
               <Route path="admin"           element={<PainelAdmin />} />
 
-              {/* Admin / Secretaria */}
-              <Route path="relatorios" element={<ComingSoonPage titulo="Relatórios"          descricao="Exporte relatórios de alunos, notas, frequência e financeiro."       previsao="Agosto 2026" icone={BarChart2} />} />
-              <Route path="calendario" element={<CalendarioAcademico />} />
-              <Route path="nova-matricula"  element={<NovaMatricula />} />
-              <Route path="financeiro"      element={<FinanceiroPage />} />
-              <Route path="convalidacoes"   element={<Convalidacoes />} />
-              <Route path="usuarios"        element={<Usuarios />} />
-              <Route path="leads"         element={<Leads />} />
-              <Route path="matriculas"    element={<Matriculas />} />
-              <Route path="cursos-admin"  element={<CursosAdmin />} />
-              <Route path="financeiro"    element={<ComingSoon title="Financeiro" icon={CreditCard} description="Gestão financeira, mensalidades e relatórios em desenvolvimento." />} />
+              {/* Admin / Secretaria — rotas protegidas por role */}
+              <Route path="relatorios"    element={<RoleGuard allowedRoles={['superadmin','admin','administracao']}><ComingSoonPage titulo="Relatórios" descricao="Exporte relatórios de alunos, notas, frequência e financeiro." previsao="Agosto 2026" icone={BarChart2} /></RoleGuard>} />
+              <Route path="calendario"    element={<CalendarioAcademico />} />
+              <Route path="nova-matricula" element={<RoleGuard allowedRoles={['superadmin','admin','administracao']}><NovaMatricula /></RoleGuard>} />
+              <Route path="financeiro"    element={<RoleGuard allowedRoles={['superadmin','admin','administracao','financeiro']}><FinanceiroPage /></RoleGuard>} />
+              <Route path="convalidacoes" element={<RoleGuard allowedRoles={['superadmin','admin','administracao']}><Convalidacoes /></RoleGuard>} />
+              <Route path="usuarios"      element={<RoleGuard allowedRoles={['superadmin','admin','administracao']}><Usuarios /></RoleGuard>} />
+              <Route path="leads"         element={<RoleGuard allowedRoles={['superadmin','admin','administracao']}><Leads /></RoleGuard>} />
+              <Route path="matriculas"    element={<RoleGuard allowedRoles={['superadmin','admin','administracao']}><Matriculas /></RoleGuard>} />
+              <Route path="cursos-admin"  element={<RoleGuard allowedRoles={['superadmin','admin']}><CursosAdmin /></RoleGuard>} />
               <Route path="avisos"        element={<Avisos />} />
               <Route path="notificacoes"  element={<ComingSoon title="Notificações" icon={Bell} description="Envio de comunicados e avisos para alunos e professores em desenvolvimento." />} />
               <Route path="seguranca"     element={<ComingSoon title="Segurança & LGPD" icon={ShieldAlert} description="Logs de acesso, controle de permissões e conformidade LGPD em desenvolvimento." />} />
@@ -154,17 +154,17 @@ const App = () => (
               <Route path="professor/contrato/:contratoId"        element={<ContratoForm />} />
 
               {/* Admin — Professores e Equipe */}
-              <Route path="professores-admin" element={<ProfessoresAdmin />} />
-              <Route path="professor-ficha/:professorId" element={<FichaProfessor />} />
-              <Route path="equipe-itec"       element={<EquipeITEC />} />
+              <Route path="professores-admin"          element={<RoleGuard allowedRoles={['superadmin','admin','administracao']}><ProfessoresAdmin /></RoleGuard>} />
+              <Route path="professor-ficha/:professorId" element={<RoleGuard allowedRoles={['superadmin','admin','administracao']}><FichaProfessor /></RoleGuard>} />
+              <Route path="equipe-itec"                element={<RoleGuard allowedRoles={['superadmin']}><EquipeITEC /></RoleGuard>} />
 
               {/* Admin — Turmas */}
-              <Route path="turmas-admin"                                 element={<GestaoTurmas />} />
+              <Route path="turmas-admin" element={<RoleGuard allowedRoles={['superadmin','admin','administracao']}><GestaoTurmas /></RoleGuard>} />
               <Route path="notas/:turmaId/:disciplinaId"                 element={<ConsolidadoNotas />} />
 
               {/* Secretaria/Admin — Lista e ficha do aluno */}
-              <Route path="alunos"            element={<Alunos />} />
-              <Route path="aluno/:alunoId"    element={<FichaAluno />} />
+              <Route path="alunos"         element={<RoleGuard allowedRoles={['superadmin','admin','administracao']}><Alunos /></RoleGuard>} />
+              <Route path="aluno/:alunoId" element={<RoleGuard allowedRoles={['superadmin','admin','administracao','professor']}><FichaAluno /></RoleGuard>} />
 
               {/* All roles */}
               <Route path="perfil" element={<Perfil />} />
