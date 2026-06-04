@@ -46,6 +46,25 @@ Aprovado por: Hélio Paiva Jr.
 
 ## FASE R — Automação e IA (2º semestre 2026)
 
+### R0 — Google Calendar — Sincronização Automática (V2 pós-agosto)
+**Decisão aprovada: Hélio — 2026-06-03**
+
+Sprint N entrega: botão "Adicionar ao Google Calendar" por evento (link simples, sem OAuth).
+Esta fase adiciona a sincronização automática:
+
+- [ ] OAuth do aluno para conectar conta Google (Google Identity Services)
+- [ ] Webhook do sistema → Google Calendar API quando evento é criado/editado/excluído
+- [ ] Aluno recebe notificações do próprio Google sem abrir o app ITEC
+- [ ] Secretaria pode publicar grade de aulas diretamente no Google Calendar compartilhado
+
+**Pré-requisitos:**
+- Google Cloud Project com Calendar API habilitada
+- OAuth 2.0 Client ID (tipo Web Application)
+- GOOGLE_CLIENT_ID e GOOGLE_CLIENT_SECRET em variáveis de ambiente
+- Edge Function `google-calendar-sync` (service_role)
+
+**Referência:** Sprint N (calendário próprio) deve estar estável em produção antes de iniciar.
+
 ### R1 — Automação de Processos
 
 | Feature | Descrição | Dependência |

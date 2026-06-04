@@ -103,6 +103,21 @@ Status: Em execução
 ### Referência de design
 - ADR-007: `.ai-system/adr/ADR-007-calendario-academico.md`
 
+### ⚠️ Decisões pendentes ANTES de iniciar (identificadas pelo agente-Osabio — 2026-06-03)
+
+1. **Decisão técnica de UI** — biblioteca de calendário ou CSS Grid puro?
+   - CLAUDE.md exige aviso obrigatório ao Hélio antes de qualquer biblioteca de calendário
+   - Sem essa decisão, o Agente 06 não pode começar a implementação
+   - Opções: FullCalendar (pago), React Big Calendar (MIT), ou CSS Grid customizado
+
+2. **Fonte dos feriados nacionais** — tarefa nova para o Agente 04
+   - A migration 029 criou a tabela mas não tem seed de feriados
+   - Adicionar task: "seed SQL com 12 feriados nacionais 2026 em `eventos_calendario`"
+
+3. **Verificar RLS do aluno na tabela `eventos_calendario`**
+   - O aluno precisa ver eventos da própria turma (somente leitura)
+   - Agente 07 deve confirmar que a policy atual permite isso sem N+1
+
 ---
 
 ## Sprint O — Certificados

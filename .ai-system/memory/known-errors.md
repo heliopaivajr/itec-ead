@@ -502,4 +502,39 @@ WHERE p.id IS NULL AND u.email LIKE '%@%';
 
 ---
 
+---
+
+## PADRAO-001 — Cast de joins aninhados do Supabase: usar `as unknown as X[]`
+
+**Data:** 2026-06-03
+**Contexto:** Padrão recorrente desde Sprint D — presente em 8+ services
+**Não é um erro:** É um workaround necessário e estabelecido para os tipos do Supabase PostgREST
+
+**Problema:** O TypeScript infere joins aninhados como `{ campo: TipoJoin[] }` (array) em vez de `TipoJoin | null`. Qualquer cast direto como `data as MinhaInterface[]` falha com TS2352 porque os tipos não se sobrepõem.
+
+**Padrão correto estabelecido no projeto:**
+```typescript
+// ✅ CORRETO — via unknown como intermediário
+const rows = (data ?? []) as unknown as MinhaInterface[];
+
+// ✅ CORRETO — com verificação de array para join singular
+const perfil = Array.isArray(r.profiles) ? r.profiles[0] : r.profiles;
+
+// ❌ ERRADO — as any direto (sem rastreabilidade de tipo)
+const rows = (data ?? []) as any[];
+```
+
+**Onde já está aplicado:**
+- `ficha-aluno.service.ts` — MatriculaFicha (turma join)
+- `frequencia.service.ts` — MatriculaRow, MatDiscRow
+- `academico.service.ts` — DiscRow, getHistoricoAluno
+- `turmas.service.ts` — AlunoTurma (profiles join)
+- `notas.service.ts` — getConsolidadoTurma, getNotasBatchByAluno
+
+**Regra:** Todo novo service com join aninhado → usar `as unknown as X[]`, nunca `as any`. Se o Agente 12 (code-reviewer) encontrar `as any` em um service, marcar como "Melhoria Importante" e propor troca pelo padrão.
+
+**Status:** padrão estabelecido — não é erro
+
+---
+
 *Mantido pelo agente-Osabio · ITEC-EAD · 2025*
