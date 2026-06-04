@@ -132,7 +132,7 @@ export default function CalendarioAcademico() {
     defaultView:   view === 'month' ? 'month-grid' : 'week',
     events:        scheduleXEvents,
     locale:        'pt-BR',
-    firstDayOfWeek: 1 as 1, // Segunda-feira — @schedule-x usa 1-7 (não 0-6 do JS Date)
+    firstDayOfWeek: 1 as 1, // Segunda-feira — fix LICAO-023 (@schedule-x: 1-7, não 0-6 do JS)
     callbacks: {
       onEventClick(event) {
         if (!podeEditar) return;
