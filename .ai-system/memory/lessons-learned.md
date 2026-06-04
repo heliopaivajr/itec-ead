@@ -528,6 +528,21 @@ Checklist visual de documentos com controle de status por item:
 
 ---
 
+## LICAO-022 — @schedule-x: events no config são inicialização, não binding reativo
+
+**Data:** 2026-06-04
+**Contexto:** Sprint N — CalendarioAcademico.tsx atualiza eventos após cada fetch
+**Problema:** `useNextCalendarApp({events: minhaLista})` aplica os eventos apenas na inicialização. Ao alterar a variável passada, o calendário NÃO atualiza — porque o hook não cria um binding reativo com a prop `events`.
+**Decisão tomada:** Usar `useEffect` + `calendar.events.set(novaLista)` para atualizar eventos de forma imperativa após cada mudança.
+**Como aplicar no futuro:** Para qualquer dado dinâmico (eventos carregados do banco, filtros):
+1. Criar o calendário uma vez com `useNextCalendarApp({events: []})`
+2. Quando dados mudarem: `if (calendar) calendar.events.set(novosEventos)`
+3. NUNCA passar estado reativo em `events:` esperando atualização automática
+**Agentes impactados:** 06-frontend-engineer
+**Status:** registrada
+
+---
+
 ## LICAO-020 — @schedule-x requer peer dependency @schedule-x/calendar
 
 **Data:** 2026-06-04

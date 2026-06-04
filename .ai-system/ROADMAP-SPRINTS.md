@@ -130,6 +130,44 @@ Status: Em execução
 
 ---
 
+## Sprint RLS — Correções Críticas de Segurança
+**Semana 3/8 · Obrigatório antes de alunos reais em produção**
+
+### ⚠️ Riscos identificados pelo agente-Osabio — 2026-06-04
+
+**Tarefa 0 (antes de qualquer código) — Verificação obrigatória:**
+```powershell
+# Mapear todos os from('profiles') fora de services
+Get-ChildItem -Recurse -Include *.ts,*.tsx src |
+  Select-String "from\('profiles'\)"
+# Resultado esperado: APENAS arquivos em src/services/
+```
+
+**Tarefa 1 — ERR-RISK-001: corrigir upsert silencioso em usuarios.service.ts:186**
+```typescript
+// ANTES (risco): erro descartado
+await supabase.from('user_roles').upsert({ user_id: userId, role });
+
+// DEPOIS (correto):
+const { error: upsertErr } = await supabase.from('user_roles').upsert({ user_id: userId, role });
+if (upsertErr) console.error('[user_roles sync] falhou:', upsertErr.message);
+```
+
+**Tarefa 2 — Atualizar seed_testes.sql: inserir user_roles para todos os usuários**
+O seed cria 15 usuários mas não insere em `user_roles`. Com RLS ativo em `profiles`,
+todos os usuários de teste perderão acesso silenciosamente.
+Adicionar INSERT em `user_roles` para os 15 usuários ao final do seed.
+
+**Tarefa 3 — Criar conta de secretaria de teste**
+O seed não tem conta `administracao`. O Hélio não consegue testar features de staff.
+SQL fornecido pelo agente-Osabio — aguardando aprovação para incluir no seed.
+
+**Tarefa 4 — Ativar RLS em profiles via ADR-006**
+SQL completo em: `.ai-system/adr/ADR-006-user-roles-cache-anti-recursao-rls.md`
+Pré-requisitos: Tarefas 0, 1, 2 concluídas + backfill user_roles = 0 usuários faltando.
+
+---
+
 ## Sprint O — Certificados
 **Geração de certificados por módulo e final**
 
