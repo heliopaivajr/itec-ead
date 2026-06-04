@@ -77,33 +77,43 @@ Status: Em execução
 
 ---
 
-## Sprint N — Calendário Acadêmico UI
+## Sprint N — Calendário Acadêmico UI ✅ CONCLUÍDO 2026-06-04
 **Calendário editável completo — UI sobre o banco criado no Sprint L**
 
 ### Itens
-- [ ] Calendário mensal/semanal visual editável
-- [ ] Filtro por turma, disciplina, professor
-- [ ] Criação/edição de evento pela secretaria/admin
-- [ ] Visão somente leitura do professor (seu próprio calendário)
-- [ ] Aluno vê calendário da sua turma (somente leitura)
-- [ ] Feriados nacionais pré-cadastrados (2026)
-- [ ] Impressão do calendário mensal
-- [ ] Hélio fornecerá dias e matérias reais para popular após entrega
+- [x] Calendário mensal/semanal visual editável (`@schedule-x/react` v4.6)
+- [x] Filtro por turma (dropdown), filtro automático por professor
+- [x] Criação/edição/exclusão de evento pela secretaria/admin (`EventoModal.tsx`)
+- [x] Visão somente leitura do professor (auto-filtrado por professorId)
+- [x] Aluno vê calendário em somente leitura (sem botões de edição)
+- [x] Feriados nacionais + estaduais PE 2026 pré-cadastrados (migration 032 seed)
+- [x] Impressão do calendário mensal (window.open com tabela HTML)
+- [x] Botão "Adicionar ao Google Calendar" por evento (link TEMPLATE, sem OAuth)
+- [x] Dados de teste: 14 aulas recorrentes reais (TEO-2025-1 e TEO-2026-1)
 
-### Dependências
-- Migrations de Sprint L (`aulas_recorrentes` + `eventos_calendario`)
-- Sprint M NÃO é pré-requisito — pode rodar em paralelo
+### Entregáveis técnicos
+- `calendario.service.ts` — 6 funções + `expandirAulasParaPeriodo` (pura)
+- `CalendarioAcademico.tsx` — view principal com toggle mês/semana
+- `EventoModal.tsx` — CRUD com cores, turma, horários, Google Calendar link
+- 22 testes novos (263/263 ✅), incluindo 11 testes de função pura
+- Lib instalada: `@schedule-x/react` 4.1 + `@schedule-x/calendar` 4.6 + `@schedule-x/theme-default` 4.6
+- Decisão: Google Calendar sincronização automática → V2 pós-agosto (ROADMAP-FUTURO.md)
+- Score pós-sprint: **9.3/10** (mantido)
+- Branch: `sprint-n-calendario-ui` → mergeado em `main`
 
-### O que a Camila pode usar após Sprint N
+### O que a Camila pode usar após Sprint N ✅
 - Ver e editar o calendário completo do ITEC
 - Cadastrar feriados, aulas de reposição e eventos
 - Professor vê o próprio calendário de aulas
 - Imprimir o calendário mensal
+- Adicionar qualquer evento ao Google Calendar pessoal com 1 clique
 
 ### Referência de design
 - ADR-007: `.ai-system/adr/ADR-007-calendario-academico.md`
 
-### ⚠️ Decisões pendentes ANTES de iniciar (identificadas pelo agente-Osabio — 2026-06-03)
+### ⚠️ Decisões pendentes ANTES de iniciar — JÁ RESOLVIDAS
+- Biblioteca de calendário: `@schedule-x/react` ✅ (aprovado Hélio 2026-06-03)
+- Feriados: seed aplicado no banco ✅ (migration 032)
 
 1. **Decisão técnica de UI** — biblioteca de calendário ou CSS Grid puro?
    - CLAUDE.md exige aviso obrigatório ao Hélio antes de qualquer biblioteca de calendário

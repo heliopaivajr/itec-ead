@@ -94,9 +94,9 @@ TEO-2026-2 → 3ª turma planejada (Ago/2026)
 ```
 
 ## Próximo Sprint
-Sprint N:
-- Calendário acadêmico UI editável (sobre migrations 029 do Sprint L)
-- Secretaria cria/edita eventos; professor e aluno leem
+Sprint RLS (Semana 3):
+- RLS + correções críticas antes de alunos reais
+- Segurança obrigatória para o lançamento de agosto
 
 ## Banco de dados — 19 tabelas (RLS em todas)
 
@@ -169,6 +169,7 @@ Não misturar com o código da plataforma web.
 - Sprint K: ficha aluno + menus + checklist docs
 - Sprint L: RLS profiles + Edge Function criar-aluno + foto + status professor + calendário DB
 - Sprint M: histórico acadêmico + alunos em risco + lista turma + aprovação matrícula + disciplinas ativas + declaração PDF
+- Sprint N: calendário acadêmico UI (@schedule-x) + seed feriados 2026 + EventoModal + Google Calendar link
 
 ### Ordem dos Próximos Sprints (aprovado 2026-05-28)
 
@@ -351,7 +352,7 @@ https://github.com/heliopaivajr/public-apis.git
 
 ### Semanas restantes
 - ~~Semana 1: Sprint M (histórico + turmas + declaração)~~ ✅ CONCLUÍDO
-- Semana 2: Sprint N (calendário UI)
+- ~~Semana 2: Sprint N (calendário UI)~~ ✅ CONCLUÍDO
 - Semana 3: RLS + correções críticas
 - Semana 4: PDFs essenciais
 - Semanas 5-7: **App Mobile v1** (React Native + Expo)
