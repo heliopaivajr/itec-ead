@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { ExternalLink, Trash2 } from 'lucide-react';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
@@ -29,13 +29,14 @@ const TIPOS_OPCOES: { value: TipoEventoPayload; label: string }[] = [
   { value: 'formatura',             label: 'Formatura' },
 ];
 
+// Melhoria 2: cores com legendas semânticas
 const CORES_OPCOES = [
-  { value: '#3B82F6', label: 'Azul (Evento ITEC)' },
-  { value: '#EF4444', label: 'Vermelho (Feriado)' },
-  { value: '#22C55E', label: 'Verde (Reposição)' },
-  { value: '#8B5CF6', label: 'Roxo (Avaliação)' },
-  { value: '#F59E0B', label: 'Âmbar (Recesso)' },
-  { value: '#EC4899', label: 'Rosa (Formatura)' },
+  { value: '#EF4444', label: 'Feriados / Cancelamentos' },
+  { value: '#3B82F6', label: 'Eventos ITEC' },
+  { value: '#22C55E', label: 'Aulas / Reposições' },
+  { value: '#8B5CF6', label: 'Avaliações' },
+  { value: '#F59E0B', label: 'Recesso / Institucional' },
+  { value: '#EC4899', label: 'Formatura' },
 ];
 
 // ─── Props ────────────────────────────────────────────────────────────────────
@@ -88,6 +89,33 @@ export function EventoModal({
   const [saving,   setSaving]   = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [confirmExcluir, setConfirmExcluir] = useState(false);
+
+  // Melhoria 1: drag
+  const [pos, setPos] = useState({ x: 0, y: 0 });
+  const dragging = useRef(false);
+  const dragStart = useRef({ mx: 0, my: 0, px: 0, py: 0 });
+
+  useEffect(() => {
+    if (!open) setPos({ x: 0, y: 0 }); // reset ao fechar
+  }, [open]);
+
+  useEffect(() => {
+    const move = (e: MouseEvent) => {
+      if (!dragging.current) return;
+      setPos({ x: dragStart.current.px + e.clientX - dragStart.current.mx,
+               y: dragStart.current.py + e.clientY - dragStart.current.my });
+    };
+    const up = () => { dragging.current = false; };
+    window.addEventListener('mousemove', move);
+    window.addEventListener('mouseup', up);
+    return () => { window.removeEventListener('mousemove', move); window.removeEventListener('mouseup', up); };
+  }, []);
+
+  const handleDragStart = (e: React.MouseEvent) => {
+    dragging.current = true;
+    dragStart.current = { mx: e.clientX, my: e.clientY, px: pos.x, py: pos.y };
+    e.preventDefault();
+  };
 
   // Campos do formulário
   const [titulo,       setTitulo]       = useState('');
@@ -192,8 +220,14 @@ export function EventoModal({
 
   return (
     <Dialog open={open} onOpenChange={o => { if (!o) onClose(); }}>
-      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
+      <DialogContent
+        className="max-w-lg max-h-[90vh] overflow-y-auto"
+        style={{ transform: `translate(calc(-50% + ${pos.x}px), calc(-50% + ${pos.y}px))` }}
+      >
+        <DialogHeader
+          onMouseDown={handleDragStart}
+          className="cursor-grab active:cursor-grabbing select-none"
+        >
           <DialogTitle>{evento ? 'Editar Evento' : 'Novo Evento'}</DialogTitle>
         </DialogHeader>
 
@@ -277,22 +311,33 @@ export function EventoModal({
             />
           </div>
 
-          {/* Cor */}
+          {/* Cor — Melhoria 2: ring de seleção + legenda semântica */}
           <div>
-            <label className={labelCls}>Cor</label>
-            <div className="flex gap-2 flex-wrap">
+            <label className={labelCls}>Cor do evento</label>
+            <div className="flex gap-2 flex-wrap mb-1.5">
               {CORES_OPCOES.map(c => (
                 <button
                   key={c.value}
                   type="button"
                   title={c.label}
                   onClick={() => setCor(c.value)}
-                  className={`h-7 w-7 rounded-full border-2 transition-transform ${cor === c.value ? 'border-foreground scale-110' : 'border-transparent'}`}
+                  className={[
+                    'h-7 w-7 rounded-full transition-all',
+                    cor === c.value
+                      ? 'ring-2 ring-white ring-offset-2 ring-offset-background scale-110'
+                      : 'opacity-60 hover:opacity-100',
+                  ].join(' ')}
                   style={{ background: c.value }}
                   aria-label={c.label}
                 />
               ))}
             </div>
+            {cor && (
+              <p className="text-xs text-muted-foreground flex items-center gap-1.5">
+                <span className="h-2.5 w-2.5 rounded-full shrink-0" style={{ background: cor }} />
+                {CORES_OPCOES.find(c => c.value === cor)?.label ?? cor}
+              </p>
+            )}
           </div>
 
           {/* Cancelar aula */}

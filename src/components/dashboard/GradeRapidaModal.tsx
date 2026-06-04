@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { BookOpen, Loader2 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -19,6 +19,33 @@ interface GradeRapidaModalProps {
 
 export function GradeRapidaModal({ open, requesterId, onClose, onSaved }: GradeRapidaModalProps) {
   const { toast } = useToast();
+
+  // Drag
+  const [pos, setPos] = useState({ x: 0, y: 0 });
+  const dragging = useRef(false);
+  const dragStart = useRef({ mx: 0, my: 0, px: 0, py: 0 });
+
+  useEffect(() => {
+    if (!open) setPos({ x: 0, y: 0 });
+  }, [open]);
+
+  useEffect(() => {
+    const move = (e: MouseEvent) => {
+      if (!dragging.current) return;
+      setPos({ x: dragStart.current.px + e.clientX - dragStart.current.mx,
+               y: dragStart.current.py + e.clientY - dragStart.current.my });
+    };
+    const up = () => { dragging.current = false; };
+    window.addEventListener('mousemove', move);
+    window.addEventListener('mouseup', up);
+    return () => { window.removeEventListener('mousemove', move); window.removeEventListener('mouseup', up); };
+  }, []);
+
+  const handleDragStart = (e: React.MouseEvent) => {
+    dragging.current = true;
+    dragStart.current = { mx: e.clientX, my: e.clientY, px: pos.x, py: pos.y };
+    e.preventDefault();
+  };
 
   // Listas
   const [disciplinas, setDisciplinas] = useState<Disciplina[]>([]);
@@ -100,8 +127,14 @@ export function GradeRapidaModal({ open, requesterId, onClose, onSaved }: GradeR
 
   return (
     <Dialog open={open} onOpenChange={o => { if (!o) onClose(); }}>
-      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
+      <DialogContent
+        className="max-w-lg max-h-[90vh] overflow-y-auto"
+        style={{ transform: `translate(calc(-50% + ${pos.x}px), calc(-50% + ${pos.y}px))` }}
+      >
+        <DialogHeader
+          onMouseDown={handleDragStart}
+          className="cursor-grab active:cursor-grabbing select-none"
+        >
           <DialogTitle className="flex items-center gap-2">
             <BookOpen className="h-5 w-5 text-primary" />
             Assistente de Grade Rápida
