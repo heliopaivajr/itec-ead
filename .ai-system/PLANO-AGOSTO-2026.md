@@ -14,8 +14,9 @@ Status: EM EXECUÇÃO
 | 2 | Sprint N ✅ | Calendário UI editável | Grade de aulas visível |
 | 3 | Sprint RLS | RLS + correções críticas | Segurança antes de alunos reais |
 | 4 | Sprint PDF | PDFs essenciais | Documentos impressos |
-| 5-7 | App Mobile v1 | React Native + Expo | Aluno no celular |
-| 8 | Testes + Deploy | Qualidade + lançamento | GO LIVE |
+| 5-6 | Financeiro + Asaas | PIX, cobranças, portal do aluno | Rev. Breno e Camila operam financeiro |
+| 7 | Testes + Deploy | Qualidade + lançamento | GO LIVE |
+| 8+ | App Mobile v1 (**V2**) | React Native + Expo | **Setembro/outubro** — pós-lançamento |
 
 ---
 
@@ -52,29 +53,25 @@ Status: EM EXECUÇÃO
 
 ---
 
-## Pré-requisitos antes do App Mobile (semana 5)
+## Pré-requisitos antes do Sprint Financeiro (semana 5)
 
-- [ ] Conta Expo criada em expo.dev
-- [ ] Ícone do app ITEC EAD (PNG 1024×1024)
-- [ ] Decisão: biblioteca de calendário ou CSS Grid próprio (⚠️ avisar Hélio antes)
-- [ ] Sprints M e N concluídos (APIs prontas para o mobile consumir)
+- [ ] Rev. Breno Lima responde FINANCEIRO-PERGUNTAS.md
+- [ ] Conta Asaas criada com CNPJ do ITEC + validada por Hugo
+- [ ] Sprints M, N e RLS concluídos (base segura antes de dados financeiros reais)
+
+> **App Mobile movido para V2 pós-agosto.**
+> Motivo: Financeiro é mais crítico para a operação — sem cobrança automatizada,
+> Camila gasta horas por mês em cobranças manuais via WhatsApp.
 
 ---
 
-## Risco principal
+## ~~Risco principal — App Mobile~~ (V2 pós-agosto)
 
-App mobile em 3 semanas — mínimo viável:
+~~App mobile em 3 semanas — mínimo viável~~
 
-| Feature | Status |
-|---------|--------|
-| Login | **OBRIGATÓRIO** — não cortar |
-| Notas | **OBRIGATÓRIO** — não cortar |
-| Frequência | **OBRIGATÓRIO** — não cortar |
-| Avisos | IMPORTANTE — cortar só se necessário |
-| Calendário | PODE CORTAR se semana 7 atrasar |
-| Materiais | PODE CORTAR se semana 7 atrasar |
+Movido para setembro/outubro. Ver ROADMAP-FUTURO.md → App Mobile v1.
 
-## Regra de corte (semana 7)
+## Risco principal — Sprint Financeiro (semana 5-6)
 
 Se a semana 7 chegar com escopo incompleto:
 - **Manter:** login, notas, frequência

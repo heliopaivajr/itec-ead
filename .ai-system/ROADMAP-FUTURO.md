@@ -1,10 +1,29 @@
 # Roadmap Futuro — ITEC-EAD
-**Planejamento pós-Sprint P (após agosto 2026)**
-Data: 2026-06-02
+**Planejamento pós-lançamento (agosto 2026)**
+Atualizado: 2026-06-04 — App Mobile movido para V2 pós-agosto
 Aprovado por: Hélio Paiva Jr.
 
 > Os sprints L-P constam em `.ai-system/ROADMAP-SPRINTS.md`.
 > Este documento cobre o que vem depois do lançamento.
+
+---
+
+## ⚠️ App Mobile v1 — **Setembro/outubro 2026** (movido de agosto)
+
+> **Decisão 2026-06-04:** App Mobile movido para V2 pós-agosto.
+> Motivo: Sprint Financeiro (semanas 5-6) é mais crítico para a operação imediata.
+> Camila gasta horas/mês em cobranças manuais via WhatsApp — prioridade clara.
+
+**Escopo v1 (mínimo viável):**
+- Login com email e senha
+- Dashboard do aluno (notas, frequência)
+- Avisos do ITEC
+- Calendário da turma
+
+**Pré-requisitos:**
+- [ ] Conta Expo criada em expo.dev
+- [ ] Ícone do app ITEC EAD (PNG 1024×1024)
+- [ ] Sprints M, N, RLS e Financeiro concluídos (APIs prontas)
 
 ---
 
@@ -13,6 +32,7 @@ Aprovado por: Hélio Paiva Jr.
 | Fase | Nome | Período | Foco |
 |------|------|---------|------|
 | **Q** | Lançamento e Estabilização | Agosto-Setembro 2026 | Uso real + correções |
+| **Q-mobile** | App Mobile v1 | **Setembro-Outubro 2026** | Aluno no celular (V2) |
 | **R** | Automação e IA | 2º semestre 2026 | Processos automáticos + IA |
 | **S** | EAD Completo | 2027 | Vídeo, quizzes, ao vivo |
 | **T** | Expansão | 2027-2028 | Multi-campus, marketplace |
