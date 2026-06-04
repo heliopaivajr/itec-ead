@@ -39,6 +39,7 @@ export interface AulaRecorrente {
   disciplina_id: string;
   disciplina_nome: string;
   turma_id: string;
+  turma_cor?: string; // cor da turma (migration 3A) — fallback '#22C55E'
   professor_id: string | null;
   professor_nome: string | null;
   dia_semana: number; // 0=Dom 1=Seg 2=Ter 3=Qua 4=Qui 5=Sex 6=Sab
@@ -162,6 +163,7 @@ export async function getAulasRecorrentes(
     ativo: boolean;
     disciplinas_v2: { nome: string } | null;
     professores: { nome_completo: string } | null;
+    turmas: { cor: string | null } | null;
   };
 
   let query = supabase
@@ -171,7 +173,8 @@ export async function getAulasRecorrentes(
       dia_semana, horario_inicio, horario_fim,
       data_inicio, data_fim, sala, ativo,
       disciplinas_v2(nome),
-      professores(nome_completo)
+      professores(nome_completo),
+      turmas(cor)
     `)
     .eq('ativo', true)
     .order('dia_semana', { ascending: true })
@@ -184,13 +187,15 @@ export async function getAulasRecorrentes(
   if (error || !data) return [];
 
   return ((data ?? []) as unknown as Row[]).map(r => {
-    const disc = Array.isArray(r.disciplinas_v2) ? r.disciplinas_v2[0] : r.disciplinas_v2;
-    const prof = Array.isArray(r.professores)    ? r.professores[0]    : r.professores;
+    const disc  = Array.isArray(r.disciplinas_v2) ? r.disciplinas_v2[0] : r.disciplinas_v2;
+    const prof  = Array.isArray(r.professores)    ? r.professores[0]    : r.professores;
+    const turma = Array.isArray(r.turmas)         ? r.turmas[0]         : r.turmas;
     return {
       id:              r.id,
       disciplina_id:   r.disciplina_id,
       disciplina_nome: disc?.nome ?? r.disciplina_id,
       turma_id:        r.turma_id,
+      turma_cor:       turma?.cor ?? undefined,
       professor_id:    r.professor_id,
       professor_nome:  prof?.nome_completo ?? null,
       dia_semana:      r.dia_semana,
@@ -260,7 +265,7 @@ export function expandirAulasParaPeriodo(
         dia_inteiro:       false,
         horario_inicio:    aula.horario_inicio,
         horario_fim:       aula.horario_fim,
-        cor:               '#22C55E',
+        cor:               aula.turma_cor ?? '#22C55E',
         aula_recorrente_id: aula.id,
       });
       atual.setDate(atual.getDate() + 7);

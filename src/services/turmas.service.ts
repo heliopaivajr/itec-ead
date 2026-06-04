@@ -12,6 +12,7 @@ export interface Turma {
   status: 'ativa' | 'concluida' | 'planejada' | 'cancelada';
   vagas_total: number;
   observacoes: string | null;
+  cor?: string | null; // migration 3A — cor das aulas no calendário
   criado_em: string;
   atualizado_em: string;
   // join
@@ -162,4 +163,37 @@ export async function getVagasDisponiveis(turmaId: string): Promise<number> {
     .not('status', 'eq', 'cancelada');
 
   return turma.vagas_total - (count ?? 0);
+}
+
+// Atualiza a cor da turma no calendário — apenas staff
+export async function atualizarCorTurma(
+  turmaId: string,
+  cor: string,
+  requesterId: string
+): Promise<ServiceResult> {
+  // Validar formato hex
+  if (!/^#[0-9A-Fa-f]{6}$/.test(cor)) {
+    return { error: 'Cor inválida — use formato hex #RRGGBB' };
+  }
+
+  // Verificar role via user_roles
+  const { data: roleData, error: roleError } = await supabase
+    .from('user_roles')
+    .select('role')
+    .eq('user_id', requesterId)
+    .single();
+
+  if (roleError) return { error: 'Erro ao verificar permissão' };
+  const role = (roleData as { role: string } | null)?.role ?? '';
+  if (!['administracao', 'admin', 'superadmin'].includes(role)) {
+    return { error: 'Permissão insuficiente' };
+  }
+
+  const { error } = await supabase
+    .from('turmas')
+    .update({ cor })
+    .eq('id', turmaId);
+
+  if (error) return { error: error.message };
+  return {};
 }

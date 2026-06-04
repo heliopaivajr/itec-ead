@@ -6,8 +6,10 @@ import { Badge } from '@/components/ui/badge';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog';
-import { getTurmas, deleteTurma, getAlunosByTurma } from '@/services/turmas.service';
+import { getTurmas, deleteTurma, getAlunosByTurma, atualizarCorTurma } from '@/services/turmas.service';
 import type { Turma, AlunoTurma } from '@/services/turmas.service';
+import { useOutletContext } from 'react-router-dom';
+import type { DashboardContext } from '../Dashboard';
 import { TurmaModal } from '@/components/dashboard/TurmaModal';
 import { useToast } from '@/hooks/use-toast';
 
@@ -32,6 +34,7 @@ function formatDate(iso: string | null | undefined) {
 
 export default function GestaoTurmas() {
   const { toast } = useToast();
+  const { profile } = useOutletContext<DashboardContext>();
   const [turmas, setTurmas]       = useState<Turma[]>([]);
   const [loading, setLoading]     = useState(true);
   const [modal, setModal]         = useState<Turma | 'new' | null>(null);
@@ -73,6 +76,16 @@ export default function GestaoTurmas() {
     </body></html>`);
     w.document.close();
     w.print();
+  };
+
+  const handleCorChange = async (turmaId: string, cor: string) => {
+    const { error } = await atualizarCorTurma(turmaId, cor, profile.id);
+    if (error) {
+      toast({ title: 'Erro ao salvar cor', description: error, variant: 'destructive' });
+    } else {
+      setTurmas(prev => prev.map(t => t.id === turmaId ? { ...t, cor } : t));
+      toast({ title: 'Cor da turma atualizada.' });
+    }
   };
 
   const handleDelete = async (t: Turma) => {
@@ -127,9 +140,28 @@ export default function GestaoTurmas() {
           {turmas.map(t => (
             <div key={t.id} className="bg-card border rounded-xl p-5 space-y-3">
               <div className="flex items-start justify-between gap-2">
-                <div>
-                  <p className="font-mono text-xs text-muted-foreground">{t.codigo}</p>
-                  <h3 className="font-semibold leading-tight mt-0.5">{t.nome}</h3>
+                <div className="flex items-start gap-2 flex-1 min-w-0">
+                  {/* Color picker da turma — círculo clicável */}
+                  <label
+                    title="Cor da turma no calendário"
+                    className="cursor-pointer shrink-0 mt-0.5 relative group"
+                  >
+                    <input
+                      type="color"
+                      value={t.cor ?? '#22C55E'}
+                      onChange={e => handleCorChange(t.id, e.target.value)}
+                      className="absolute inset-0 opacity-0 w-full h-full cursor-pointer"
+                      aria-label="Cor da turma"
+                    />
+                    <span
+                      className="block h-5 w-5 rounded-full border-2 border-white ring-1 ring-border group-hover:ring-primary transition-all"
+                      style={{ background: t.cor ?? '#22C55E' }}
+                    />
+                  </label>
+                  <div className="min-w-0">
+                    <p className="font-mono text-xs text-muted-foreground">{t.codigo}</p>
+                    <h3 className="font-semibold leading-tight mt-0.5 truncate">{t.nome}</h3>
+                  </div>
                 </div>
                 <Badge
                   variant="outline"
