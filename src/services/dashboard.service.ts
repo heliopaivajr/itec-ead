@@ -34,7 +34,7 @@ export interface LeadPorCurso {
 export async function getKpis(): Promise<DashboardKpis> {
   const [alunos, profs, leads, mats] = await Promise.all([
     supabase.from('profiles').select('role', { count: 'exact' }).eq('role', 'aluno'),
-    supabase.from('profiles').select('role', { count: 'exact' }).eq('role', 'professor'),
+    supabase.from('professores').select('id', { count: 'exact' }).eq('ativo', true),
     supabase.from('leads_cursos').select('*', { count: 'exact' }),
     supabase.from('matriculas').select('*', { count: 'exact' }),
   ]);

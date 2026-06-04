@@ -111,7 +111,7 @@ export default function ProfessoresAdmin() {
         setLoading(false);
       }
     });
-    return () => { cancelled = true; };
+    return () => { cancelled = true; setLoading(false); };
   }, [page, debSearch, showInativos]);
 
   // Carrega disciplinas uma vez no mount — não a cada abertura de modal

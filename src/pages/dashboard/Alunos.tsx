@@ -234,7 +234,7 @@ export default function Alunos() {
         setLoading(false);
       }
     });
-    return () => { cancelled = true; };
+    return () => { cancelled = true; setLoading(false); };
   }, [page, debouncedSearch]);
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));

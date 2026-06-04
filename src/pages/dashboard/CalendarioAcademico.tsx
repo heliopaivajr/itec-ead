@@ -67,6 +67,7 @@ export default function CalendarioAcademico() {
   const [turmas,  setTurmas]  = useState<Turma[]>([]);
   const [eventos, setEventos] = useState<EventoCalendario[]>([]);
   const [loading, setLoading] = useState(true);
+  const [calError, setCalError] = useState<string | null>(null);
   const [eventoEditando, setEventoEditando] = useState<EventoCalendario | null>(null);
   const [modalAberto,    setModalAberto]    = useState(false);
   const [dataSelecionada, setDataSelecionada] = useState<string>('');
@@ -93,25 +94,30 @@ export default function CalendarioAcademico() {
 
   const carregarEventos = async () => {
     setLoading(true);
+    setCalError(null);
+    try {
+      const turmaFiltro = turmaId || undefined;
+      const profFiltro  = isProfessor ? (professorId ?? undefined) : undefined;
 
-    const turmaFiltro = turmaId || undefined;
-    const profFiltro  = isProfessor ? (professorId ?? undefined) : undefined;
+      const [eventosBanco, aulas] = await Promise.all([
+        getEventosMes(ano, mes, turmaFiltro),
+        getAulasRecorrentes(turmaFiltro, profFiltro),
+      ]);
 
-    const [eventosBanco, aulas] = await Promise.all([
-      getEventosMes(ano, mes, turmaFiltro),
-      getAulasRecorrentes(turmaFiltro, profFiltro),
-    ]);
+      // Primeiro e último dia do mês para expansão de recorrentes
+      const inicio    = new Date(ano, mes - 1, 1, 12, 0, 0);
+      const ultimoDia = new Date(ano, mes, 0).getDate();
+      const fim       = new Date(ano, mes - 1, ultimoDia, 12, 0, 0);
 
-    // Primeiro e último dia do mês para expansão de recorrentes
-    const inicio  = new Date(ano, mes - 1, 1, 12, 0, 0);
-    const ultimoDia = new Date(ano, mes, 0).getDate();
-    const fim     = new Date(ano, mes - 1, ultimoDia, 12, 0, 0);
+      const aulasExpandidas = expandirAulasParaPeriodo(aulas, inicio, fim);
 
-    const aulasExpandidas = expandirAulasParaPeriodo(aulas, inicio, fim);
-
-    // Combina: aulas expandidas primeiro, depois eventos do banco (feriados aparecem por cima)
-    setEventos([...aulasExpandidas, ...eventosBanco]);
-    setLoading(false);
+      // Combina: aulas expandidas primeiro, depois eventos do banco
+      setEventos([...aulasExpandidas, ...eventosBanco]);
+    } catch (err) {
+      setCalError('Erro ao carregar calendário. Tente recarregar a página.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   // ─── Schedule-X ────────────────────────────────────────────────────────────
@@ -296,8 +302,10 @@ export default function CalendarioAcademico() {
       </div>
 
       {/* Calendário */}
-      <div className="bg-card border rounded-xl overflow-hidden">
-        {loading ? (
+      <div className="bg-card border rounded-xl">
+        {calError ? (
+          <div className="p-8 text-center text-destructive text-sm">{calError}</div>
+        ) : loading ? (
           <div className="p-6 space-y-3">
             <Skeleton className="h-8 w-full" />
             {[1, 2, 3, 4, 5].map(i => <Skeleton key={i} className="h-16 w-full" />)}
@@ -315,7 +323,11 @@ export default function CalendarioAcademico() {
             )}
           </div>
         ) : (
-          <div className="sx-react-calendar-wrapper p-1">
+          <div
+            className="sx-react-calendar-wrapper p-1"
+            data-theme="light"
+            style={{ colorScheme: 'light' }}
+          >
             {calendar && <ScheduleXCalendar calendarApp={calendar} />}
           </div>
         )}
