@@ -8,6 +8,7 @@ import {
   getEventosSemana,
   getAulasRecorrentes,
   expandirAulasParaPeriodo,
+  excluirEvento,
   type EventoCalendario,
   type TipoEvento,
 } from '@/services/calendario.service';
@@ -16,6 +17,8 @@ import { getProfessorByUserId } from '@/services/professor.service';
 import { EventoModal } from '@/components/dashboard/EventoModal';
 import { GradeRapidaModal } from '@/components/dashboard/GradeRapidaModal';
 import { ImpressaoModal } from '@/components/dashboard/ImpressaoModal';
+import { DayPanel } from '@/components/dashboard/DayPanel';
+import { useToast } from '@/hooks/use-toast';
 import type { DashboardContext } from '../Dashboard';
 
 // ─── Cores ───────────────────────────────────────────────────────────────────
@@ -66,14 +69,11 @@ function gerarGrade(ano: number, mes: number): CalendarioDia[] {
   return dias;
 }
 
-// Semana começa na Segunda-feira (ISO) para evitar que semanas que começam
-// no domingo de um mês carregue o mês errado
 function startOfWeek(d: Date): Date {
   const r = new Date(d);
   r.setHours(12, 0, 0, 0);
-  const day = r.getDay(); // 0=Dom
-  const diff = day === 0 ? -6 : 1 - day; // recua para Segunda
-  r.setDate(r.getDate() + diff);
+  const day = r.getDay();
+  r.setDate(r.getDate() - (day === 0 ? 6 : day - 1)); // Segunda como base
   return r;
 }
 
@@ -81,6 +81,7 @@ function startOfWeek(d: Date): Date {
 
 export default function CalendarioAcademico() {
   const { profile } = useOutletContext<DashboardContext>();
+  const { toast }   = useToast();
 
   const hoje = new Date();
   const [ano,     setAno]     = useState(hoje.getFullYear());
@@ -92,23 +93,39 @@ export default function CalendarioAcademico() {
   const [eventos, setEventos] = useState<EventoCalendario[]>([]);
   const [loading, setLoading] = useState(true);
   const [calError, setCalError] = useState<string | null>(null);
-  const [eventoEditando, setEventoEditando] = useState<EventoCalendario | null>(null);
-  const [modalAberto,  setModalAberto]  = useState(false);
-  const [gradeOpen,    setGradeOpen]    = useState(false);
-  const [printOpen,    setPrintOpen]    = useState(false);
+
+  // Modais
+  const [eventoEditando, setEventoEditando]   = useState<EventoCalendario | null>(null);
+  const [modalAberto,    setModalAberto]      = useState(false);
+  const [gradeOpen,      setGradeOpen]        = useState(false);
+  const [printOpen,      setPrintOpen]        = useState(false);
   const [dataSelecionada, setDataSelecionada] = useState('');
+
+  // DayPanel
+  const [dayPanelData, setDayPanelData] = useState<{
+    data: string;
+    eventos: EventoCalendario[];
+  } | null>(null);
+
   const [professorId, setProfessorId] = useState<string | null>(null);
 
   const podeEditar  = ['superadmin','admin','administracao'].includes(profile.role);
   const isProfessor = profile.role === 'professor';
 
-  // Carregamentos iniciais
+  // Sincronizar DayPanel quando eventos mudarem (após CRUD)
+  useEffect(() => {
+    if (!dayPanelData) return;
+    const evsDia = eventos.filter(ev => ev.data === dayPanelData.data);
+    setDayPanelData(prev => prev ? { ...prev, eventos: evsDia } : null);
+  }, [eventos]);
+
+  // Init
   useEffect(() => {
     getTurmasAtivas().then(setTurmas);
     if (isProfessor) getProfessorByUserId(profile.id).then(p => setProfessorId(p?.id ?? null));
   }, [isProfessor, profile.id]);
 
-  // BUG 3: recarregar ao voltar para a aba (sessão pode ter expirado)
+  // Reload ao voltar para a aba
   useEffect(() => {
     const onVisible = () => {
       if (document.visibilityState === 'visible') carregarEventos();
@@ -117,10 +134,8 @@ export default function CalendarioAcademico() {
     return () => document.removeEventListener('visibilitychange', onVisible);
   }, [view, ano, mes, turmaId, professorId, semanaBase]);
 
-  // Carregar eventos ao mudar parâmetros
-  useEffect(() => {
-    carregarEventos();
-  }, [view, ano, mes, turmaId, professorId, semanaBase]);
+  // Carregar eventos
+  useEffect(() => { carregarEventos(); }, [view, ano, mes, turmaId, professorId, semanaBase]);
 
   const carregarEventos = async () => {
     setLoading(true); setCalError(null);
@@ -129,25 +144,18 @@ export default function CalendarioAcademico() {
       const profFiltro  = isProfessor ? (professorId ?? undefined) : undefined;
 
       if (view === 'semana') {
-        // BUG 2: usar range exato da semana (evita problema de mês-limite)
         const fimSemana = new Date(semanaBase);
         fimSemana.setDate(semanaBase.getDate() + 6);
-        const inicioStr = toDateStrLocal(semanaBase);
-        const fimStr    = toDateStrLocal(fimSemana);
-
         const [eventosBanco, aulas] = await Promise.all([
-          getEventosSemana(inicioStr, fimStr, turmaFiltro),
+          getEventosSemana(toDateStrLocal(semanaBase), toDateStrLocal(fimSemana), turmaFiltro),
           getAulasRecorrentes(turmaFiltro, profFiltro),
         ]);
-
         const inicio = new Date(semanaBase); inicio.setHours(12,0,0,0);
         const fim    = new Date(fimSemana);  fim.setHours(12,0,0,0);
         const aulasExpandidas = expandirAulasParaPeriodo(aulas, inicio, fim);
-        const datasComCancelamento = new Set(eventosBanco.filter(ev => ev.cancelar_aula).map(ev => ev.data));
-        const aulasValidas = aulasExpandidas.filter(a => !datasComCancelamento.has(a.data));
-        setEventos([...aulasValidas, ...eventosBanco]);
+        const datasComCancel  = new Set(eventosBanco.filter(ev => ev.cancelar_aula).map(ev => ev.data));
+        setEventos([...aulasExpandidas.filter(a => !datasComCancel.has(a.data)), ...eventosBanco]);
       } else {
-        // Visão mês: comportamento original
         const [eventosBanco, aulas] = await Promise.all([
           getEventosMes(ano, mes, turmaFiltro),
           getAulasRecorrentes(turmaFiltro, profFiltro),
@@ -155,29 +163,50 @@ export default function CalendarioAcademico() {
         const inicio = new Date(ano, mes-1, 1, 12, 0, 0);
         const fim    = new Date(ano, mes-1, new Date(ano, mes, 0).getDate(), 12, 0, 0);
         const aulasExpandidas = expandirAulasParaPeriodo(aulas, inicio, fim);
-        const datasComCancelamento = new Set(eventosBanco.filter(ev => ev.cancelar_aula).map(ev => ev.data));
-        const aulasValidas = aulasExpandidas.filter(a => !datasComCancelamento.has(a.data));
-        setEventos([...aulasValidas, ...eventosBanco]);
+        const datasComCancel  = new Set(eventosBanco.filter(ev => ev.cancelar_aula).map(ev => ev.data));
+        setEventos([...aulasExpandidas.filter(a => !datasComCancel.has(a.data)), ...eventosBanco]);
       }
     } catch {
       setCalError('Erro ao carregar calendário. Tente recarregar a página.');
     } finally { setLoading(false); }
   };
 
-  // BUG 1: handlers separados e explícitos
-  const handleEventoClick = (e: React.MouseEvent, evento: EventoCalendario) => {
-    e.stopPropagation(); // impede propagar para o dia
-    if (evento.tipo === 'aula_recorrente') return; // somente leitura
-    if (!podeEditar) return;
-    setEventoEditando(evento);
-    setDataSelecionada('');
+  // ─── Handlers de clique ──────────────────────────────────────────────────────
+
+  // Clique em qualquer dia → abre DayPanel
+  const handleDiaClick = (dataStr: string) => {
+    const evsDia = eventos.filter(ev => ev.data === dataStr);
+    setDayPanelData({ data: dataStr, eventos: evsDia });
+  };
+
+  // Clique em badge de evento → abre DayPanel do dia desse evento
+  const handleEventoBadgeClick = (e: React.MouseEvent, evento: EventoCalendario) => {
+    e.stopPropagation();
+    handleDiaClick(evento.data);
+  };
+
+  // Exclusão de evento — chamada pelo DayPanel
+  const handleExcluirEvento = async (eventoId: string) => {
+    const { error } = await excluirEvento(eventoId, profile.id);
+    if (error) {
+      toast({ title: 'Erro ao excluir', description: error, variant: 'destructive' });
+    } else {
+      toast({ title: 'Evento excluído.' });
+      carregarEventos();
+    }
+  };
+
+  // Novo evento a partir do DayPanel — preenche data
+  const handleNovoEventoDoDia = (data: string) => {
+    setEventoEditando(null);
+    setDataSelecionada(data);
     setModalAberto(true);
   };
 
-  const handleDiaClick = (dataStr: string) => {
-    if (!podeEditar) return;
-    setEventoEditando(null);
-    setDataSelecionada(dataStr);
+  // Editar evento a partir do DayPanel
+  const handleEditarEventoDoDia = (evento: EventoCalendario) => {
+    setEventoEditando(evento);
+    setDataSelecionada('');
     setModalAberto(true);
   };
 
@@ -197,8 +226,8 @@ export default function CalendarioAcademico() {
     }
   };
 
-  // Grade mensal e agrupamento
-  const grade = useMemo(() => gerarGrade(ano, mes), [ano, mes]);
+  // Grade e agrupamento
+  const grade         = useMemo(() => gerarGrade(ano, mes), [ano, mes]);
   const eventosPorDia = useMemo(() => {
     const map = new Map<string, EventoCalendario[]>();
     for (const ev of eventos) {
@@ -209,7 +238,6 @@ export default function CalendarioAcademico() {
     return map;
   }, [eventos]);
 
-  // Semana atual (7 dias a partir de semanaBase = Segunda)
   const diasDaSemana = useMemo(() => {
     const hojeStr = toDateStrLocal(new Date());
     return Array.from({length:7}, (_, i) => {
@@ -219,23 +247,19 @@ export default function CalendarioAcademico() {
     });
   }, [semanaBase]);
 
-  // ─── Badge de evento (BUG 1 fix: stopPropagation explícito no onClick) ──────
+  // ─── Badge de evento ─────────────────────────────────────────────────────────
 
   const EventoBadge = ({ ev }: { ev: EventoCalendario }) => (
     <div
-      onClick={e => { e.stopPropagation(); handleEventoClick(e as React.MouseEvent, ev); }}
+      onClick={e => handleEventoBadgeClick(e as React.MouseEvent, ev)}
       title={ev.titulo}
-      className={[
-        'text-xs rounded px-1 py-0.5 text-white leading-tight truncate mb-0.5',
-        ev.tipo !== 'aula_recorrente' && podeEditar ? 'cursor-pointer hover:opacity-80' : 'cursor-default',
-      ].join(' ')}
+      className="text-xs rounded px-1 py-0.5 text-white leading-tight truncate mb-0.5 cursor-pointer hover:opacity-80"
       style={{ backgroundColor: ev.cor || COR_POR_TIPO[ev.tipo] || '#3B82F6' }}>
       {!ev.dia_inteiro && ev.horario_inicio ? `${ev.horario_inicio.slice(0,5)} ` : ''}
       {ev.titulo}
     </div>
   );
 
-  // Título de navegação
   const tituloNavegacao = view === 'semana'
     ? `${DIAS_SEMANA[diasDaSemana[0].data.getDay()]} ${diasDaSemana[0].data.getDate()}/${diasDaSemana[0].data.getMonth()+1} – ${DIAS_SEMANA[diasDaSemana[6].data.getDay()]} ${diasDaSemana[6].data.getDate()}/${diasDaSemana[6].data.getMonth()+1}/${diasDaSemana[6].data.getFullYear()}`
     : `${MESES_PT[mes-1]} ${ano}`;
@@ -318,6 +342,7 @@ export default function CalendarioAcademico() {
             {item.label}
           </span>
         ))}
+        <span className="text-muted-foreground/60">· Clique em qualquer dia para ver detalhes</span>
       </div>
 
       {/* Grade */}
@@ -346,14 +371,15 @@ export default function CalendarioAcademico() {
               const evsDia  = eventosPorDia.get(dia.dataStr) ?? [];
               const visivel = evsDia.slice(0, 3);
               const extra   = evsDia.length - visivel.length;
+              const isSelected = dayPanelData?.data === dia.dataStr;
               return (
                 <div key={i}
-                  onClick={() => { if (podeEditar && dia.mesAtual) handleDiaClick(dia.dataStr); }}
+                  onClick={() => handleDiaClick(dia.dataStr)}
                   className={[
-                    'bg-card min-h-[90px] p-1 flex flex-col gap-0 transition-colors',
-                    dia.mesAtual && podeEditar ? 'cursor-pointer hover:bg-muted/30' : '',
+                    'bg-card min-h-[90px] p-1 flex flex-col gap-0 transition-colors cursor-pointer hover:bg-muted/30',
                     !dia.mesAtual ? 'opacity-40' : '',
                     dia.isHoje ? 'ring-2 ring-inset ring-primary' : '',
+                    isSelected ? 'bg-primary/5' : '',
                   ].filter(Boolean).join(' ')}>
                   <span className={[
                     'text-xs font-medium self-end px-1 rounded-full mb-0.5',
@@ -372,31 +398,37 @@ export default function CalendarioAcademico() {
           <div className="overflow-x-auto">
             <div className="min-w-[600px]">
               <div className="grid grid-cols-7 gap-px bg-border">
-                {diasDaSemana.map(d => (
-                  <div key={d.dataStr}
-                    onClick={() => { if (podeEditar) handleDiaClick(d.dataStr); }}
-                    className={[
-                      'bg-muted/50 p-2 text-center cursor-pointer hover:bg-muted/80 transition-colors',
-                      d.isHoje ? 'bg-primary/10' : '',
-                    ].join(' ')}>
-                    <div className="text-xs font-semibold text-muted-foreground uppercase">{DIAS_SEMANA[d.data.getDay()]}</div>
-                    <div className={[
-                      'text-lg font-bold mx-auto w-8 h-8 flex items-center justify-center rounded-full',
-                      d.isHoje ? 'bg-primary text-primary-foreground' : '',
-                    ].join(' ')}>{d.data.getDate()}</div>
-                  </div>
-                ))}
+                {diasDaSemana.map(d => {
+                  const isSelected = dayPanelData?.data === d.dataStr;
+                  return (
+                    <div key={d.dataStr}
+                      onClick={() => handleDiaClick(d.dataStr)}
+                      className={[
+                        'bg-muted/50 p-2 text-center cursor-pointer hover:bg-muted/80 transition-colors',
+                        d.isHoje ? 'bg-primary/10' : '',
+                        isSelected ? 'bg-primary/5' : '',
+                      ].join(' ')}>
+                      <div className="text-xs font-semibold text-muted-foreground uppercase">{DIAS_SEMANA[d.data.getDay()]}</div>
+                      <div className={[
+                        'text-lg font-bold mx-auto w-8 h-8 flex items-center justify-center rounded-full',
+                        d.isHoje ? 'bg-primary text-primary-foreground' : '',
+                      ].join(' ')}>{d.data.getDate()}</div>
+                    </div>
+                  );
+                })}
               </div>
               <div className="grid grid-cols-7 gap-px bg-border">
                 {diasDaSemana.map(d => {
                   const evsDia = (eventosPorDia.get(d.dataStr) ?? [])
                     .sort((a,b) => (a.horario_inicio ?? '').localeCompare(b.horario_inicio ?? ''));
+                  const isSelected = dayPanelData?.data === d.dataStr;
                   return (
                     <div key={d.dataStr}
-                      onClick={() => { if (podeEditar) handleDiaClick(d.dataStr); }}
+                      onClick={() => handleDiaClick(d.dataStr)}
                       className={[
                         'bg-card min-h-[200px] p-1 cursor-pointer hover:bg-muted/20 transition-colors',
                         d.isHoje ? 'ring-1 ring-inset ring-primary/30' : '',
+                        isSelected ? 'bg-primary/5' : '',
                       ].join(' ')}>
                       {evsDia.length === 0
                         ? <p className="text-xs text-muted-foreground/30 text-center pt-6">—</p>
@@ -412,25 +444,37 @@ export default function CalendarioAcademico() {
         )}
       </div>
 
+      {/* DayPanel */}
+      {dayPanelData && (
+        <DayPanel
+          data={dayPanelData.data}
+          eventos={dayPanelData.eventos}
+          podeEditar={podeEditar}
+          onNovoEvento={handleNovoEventoDoDia}
+          onEditarEvento={handleEditarEventoDoDia}
+          onExcluirEvento={handleExcluirEvento}
+          onAbrirGradeRapida={() => setGradeOpen(true)}
+          onClose={() => setDayPanelData(null)}
+        />
+      )}
+
       {/* Modais */}
+      <EventoModal
+        open={modalAberto}
+        evento={eventoEditando}
+        dataInicial={dataSelecionada}
+        turmas={turmas}
+        requesterId={profile.id}
+        onClose={() => { setModalAberto(false); setEventoEditando(null); }}
+        onSaved={carregarEventos}
+      />
       {podeEditar && (
-        <>
-          <EventoModal
-            open={modalAberto}
-            evento={eventoEditando}
-            dataInicial={dataSelecionada}
-            turmas={turmas}
-            requesterId={profile.id}
-            onClose={() => { setModalAberto(false); setEventoEditando(null); }}
-            onSaved={carregarEventos}
-          />
-          <GradeRapidaModal
-            open={gradeOpen}
-            requesterId={profile.id}
-            onClose={() => setGradeOpen(false)}
-            onSaved={carregarEventos}
-          />
-        </>
+        <GradeRapidaModal
+          open={gradeOpen}
+          requesterId={profile.id}
+          onClose={() => setGradeOpen(false)}
+          onSaved={carregarEventos}
+        />
       )}
       <ImpressaoModal
         open={printOpen}
