@@ -339,3 +339,101 @@ export async function excluirEvento(
   if (error) return { error: error.message };
   return { error: null };
 }
+
+// ─── Aulas recorrentes — criação e preview ────────────────────────────────────
+
+export interface AulaRecorrentePayload {
+  disciplina_id: string;
+  turma_id: string;
+  professor_id?: string | null;
+  dia_semana: number; // 0-6 (JS Date convention)
+  horario_inicio: string; // 'HH:MM:SS'
+  horario_fim: string;
+  data_inicio: string; // 'YYYY-MM-DD'
+  data_fim: string;
+  sala?: string | null;
+}
+
+export interface PreviewAulas {
+  total: number;
+  feriados: { data: string; titulo: string }[];
+  datas: string[];
+}
+
+// Calcula aulas que serão geradas, excluindo dias com cancelar_aula=true no banco
+export async function contarAulasNoPeriodo(
+  diaSemana: number,
+  dataInicio: string,
+  dataFim: string
+): Promise<PreviewAulas> {
+  const inicio = parseDateStr(dataInicio);
+  const fim    = parseDateStr(dataFim);
+  if (inicio > fim) return { total: 0, feriados: [], datas: [] };
+
+  // Gerar todas as datas do dia_semana no período (lógica pura)
+  const datas: string[] = [];
+  const diffDias = (diaSemana - inicio.getDay() + 7) % 7;
+  const atual = new Date(inicio);
+  atual.setDate(atual.getDate() + diffDias);
+  while (atual <= fim) {
+    datas.push(toDateStr(atual));
+    atual.setDate(atual.getDate() + 7);
+  }
+  if (datas.length === 0) return { total: 0, feriados: [], datas: [] };
+
+  // Buscar feriados com cancelar_aula=true que caem nessas datas
+  const { data: feriadosData } = await supabase
+    .from('eventos_calendario')
+    .select('data, titulo')
+    .eq('cancelar_aula', true)
+    .in('data', datas)
+    .limit(50);
+
+  const feriados = (feriadosData ?? []) as { data: string; titulo: string }[];
+  const feriadosDatas = new Set(feriados.map(f => f.data));
+  const datasValidas = datas.filter(d => !feriadosDatas.has(d));
+
+  return { total: datasValidas.length, feriados, datas: datasValidas };
+}
+
+// Cria aula recorrente — apenas staff (administracao/admin/superadmin)
+export async function criarAulaRecorrente(
+  payload: AulaRecorrentePayload,
+  requesterId: string
+): Promise<ServiceResult & { id?: string }> {
+  const roleErr = await verificarRoleStaff(requesterId);
+  if (roleErr) return { error: roleErr };
+
+  // Verificar conflito: mesma turma + dia + horário
+  const { data: conflito } = await supabase
+    .from('aulas_recorrentes')
+    .select('id')
+    .eq('turma_id', payload.turma_id)
+    .eq('dia_semana', payload.dia_semana)
+    .eq('horario_inicio', payload.horario_inicio)
+    .eq('ativo', true)
+    .limit(1)
+    .maybeSingle();
+
+  if (conflito) return { error: 'Já existe aula desta turma neste dia e horário' };
+
+  const { data, error } = await supabase
+    .from('aulas_recorrentes')
+    .insert({
+      disciplina_id:  payload.disciplina_id,
+      turma_id:       payload.turma_id,
+      professor_id:   payload.professor_id ?? null,
+      dia_semana:     payload.dia_semana,
+      horario_inicio: payload.horario_inicio,
+      horario_fim:    payload.horario_fim,
+      data_inicio:    payload.data_inicio,
+      data_fim:       payload.data_fim,
+      sala:           payload.sala ?? null,
+      ativo:          true,
+    })
+    .select('id')
+    .single();
+
+  if (error) return { error: error.message };
+  return { error: null, id: (data as { id: string }).id };
+}
