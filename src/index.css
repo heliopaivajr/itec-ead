@@ -210,3 +210,48 @@
 .neon-pulse {
   animation: neon-pulse 2s infinite;
 }
+
+/* ─── @schedule-x: forçar light mode (sobrescreve .dark do Tailwind) ─────── */
+/* O schedule-x detecta .dark no <html> e aplica tema escuro.
+   Este override garante fundo branco dentro do wrapper do calendário,
+   independente do tema da aplicação. */
+.sx-react-calendar-wrapper,
+.sx-react-calendar-wrapper * {
+  color-scheme: light !important;
+}
+
+.sx-react-calendar-wrapper .sx__calendar-wrapper {
+  background-color: white !important;
+  color: #1a1a1a !important;
+}
+
+.sx-react-calendar-wrapper .sx__month-grid-day,
+.sx-react-calendar-wrapper .sx__month-grid-day__header,
+.sx-react-calendar-wrapper .sx__time-grid-day,
+.sx-react-calendar-wrapper .sx__week-wrapper {
+  background-color: white !important;
+  color: #1a1a1a !important;
+}
+
+.sx-react-calendar-wrapper .sx__month-grid-day:hover {
+  background-color: #f0f4ff !important;
+}
+
+.sx-react-calendar-wrapper .sx__calendar-header,
+.sx-react-calendar-wrapper .sx__week-grid__header {
+  background-color: #f8fafc !important;
+  color: #1a1a1a !important;
+  border-color: #e2e8f0 !important;
+}
+
+.sx-react-calendar-wrapper .sx__event {
+  color: white !important;
+}
+
+.sx-react-calendar-wrapper .sx__month-grid-day__cell-date {
+  color: #1a1a1a !important;
+}
+
+.sx-react-calendar-wrapper .sx__is-leading-or-trailing .sx__month-grid-day__cell-date {
+  color: #94a3b8 !important;
+}
