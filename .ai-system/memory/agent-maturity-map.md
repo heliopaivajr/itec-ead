@@ -1,8 +1,8 @@
 # Mapa de Maturidade dos Agentes
 ## ITEC-EAD · Sistema de Agentes IA
 **Mantido por:** agente-Osabio  
-**Última atualização:** 2026-06-01 — Primeira avaliação real (pós Sprint fix-ux + fix-menus)
-**Versão:** 1.1 — Primeira população com dados reais
+**Última atualização:** 2026-06-03 — Pós Sprint M (5 primeiras avaliações reais)
+**Versão:** 1.2 — Agentes 09, 11, 12, 14, 18 avaliados pela primeira vez
 
 ---
 
@@ -143,10 +143,12 @@
 ### Agente 09 — Infra Engineer
 | Campo | Valor |
 |-------|-------|
-| **Nível atual** | A avaliar |
+| **Nível atual** | **3 — Confiável** |
+| **Pontos fortes** | Sequência de merge correta sem improviso (test→build→commit→checkout→pull→merge --no-ff→push); mensagem de merge completa com entregáveis |
+| **Pontos fracos** | Sem histórico de rollback real; deploy Vercel é automático (sem ação manual testada) |
 | **Função** | Deploy, CI/CD, variáveis de ambiente |
-| **Próxima melhoria recomendada** | [preencher] |
-| **Status** | Aguardando primeira avaliação |
+| **Próxima melhoria recomendada** | Documentar procedimento de rollback para o projeto (Vercel revert) |
+| **Status** | Avaliado — 2026-06-03 (primeira avaliação real, Sprint M) |
 
 ---
 
@@ -164,18 +166,22 @@
 ### Agente 11 — Security Auditor
 | Campo | Valor |
 |-------|-------|
-| **Nível atual** | A avaliar |
+| **Nível atual** | **3 — Confiável** |
+| **Pontos fortes** | Identificou o risco real das 3 tabelas com policies legadas (profiles→user_roles); classificação 🟡 MÉDIO correta; SQL de correção aplicado e confirmado |
+| **Pontos fracos** | Não verificou `getAlunosEmRiscoByTurma` como risco de vazamento parcial de dados por aluno (só mencionou em "Sugestão") |
 | **Função** | Auth, RLS, secrets, OWASP |
-| **Próxima melhoria recomendada** | [preencher] |
-| **Status** | Aguardando primeira avaliação |
+| **Próxima melhoria recomendada** | Adicionar checklist: "toda função que agrega dados de múltiplos alunos → verificar se há role check no service" |
+| **Status** | Avaliado — 2026-06-03 (primeira avaliação real, Sprint M) |
 
 ### Agente 12 — Code Reviewer
 | Campo | Valor |
 |-------|-------|
-| **Nível atual** | A avaliar |
+| **Nível atual** | **3 — Confiável** |
+| **Pontos fortes** | 2 bugs reais encontrados (frequência default, dead query); referências file:line precisas; score ponderado aplicado corretamente; bloqueadores separados de melhorias |
+| **Pontos fracos** | Não registrou a lição do padrão `as unknown as X[]` para joins do Supabase (oportunidade perdida de documentar um padrão recorrente) |
 | **Função** | Review estruturado com score de qualidade |
-| **Próxima melhoria recomendada** | [preencher] |
-| **Status** | Aguardando primeira avaliação |
+| **Próxima melhoria recomendada** | Adicionar ao checklist: "Supabase joins aninhados → verificar se cast usa padrão `as unknown as X[]` (não `as any`)" |
+| **Status** | Avaliado — 2026-06-03 (primeira avaliação real, Sprint M) |
 
 ### Agente 13 — Performance Engineer
 | Campo | Valor |
@@ -192,10 +198,12 @@
 ### Agente 14 — Auditor ⭐
 | Campo | Valor |
 |-------|-------|
-| **Nível atual** | A avaliar |
+| **Nível atual** | **3 — Confiável** |
+| **Pontos fortes** | Auditoria rápida objetiva (5 itens, sem verbosidade); score 9.3 justificado dimensão a dimensão; confirmou o que era esperado sem inflar o resultado |
+| **Pontos fracos** | Modo "rápida" não verificou arquivos individualmente — usou contexto do sprint. Em auditoria completa, precisaria ler os arquivos |
 | **Função** | Diagnóstico completo do codebase — PRIMEIRO em projeto existente |
-| **Próxima melhoria recomendada** | [preencher] |
-| **Status** | Aguardando primeira avaliação |
+| **Próxima melhoria recomendada** | Nenhuma — manter o formato de auditoria rápida; auditoria completa quando solicitada explicitamente |
+| **Status** | Avaliado — 2026-06-03 (primeira avaliação real, Sprint M) |
 
 ### Agente 15 — Debt Analyst
 | Campo | Valor |
@@ -228,10 +236,12 @@
 ### Agente 18 — Doc Writer
 | Campo | Valor |
 |-------|-------|
-| **Nível atual** | A avaliar |
-| **Função** | README, API docs, runbooks, ADRs |
-| **Próxima melhoria recomendada** | [preencher] |
-| **Status** | Aguardando primeira avaliação |
+| **Nível atual** | **3 — Confiável** |
+| **Pontos fortes** | Atualizou 4 arquivos com conteúdo preciso e específico (sem texto genérico); LICAO-018/019 bem estruturadas com "Como aplicar no futuro" concreto; ROADMAP com entregáveis técnicos reais |
+| **Pontos fracos** | Não documentou o padrão `as unknown as X[]` do Supabase (padrão que aparece em 8+ lugares sem registro) |
+| **Função** | README, API docs, runbooks, ADRs, lições aprendidas |
+| **Próxima melhoria recomendada** | Registrar padrões estabelecidos (não apenas erros) em `known-errors.md` como "PADRAO-001", "PADRAO-002"... |
+| **Status** | Avaliado — 2026-06-03 (primeira avaliação real, Sprint M) |
 
 ---
 
@@ -250,16 +260,16 @@
 | 06 — frontend-engineer | **4 Sênior** | 2026-06-01 |
 | 07 — auth-specialist | **3 Confiável** | 2026-06-02 |
 | 08 — billing-engineer | — | aguarda avaliação |
-| 09 — infra-engineer | — | aguarda avaliação |
+| 09 — infra-engineer | **3 Confiável** | 2026-06-03 🆕 |
 | 10 — test-engineer | **4 Sênior** | 2026-06-01 |
-| 11 — security-auditor | — | aguarda avaliação |
-| 12 — code-reviewer | — | aguarda avaliação |
+| 11 — security-auditor | **3 Confiável** | 2026-06-03 🆕 |
+| 12 — code-reviewer | **3 Confiável** | 2026-06-03 🆕 |
 | 13 — performance-eng | — | aguarda avaliação |
-| 14 — auditor | — | aguarda avaliação |
+| 14 — auditor | **3 Confiável** | 2026-06-03 🆕 |
 | 15 — debt-analyst | — | aguarda avaliação |
 | 16 — migration-planner | — | aguarda avaliação |
 | 17 — lgpd-auditor | — | aguarda avaliação |
-| 18 — doc-writer | — | aguarda avaliação |
+| 18 — doc-writer | **3 Confiável** | 2026-06-03 🆕 |
 
 ---
 

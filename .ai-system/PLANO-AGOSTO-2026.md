@@ -11,7 +11,7 @@ Status: EM EXECUÇÃO
 | Semana | Sprint | Foco | Entrega |
 |--------|--------|------|---------|
 | 1 | Sprint M ✅ | Histórico + Turmas + Declaração | Camila opera completo |
-| 2 | Sprint N | Calendário UI editável | Grade de aulas visível |
+| 2 | Sprint N ✅ | Calendário UI editável | Grade de aulas visível |
 | 3 | Sprint RLS | RLS + correções críticas | Segurança antes de alunos reais |
 | 4 | Sprint PDF | PDFs essenciais | Documentos impressos |
 | 5-7 | App Mobile v1 | React Native + Expo | Aluno no celular |

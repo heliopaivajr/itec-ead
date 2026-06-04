@@ -22,3 +22,6 @@ export * from './material.service';
 
 // Services Sprint J
 export * from './notas.service';
+
+// Services Sprint N
+// calendario.service — importar diretamente (ServiceResult ambíguo no barrel)

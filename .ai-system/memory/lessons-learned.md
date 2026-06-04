@@ -528,6 +528,31 @@ Checklist visual de documentos com controle de status por item:
 
 ---
 
+## LICAO-020 — @schedule-x requer peer dependency @schedule-x/calendar
+
+**Data:** 2026-06-04
+**Contexto:** Sprint N — instalação de `@schedule-x/react` sem a peer dependency
+**Problema:** `@schedule-x/react` lista `@schedule-x/calendar` como `peerDependency` mas não a instala automaticamente. Build passa, mas imports de `createViewMonthGrid`/`createViewWeek` não resolvem em runtime.
+**Decisão tomada:** Instalar todas explicitamente: `pnpm add @schedule-x/react @schedule-x/calendar @schedule-x/theme-default`
+**Como aplicar no futuro:** Ao instalar qualquer lib, verificar `peerDependencies` no `package.json` e instalar todas. `pnpm` avisa sobre peerDeps faltantes — não ignorar.
+**Agentes impactados:** 06-frontend-engineer, 09-infra-engineer
+**Status:** registrada
+
+---
+
+## LICAO-021 — Google Calendar: end deve ser data+1 para eventos de dia inteiro
+
+**Data:** 2026-06-04
+**Contexto:** Sprint N — `EventoModal` gerava `dates=20260421/20260421` para feriados
+**Problema:** Google Calendar usa range **exclusivo**: `start/end` onde `end` é o primeiro dia fora do evento. Com start=end, o evento aparece com duração zero (ponto, sem bloco colorido).
+**Decisão tomada:** Para dia inteiro: `endData = data + 1 dia`. Para com horário: sem mudança.
+**Regra:** Dia inteiro: `dates=YYYYMMDD/YYYYMMDD+1` | Com horário: `dates=YYYYMMDDTHHMMSS/YYYYMMDDTHHMMSS`
+**Como aplicar no futuro:** Toda integração com Google Calendar por link: always end = start+1 para dia inteiro.
+**Agentes impactados:** 06-frontend-engineer
+**Status:** aplicada
+
+---
+
 ## LICAO-017 — Supabase Studio usa contexto postgres — não valida JWT de usuários
 
 **Data:** 2026-06-02

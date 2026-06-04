@@ -57,6 +57,7 @@ const Alunos             = lazy(() => import("./pages/dashboard/Alunos"));
 const LancarNotas        = lazy(() => import("./pages/dashboard/LancarNotas"));
 const ComingSoonPage     = lazy(() => import("./pages/dashboard/ComingSoonPage"));
 const ConsolidadoNotas   = lazy(() => import("./pages/dashboard/ConsolidadoNotas"));
+const CalendarioAcademico = lazy(() => import("./pages/dashboard/CalendarioAcademico"));
 import ProtectedRoute from '@/components/ProtectedRoute';
 
 const queryClient = new QueryClient();
@@ -123,7 +124,7 @@ const App = () => (
 
               {/* Admin / Secretaria */}
               <Route path="relatorios" element={<ComingSoonPage titulo="Relatórios"          descricao="Exporte relatórios de alunos, notas, frequência e financeiro."       previsao="Agosto 2026" icone={BarChart2} />} />
-              <Route path="calendario" element={<ComingSoonPage titulo="Calendário Acadêmico" descricao="Gerencie o calendário de aulas, provas e eventos do ITEC."           previsao="Agosto 2026" icone={CalendarDays} />} />
+              <Route path="calendario" element={<CalendarioAcademico />} />
               <Route path="nova-matricula"  element={<NovaMatricula />} />
               <Route path="financeiro"      element={<FinanceiroPage />} />
               <Route path="convalidacoes"   element={<Convalidacoes />} />
