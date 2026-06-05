@@ -176,12 +176,12 @@
 ### Agente 12 — Code Reviewer
 | Campo | Valor |
 |-------|-------|
-| **Nível atual** | **3 — Confiável** |
-| **Pontos fortes** | 2 bugs reais encontrados (frequência default, dead query); referências file:line precisas; score ponderado aplicado corretamente; bloqueadores separados de melhorias |
-| **Pontos fracos** | Não registrou a lição do padrão `as unknown as X[]` para joins do Supabase (oportunidade perdida de documentar um padrão recorrente) |
+| **Nível atual** | **4 — Sênior** |
+| **Pontos fortes** | 3 sprints com score crescente (3.95 → 4.33); bugs reais com file:line; Sprint N identificou risco de manutenção (cast frágil `as TipoEventoPayload`) além de apenas bugs funcionais |
+| **Pontos fracos** | Não faz análise de arquitetura global — foca nos arquivos modificados, não no impacto sistêmico |
 | **Função** | Review estruturado com score de qualidade |
-| **Próxima melhoria recomendada** | Adicionar ao checklist: "Supabase joins aninhados → verificar se cast usa padrão `as unknown as X[]` (não `as any`)" |
-| **Status** | Avaliado — 2026-06-03 (primeira avaliação real, Sprint M) |
+| **Próxima melhoria recomendada** | Em reviews de features complexas, verificar se há um padrão estabelecido sendo violado (ex: PADRAO-001) antes de apontar apenas bugs funcionais |
+| **Status** | Avaliado — 2026-06-04 ⬆️ **(subiu 3 → 4, pós Sprint N + hotfixes)** |
 
 ### Agente 13 — Performance Engineer
 | Campo | Valor |
@@ -263,7 +263,7 @@
 | 09 — infra-engineer | **3 Confiável** | 2026-06-03 🆕 |
 | 10 — test-engineer | **4 Sênior** | 2026-06-01 |
 | 11 — security-auditor | **3 Confiável** | 2026-06-03 🆕 |
-| 12 — code-reviewer | **3 Confiável** | 2026-06-03 🆕 |
+| 12 — code-reviewer | **4 Sênior** | 2026-06-04 ⬆️ |
 | 13 — performance-eng | — | aguarda avaliação |
 | 14 — auditor | **3 Confiável** | 2026-06-03 🆕 |
 | 15 — debt-analyst | — | aguarda avaliação |

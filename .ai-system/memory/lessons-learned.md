@@ -528,6 +528,30 @@ Checklist visual de documentos com controle de status por item:
 
 ---
 
+## LICAO-023 — startOfWeek com Domingo como base carrega o mês errado no calendário
+
+**Data:** 2026-06-04
+**Contexto:** Sprint N hotfixes — CalendarioAcademico exibia semana vazia
+**Problema:** `startOfWeek` usava `d.getDay()` (0=Dom) para recuar ao início da semana. Quando hoje é quarta-feira (4 jun), o domingo anterior é 31/mai. O `ano/mes` sincronizava para maio → carregava eventos de maio → a semana exibia junho vazia.
+**Decisão tomada:** Mudar `startOfWeek` para usar Segunda-feira como base: `diff = day === 0 ? -6 : 1 - day`. Além disso, usar `getEventosSemana(inicio, fim)` que carrega por range exato, independente do mês.
+**Como aplicar no futuro:** Em qualquer componente de calendário: (1) definir explicitamente qual dia é o início da semana (geralmente Segunda para PT-BR); (2) carregar eventos por range de datas, não por mês — evita perda quando semana cruza mês.
+**Agentes impactados:** 06-frontend-engineer, App Mobile v1 (futura feature)
+**Status:** aplicada
+
+---
+
+## LICAO-024 — CSS libs com dark mode auto-detect conflitam com Tailwind `.dark`
+
+**Data:** 2026-06-04
+**Contexto:** Sprint N hotfixes — @schedule-x renderizava tela preta no dashboard escuro
+**Problema:** @schedule-x detecta a classe `.dark` no `<html>` (colocada pelo Tailwind dark mode) e aplica tema escuro. Colocar `data-theme="light"` num elemento filho não sobrescreve a detecção global da lib. O calendário renderizava texto branco sobre fundo preto = tela preta.
+**Decisão tomada:** CSS override scoped em `.sx-react-calendar-wrapper *` com `color-scheme: light !important` + cores explícitas. Em seguida, @schedule-x foi substituído por CSS Grid próprio — eliminando o problema.
+**Como aplicar no futuro:** Ao instalar qualquer lib de UI com dark mode automático junto com Tailwind: (1) verificar se a lib detecta `.dark` no `<html>`; (2) se sim, criar CSS override scoped antes de usar; (3) considerar lib sem auto-detect ou com prop explícita.
+**Agentes impactados:** 06-frontend-engineer
+**Status:** aplicada
+
+---
+
 ## LICAO-022 — @schedule-x: events no config são inicialização, não binding reativo
 
 **Data:** 2026-06-04

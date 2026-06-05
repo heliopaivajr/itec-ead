@@ -537,4 +537,62 @@ const rows = (data ?? []) as any[];
 
 ---
 
+---
+
+## ERR-SEED-001 — Seed de testes não insere em user_roles
+
+**Data:** 2026-06-04
+**Sprint:** Identificado no ciclo pós-Sprint N
+**Contexto:** `supabase/seed/seed_testes.sql` cria 15 usuários (5 prof + 10 aluno) mas não insere em `user_roles`
+
+**Problema:**
+Quando o RLS em `profiles` for ativado (Sprint RLS), as policies das tabelas que dependem de `user_roles` para checar roles vão falhar para todos os usuários de teste — silenciosamente (sem erro explícito, apenas dados vazios ou acesso negado).
+
+**Correto:**
+Adicionar ao final do seed:
+```sql
+INSERT INTO public.user_roles (user_id, role) VALUES
+  (u_prof1,'professor'),(u_prof2,'professor'),(u_prof3,'professor'),
+  (u_prof4,'professor'),(u_prof5,'professor'),
+  (u_aluno1,'aluno'),(u_aluno2,'aluno'),(u_aluno3,'aluno'),
+  (u_aluno4,'aluno'),(u_aluno5,'aluno'),(u_aluno6,'aluno'),
+  (u_aluno7,'aluno'),(u_aluno8,'aluno'),(u_aluno9,'aluno'),
+  (u_aluno10,'aluno')
+ON CONFLICT (user_id) DO UPDATE SET role = EXCLUDED.role;
+```
+
+**Quando fazer:** No início do Sprint RLS, antes de ativar RLS em `profiles`.
+
+**Status:** identificado — Sprint RLS
+
+---
+
+## ERR-RLS-002 — Conta secretaria@itecedu.com pode não ter user_roles
+
+**Data:** 2026-06-04
+**Sprint:** Identificado no ciclo pós-Sprint N
+**Contexto:** A conta `secretaria@itecedu.com` foi criada via SQL pelo agente-Osabio. O INSERT em `user_roles` estava incluído no SQL fornecido, mas pode não ter sido executado se Hélio rodou apenas parte do bloco.
+
+**Diagnóstico:**
+```sql
+SELECT p.email, ur.role
+FROM public.profiles p
+LEFT JOIN public.user_roles ur ON ur.user_id = p.id
+WHERE p.email = 'secretaria@itecedu.com';
+-- Se ur.role for NULL → user_roles está faltando
+```
+
+**Correto (se user_roles estiver faltando):**
+```sql
+INSERT INTO public.user_roles (user_id, role)
+SELECT id, 'administracao' FROM public.profiles WHERE email = 'secretaria@itecedu.com'
+ON CONFLICT (user_id) DO NOTHING;
+```
+
+**Quando fazer:** Verificar antes do Sprint RLS. Sintoma atual: `criarEvento()` retorna "Erro ao verificar permissão" ao criar eventos como secretaria.
+
+**Status:** identificado — verificar antes do Sprint RLS
+
+---
+
 *Mantido pelo agente-Osabio · ITEC-EAD · 2025*
