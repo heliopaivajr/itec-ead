@@ -10,10 +10,10 @@ describe('dashboard.service', () => {
   describe('getKpis', () => {
     it('retorna KPIs corretos com 4 COUNTs em Promise.all', async () => {
       // Ordem das chamadas em getKpis:
-      // 1. profiles.select.eq('role','aluno')   → count: 8
-      // 2. profiles.select.eq('role','professor')→ count: 2
-      // 3. leads_cursos.select                  → count: 10
-      // 4. matriculas.select                    → count: 5
+      // 1. profiles.select.eq('role','aluno')       → count: 8
+      // 2. professores.select.eq('ativo',true)       → count: 2
+      // 3. leads_cursos.select                       → count: 10
+      // 4. matriculas.select.in('status',[...])      → count: 5
       vi.mocked(supabase.from)
         .mockReturnValueOnce({
           select: vi.fn().mockReturnValue({
@@ -29,7 +29,9 @@ describe('dashboard.service', () => {
           select: vi.fn().mockResolvedValue({ count: 10, error: null }),
         } as any)
         .mockReturnValueOnce({
-          select: vi.fn().mockResolvedValue({ count: 5, error: null }),
+          select: vi.fn().mockReturnValue({
+            in: vi.fn().mockResolvedValue({ count: 5, error: null }),
+          }),
         } as any);
 
       const kpis = await getKpis();
@@ -57,7 +59,9 @@ describe('dashboard.service', () => {
           select: vi.fn().mockResolvedValue(nullCountMock),
         } as any)
         .mockReturnValueOnce({
-          select: vi.fn().mockResolvedValue(nullCountMock),
+          select: vi.fn().mockReturnValue({
+            in: vi.fn().mockResolvedValue(nullCountMock),
+          }),
         } as any);
 
       const kpis = await getKpis();

@@ -147,7 +147,7 @@ pnpm test:run   # deve sempre passar 163/163
 - ADR-005: sistema de certificados — PROPOSTA
 
 ## Auditoria
-- Última: 2026-06-03 pós-Sprint M
+- Última: 2026-06-05 pós-Sprint N + hotfixes
 - Score: 9.3/10
 - Relatório: `.ai-system/audit/2026-05-dashboard-performance/report.md`
 - Próxima meta: 9.5/10
@@ -353,10 +353,11 @@ https://github.com/heliopaivajr/public-apis.git
 ### Semanas restantes
 - ~~Semana 1: Sprint M (histórico + turmas + declaração)~~ ✅ CONCLUÍDO
 - ~~Semana 2: Sprint N (calendário UI)~~ ✅ CONCLUÍDO
-- Semana 3: RLS + correções críticas
-- Semana 4: PDFs essenciais
-- Semanas 5-7: **App Mobile v1** (React Native + Expo)
-- Semana 8: Testes + Deploy → GO LIVE
+- Semana 3: Sprint RLS (RLS + correções críticas)
+- Semana 4: Sprint PDF (PDFs essenciais)
+- Semanas 5-6: **Sprint Financeiro** (PIX + Asaas + portal do aluno)
+- Semana 7: Testes + Deploy → GO LIVE
+- **App Mobile v1 → V2 setembro/outubro** (ver ROADMAP-FUTURO.md)
 
 ### V2 (setembro/outubro)
 Certificados, upload de documentos, relatórios avançados, EAD, lançamento de notas pelo app

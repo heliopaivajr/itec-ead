@@ -36,7 +36,7 @@ export async function getKpis(): Promise<DashboardKpis> {
     supabase.from('profiles').select('role', { count: 'exact' }).eq('role', 'aluno'),
     supabase.from('professores').select('id', { count: 'exact' }).eq('ativo', true),
     supabase.from('leads_cursos').select('*', { count: 'exact' }),
-    supabase.from('matriculas').select('*', { count: 'exact' }),
+    supabase.from('matriculas').select('id', { count: 'exact' }).in('status', ['pendente', 'ativa']),
   ]);
 
   return {
