@@ -520,10 +520,9 @@ export async function atualizarAulaRecorrente(
       .eq('dia_semana', payload.dia_semana)
       .eq('horario_inicio', payload.horario_inicio)
       .eq('ativo', true)
-      .neq('id', aulaId)
-      .limit(1)
-      .maybeSingle();
-    if (conflito) return { error: 'Já existe aula desta turma neste dia e horário' };
+      .neq('id', aulaId)        // exclui a própria aula do conflict check
+      .maybeSingle();            // null quando não encontra (não retorna erro)
+    if (conflito) return { error: 'Já existe outra aula desta turma neste dia e horário' };
   }
 
   const { error } = await supabase
