@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useOutletContext, useNavigate } from 'react-router-dom';
 import {
   BookOpen, ChevronLeft, ChevronRight, Loader2,
-  Plus, Search, UserX, Pencil, Link2,
+  Plus, Search, Trash2, Pencil, Link2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -42,6 +42,8 @@ export default function ProfessoresAdmin() {
   const [debSearch, setDebSearch]     = useState('');
   const [loading, setLoading]         = useState(true);
   const [showInativos, setShowInativos] = useState(false);
+  const [confirmDesativar, setConfirmDesativar] = useState<Professor | null>(null);
+  const [desativando, setDesativando] = useState(false);
 
   // Solicitações pendentes
   const [solicitacoes, setSolicitacoes] = useState<SolicitacaoComDetalhes[]>([]);
@@ -121,13 +123,16 @@ export default function ProfessoresAdmin() {
   const pageStart  = (page - 1) * PAGE_SIZE + 1;
   const pageEnd    = Math.min(page * PAGE_SIZE, total);
 
-  const handleDesativar = async (p: Professor) => {
-    if (!confirm(`Desativar ${p.nome_completo}?`)) return;
-    const { error } = await desativarProfessor(p.id);
+  const handleDesativar = async () => {
+    if (!confirmDesativar) return;
+    setDesativando(true);
+    const { error } = await updateStatusProfessor(confirmDesativar.id, 'desligado');
+    setDesativando(false);
+    setConfirmDesativar(null);
     if (error) {
       toast({ title: 'Erro', description: error, variant: 'destructive' });
     } else {
-      toast({ title: 'Professor desativado.' });
+      toast({ title: 'Professor desativado.', description: `${confirmDesativar.nome_completo} marcado como desligado.` });
       load();
     }
   };
@@ -305,13 +310,13 @@ export default function ProfessoresAdmin() {
                         >
                           <Link2 className="h-3.5 w-3.5" />
                         </button>
-                        {false && ( // substituído por InlineStatusSelect na coluna Status
+                        {['admin', 'superadmin'].includes(profile.role) && p.status !== 'desligado' && (
                           <button
-                            onClick={() => handleDesativar(p)}
-                            title="Desativar"
+                            onClick={() => setConfirmDesativar(p)}
+                            title="Desativar professor"
                             className="p-1.5 rounded hover:bg-muted text-muted-foreground hover:text-red-400 transition-colors"
                           >
-                            <UserX className="h-3.5 w-3.5" />
+                            <Trash2 className="h-3.5 w-3.5" />
                           </button>
                         )}
                       </div>
@@ -347,6 +352,36 @@ export default function ProfessoresAdmin() {
           onClose={() => setModalProf(null)}
           onSaved={() => { setModalProf(null); load(); }}
         />
+      )}
+
+      {/* Dialog desativar professor */}
+      {confirmDesativar && (
+        <div className="fixed inset-0 bg-background/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-card border border-border rounded-2xl p-6 w-full max-w-sm shadow-2xl space-y-4">
+            <h2 className="text-lg font-bold text-foreground">Desativar professor?</h2>
+            <p className="text-sm text-muted-foreground">
+              <strong className="text-foreground">{confirmDesativar.nome_completo}</strong> será marcado como desligado.
+            </p>
+            <div className="flex gap-2 pt-2">
+              <Button
+                variant="outline"
+                onClick={() => setConfirmDesativar(null)}
+                disabled={desativando}
+                className="flex-1"
+              >
+                Cancelar
+              </Button>
+              <Button
+                onClick={handleDesativar}
+                disabled={desativando}
+                className="flex-1 bg-destructive hover:bg-destructive/90 text-destructive-foreground"
+              >
+                {desativando ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                Confirmar
+              </Button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Modal vincular disciplina */}
