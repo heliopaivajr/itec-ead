@@ -9,8 +9,11 @@ import {
   getAulasRecorrentes,
   expandirAulasParaPeriodo,
   excluirEvento,
+  excluirAulaRecorrente,
+  getAulaRecorrente,
   type EventoCalendario,
   type TipoEvento,
+  type AulaRecorrente,
 } from '@/services/calendario.service';
 import { getTurmasAtivas, type Turma } from '@/services/turmas.service';
 import { getProfessorByUserId } from '@/services/professor.service';
@@ -98,6 +101,8 @@ export default function CalendarioAcademico() {
   const [eventoEditando, setEventoEditando]   = useState<EventoCalendario | null>(null);
   const [modalAberto,    setModalAberto]      = useState(false);
   const [gradeOpen,      setGradeOpen]        = useState(false);
+  const [gradeModo,      setGradeModo]        = useState<'criar' | 'editar'>('criar');
+  const [gradeAulaInicial, setGradeAulaInicial] = useState<AulaRecorrente | null>(null);
   const [printOpen,      setPrintOpen]        = useState(false);
   const [dataSelecionada, setDataSelecionada] = useState('');
 
@@ -208,6 +213,29 @@ export default function CalendarioAcademico() {
     setEventoEditando(evento);
     setDataSelecionada('');
     setModalAberto(true);
+  };
+
+  // Editar aula recorrente — abre GradeRapidaModal pré-preenchida
+  const handleEditarAulaRecorrente = async (aulaRecorrenteId: string) => {
+    const aula = await getAulaRecorrente(aulaRecorrenteId);
+    if (!aula) {
+      toast({ title: 'Aula não encontrada', variant: 'destructive' });
+      return;
+    }
+    setGradeAulaInicial(aula);
+    setGradeModo('editar');
+    setGradeOpen(true);
+  };
+
+  // Excluir aula recorrente
+  const handleExcluirAulaRecorrente = async (aulaRecorrenteId: string) => {
+    const { error } = await excluirAulaRecorrente(aulaRecorrenteId, profile.id);
+    if (error) {
+      toast({ title: 'Erro ao excluir aula', description: error, variant: 'destructive' });
+    } else {
+      toast({ title: 'Aula recorrente excluída.' });
+      carregarEventos();
+    }
   };
 
   // Navegação
@@ -453,7 +481,8 @@ export default function CalendarioAcademico() {
           onNovoEvento={handleNovoEventoDoDia}
           onEditarEvento={handleEditarEventoDoDia}
           onExcluirEvento={handleExcluirEvento}
-          onAbrirGradeRapida={() => setGradeOpen(true)}
+          onEditarAulaRecorrente={handleEditarAulaRecorrente}
+          onExcluirAulaRecorrente={handleExcluirAulaRecorrente}
           onClose={() => setDayPanelData(null)}
         />
       )}
@@ -472,7 +501,9 @@ export default function CalendarioAcademico() {
         <GradeRapidaModal
           open={gradeOpen}
           requesterId={profile.id}
-          onClose={() => setGradeOpen(false)}
+          modo={gradeModo}
+          aulaInicial={gradeAulaInicial}
+          onClose={() => { setGradeOpen(false); setGradeAulaInicial(null); setGradeModo('criar'); }}
           onSaved={carregarEventos}
         />
       )}

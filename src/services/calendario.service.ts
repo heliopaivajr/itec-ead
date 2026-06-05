@@ -466,3 +466,88 @@ export async function criarAulaRecorrente(
   if (error) return { error: error.message };
   return { error: null, id: (data as { id: string }).id };
 }
+
+// ─── Aulas recorrentes — leitura, edição e exclusão ───────────────────────────
+
+// Busca uma aula recorrente pelo id com joins de nome
+export async function getAulaRecorrente(aulaId: string): Promise<AulaRecorrente | null> {
+  type Row = {
+    id: string; disciplina_id: string; turma_id: string; professor_id: string | null;
+    dia_semana: number; horario_inicio: string; horario_fim: string;
+    data_inicio: string; data_fim: string; sala: string | null; ativo: boolean;
+    disciplinas_v2: { nome: string } | null;
+    professores: { nome_completo: string } | null;
+    turmas: { cor: string | null } | null;
+  };
+
+  const { data, error } = await supabase
+    .from('aulas_recorrentes')
+    .select(`id, disciplina_id, turma_id, professor_id,
+      dia_semana, horario_inicio, horario_fim, data_inicio, data_fim, sala, ativo,
+      disciplinas_v2(nome), professores(nome_completo), turmas(cor)`)
+    .eq('id', aulaId)
+    .single();
+
+  if (error || !data) return null;
+  const r = data as unknown as Row;
+  const disc  = Array.isArray(r.disciplinas_v2) ? r.disciplinas_v2[0] : r.disciplinas_v2;
+  const prof  = Array.isArray(r.professores)    ? r.professores[0]    : r.professores;
+  const turma = Array.isArray(r.turmas)         ? r.turmas[0]         : r.turmas;
+  return {
+    id: r.id, disciplina_id: r.disciplina_id, disciplina_nome: disc?.nome ?? r.disciplina_id,
+    turma_id: r.turma_id, turma_cor: turma?.cor ?? undefined,
+    professor_id: r.professor_id, professor_nome: prof?.nome_completo ?? null,
+    dia_semana: r.dia_semana, horario_inicio: r.horario_inicio, horario_fim: r.horario_fim,
+    data_inicio: r.data_inicio, data_fim: r.data_fim, sala: r.sala, ativo: r.ativo,
+  };
+}
+
+// Atualiza aula recorrente — apenas staff
+export async function atualizarAulaRecorrente(
+  aulaId: string,
+  payload: Partial<AulaRecorrentePayload>,
+  requesterId: string
+): Promise<ServiceResult> {
+  const roleErr = await verificarRoleStaff(requesterId);
+  if (roleErr) return { error: roleErr };
+
+  // Verificar conflito excluindo a própria aula
+  if (payload.turma_id && payload.dia_semana !== undefined && payload.horario_inicio) {
+    const { data: conflito } = await supabase
+      .from('aulas_recorrentes')
+      .select('id')
+      .eq('turma_id', payload.turma_id)
+      .eq('dia_semana', payload.dia_semana)
+      .eq('horario_inicio', payload.horario_inicio)
+      .eq('ativo', true)
+      .neq('id', aulaId)
+      .limit(1)
+      .maybeSingle();
+    if (conflito) return { error: 'Já existe aula desta turma neste dia e horário' };
+  }
+
+  const { error } = await supabase
+    .from('aulas_recorrentes')
+    .update(payload)
+    .eq('id', aulaId);
+
+  if (error) return { error: error.message };
+  return { error: null };
+}
+
+// Exclui aula recorrente — apenas staff
+export async function excluirAulaRecorrente(
+  aulaId: string,
+  requesterId: string
+): Promise<ServiceResult> {
+  const roleErr = await verificarRoleStaff(requesterId);
+  if (roleErr) return { error: roleErr };
+
+  const { error } = await supabase
+    .from('aulas_recorrentes')
+    .delete()
+    .eq('id', aulaId);
+
+  if (error) return { error: error.message };
+  return { error: null };
+}

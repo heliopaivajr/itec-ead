@@ -3,7 +3,10 @@ import { BookOpen, Loader2 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { contarAulasNoPeriodo, criarAulaRecorrente } from '@/services/calendario.service';
+import {
+  contarAulasNoPeriodo, criarAulaRecorrente, atualizarAulaRecorrente,
+  type AulaRecorrente,
+} from '@/services/calendario.service';
 import { getAllDisciplinas, type Disciplina } from '@/services/academico.service';
 import { getProfessores, type Professor } from '@/services/professor.service';
 import { getTurmasAtivas, type Turma } from '@/services/turmas.service';
@@ -13,11 +16,15 @@ const DIAS = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
 interface GradeRapidaModalProps {
   open: boolean;
   requesterId: string;
+  modo?: 'criar' | 'editar';
+  aulaInicial?: AulaRecorrente | null; // pré-preenche em modo editar
   onClose: () => void;
   onSaved: () => void;
 }
 
-export function GradeRapidaModal({ open, requesterId, onClose, onSaved }: GradeRapidaModalProps) {
+export function GradeRapidaModal({
+  open, requesterId, modo = 'criar', aulaInicial, onClose, onSaved,
+}: GradeRapidaModalProps) {
   const { toast } = useToast();
 
   // Drag
@@ -68,7 +75,7 @@ export function GradeRapidaModal({ open, requesterId, onClose, onSaved }: GradeR
   const [calculando, setCalculando] = useState(false);
   const [salvando,   setSalvando]   = useState(false);
 
-  // Carrega listas ao abrir
+  // Carrega listas ao abrir; pré-preenche em modo editar
   useEffect(() => {
     if (!open) return;
     Promise.all([getAllDisciplinas(), getProfessores(1, 100, '', true), getTurmasAtivas()])
@@ -77,10 +84,22 @@ export function GradeRapidaModal({ open, requesterId, onClose, onSaved }: GradeR
         setProfessores(profs.data);
         setTurmas(ts);
       });
-    // Reset
-    setDisciplinaId(''); setProfessorId(''); setTurmaId('');
-    setDiaSemana(null); setHorarioInicio('18:45'); setHorarioFim('22:00');
-    setDataInicio(''); setDataFim(''); setSala('Sala Principal');
+
+    if (modo === 'editar' && aulaInicial) {
+      setDisciplinaId(aulaInicial.disciplina_id);
+      setProfessorId(aulaInicial.professor_id ?? '');
+      setTurmaId(aulaInicial.turma_id);
+      setDiaSemana(aulaInicial.dia_semana);
+      setHorarioInicio(aulaInicial.horario_inicio.slice(0, 5));
+      setHorarioFim(aulaInicial.horario_fim.slice(0, 5));
+      setDataInicio(aulaInicial.data_inicio);
+      setDataFim(aulaInicial.data_fim);
+      setSala(aulaInicial.sala ?? 'Sala Principal');
+    } else {
+      setDisciplinaId(''); setProfessorId(''); setTurmaId('');
+      setDiaSemana(null); setHorarioInicio('18:45'); setHorarioFim('22:00');
+      setDataInicio(''); setDataFim(''); setSala('Sala Principal');
+    }
     setPreview(null);
   }, [open]);
 
@@ -103,7 +122,7 @@ export function GradeRapidaModal({ open, requesterId, onClose, onSaved }: GradeR
       return;
     }
     setSalvando(true);
-    const { error } = await criarAulaRecorrente({
+    const payload = {
       disciplina_id:  disciplinaId,
       turma_id:       turmaId,
       professor_id:   professorId || null,
@@ -113,12 +132,23 @@ export function GradeRapidaModal({ open, requesterId, onClose, onSaved }: GradeR
       data_inicio:    dataInicio,
       data_fim:       dataFim,
       sala:           sala || null,
-    }, requesterId);
+    };
+
+    let err: string | null | undefined;
+    if (modo === 'editar' && aulaInicial) {
+      ({ error: err } = await atualizarAulaRecorrente(aulaInicial.id, payload, requesterId));
+    } else {
+      ({ error: err } = await criarAulaRecorrente(payload, requesterId));
+    }
     setSalvando(false);
-    if (error) { toast({ title: 'Erro ao cadastrar aula', description: error, variant: 'destructive' }); return; }
+    if (err) { toast({ title: 'Erro ao salvar aula', description: err, variant: 'destructive' }); return; }
 
     const discNome = disciplinas.find(d => d.id === disciplinaId)?.nome ?? 'disciplina';
-    toast({ title: `Grade cadastrada! ${preview?.total ?? ''} aulas de ${discNome} adicionadas.` });
+    toast({
+      title: modo === 'editar'
+        ? `Aula de ${discNome} atualizada.`
+        : `Grade cadastrada! ${preview?.total ?? ''} aulas de ${discNome} adicionadas.`,
+    });
     onSaved();
     onClose();
   };
@@ -137,7 +167,7 @@ export function GradeRapidaModal({ open, requesterId, onClose, onSaved }: GradeR
         >
           <DialogTitle className="flex items-center gap-2">
             <BookOpen className="h-5 w-5 text-primary" />
-            Assistente de Grade Rápida
+            {modo === 'editar' ? 'Editar Aula Recorrente' : 'Assistente de Grade Rápida'}
           </DialogTitle>
         </DialogHeader>
 
@@ -259,8 +289,14 @@ export function GradeRapidaModal({ open, requesterId, onClose, onSaved }: GradeR
         <DialogFooter>
           <Button variant="outline" size="sm" onClick={onClose} disabled={salvando}>Cancelar</Button>
           <Button size="sm" onClick={handleSalvar}
-            disabled={salvando || !disciplinaId || !turmaId || diaSemana === null || !dataInicio || !dataFim || (preview?.total ?? 0) === 0}>
-            {salvando ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Cadastrando…</> : `Cadastrar ${preview?.total ?? ''} aulas`}
+            disabled={
+              salvando || !disciplinaId || !turmaId || diaSemana === null || !dataInicio || !dataFim
+              || (modo === 'criar' && (preview?.total ?? 0) === 0)
+            }>
+            {salvando
+              ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />{modo === 'editar' ? 'Salvando…' : 'Cadastrando…'}</>
+              : modo === 'editar' ? 'Salvar alterações' : `Cadastrar ${preview?.total ?? ''} aulas`
+            }
           </Button>
         </DialogFooter>
       </DialogContent>

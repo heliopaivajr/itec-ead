@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { X, Plus, Pencil, Trash2, BookOpen, Clock, MapPin, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -21,6 +21,8 @@ const TIPO_CFG: Record<TipoEvento, { cor: string; label: string }> = {
   aula_recorrente:       { cor: '#22C55E', label: 'Aula' },
 };
 
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
 function formatarData(dataStr: string): string {
   const d = new Date(dataStr + 'T12:00:00');
   const weekday = d.toLocaleDateString('pt-BR', { weekday: 'long' });
@@ -28,14 +30,14 @@ function formatarData(dataStr: string): string {
   return `${weekday.charAt(0).toUpperCase() + weekday.slice(1)}, ${rest}`;
 }
 
-function formatarHora(h: string | null | undefined): string {
-  if (!h) return '';
-  return h.slice(0, 5); // 'HH:MM'
-}
-
 function formatarDataCurta(dataStr?: string | null): string {
   if (!dataStr) return '';
   return new Date(dataStr + 'T12:00:00').toLocaleDateString('pt-BR');
+}
+
+function formatarHora(h: string | null | undefined): string {
+  if (!h) return '';
+  return h.slice(0, 5);
 }
 
 // ─── Props ────────────────────────────────────────────────────────────────────
@@ -47,22 +49,24 @@ interface DayPanelProps {
   onNovoEvento: (data: string) => void;
   onEditarEvento: (evento: EventoCalendario) => void;
   onExcluirEvento: (eventoId: string) => Promise<void>;
-  onAbrirGradeRapida: () => void;
+  onEditarAulaRecorrente: (aulaRecorrenteId: string) => void;
+  onExcluirAulaRecorrente: (aulaRecorrenteId: string) => Promise<void>;
   onClose: () => void;
 }
 
 // ─── Card de evento ───────────────────────────────────────────────────────────
 
 function EventoCard({
-  evento, podeEditar, onEditar, onExcluir, onAbrirGradeRapida,
+  evento, podeEditar, onEditar, onExcluir, onEditarAula, onExcluirAula,
 }: {
   evento: EventoCalendario;
   podeEditar: boolean;
   onEditar: () => void;
   onExcluir: () => void;
-  onAbrirGradeRapida: () => void;
+  onEditarAula: () => void;
+  onExcluirAula: () => void;
 }) {
-  const cfg = TIPO_CFG[evento.tipo];
+  const cfg   = TIPO_CFG[evento.tipo];
   const isAula = evento.tipo === 'aula_recorrente';
   const corDot = evento.cor || cfg.cor;
 
@@ -84,19 +88,17 @@ function EventoCard({
         </div>
       </div>
 
-      {/* Detalhes adicionais de aula recorrente */}
+      {/* Detalhes de aula recorrente */}
       {isAula && (
         <div className="text-xs text-muted-foreground space-y-0.5 pl-5">
           {evento.professor_nome && (
             <div className="flex items-center gap-1">
-              <Users className="h-3 w-3 shrink-0" />
-              {evento.professor_nome}
+              <Users className="h-3 w-3 shrink-0" />{evento.professor_nome}
             </div>
           )}
           {evento.descricao && (
             <div className="flex items-center gap-1">
-              <MapPin className="h-3 w-3 shrink-0" />
-              {evento.descricao}
+              <MapPin className="h-3 w-3 shrink-0" />{evento.descricao}
             </div>
           )}
           {evento.horario_inicio && (
@@ -114,35 +116,19 @@ function EventoCard({
       )}
 
       {/* Ações */}
-      {isAula ? (
-        <div className="pl-5 pt-1">
-          <button
-            type="button"
-            onClick={onAbrirGradeRapida}
-            className="text-xs text-primary hover:underline flex items-center gap-1"
-          >
-            <BookOpen className="h-3 w-3" />
-            Editar via Grade Rápida
-          </button>
-        </div>
-      ) : podeEditar ? (
+      {podeEditar && (
         <div className="flex gap-1.5 pl-5 pt-0.5">
-          <Button
-            size="sm" variant="outline"
-            className="h-6 text-xs px-2"
-            onClick={onEditar}
-          >
-            <Pencil className="h-3 w-3 mr-1" /> Editar
+          <Button size="sm" variant="outline" className="h-6 text-xs px-2"
+            onClick={isAula ? onEditarAula : onEditar}>
+            {isAula ? <><BookOpen className="h-3 w-3 mr-1" />Editar</> : <><Pencil className="h-3 w-3 mr-1" />Editar</>}
           </Button>
-          <Button
-            size="sm" variant="outline"
+          <Button size="sm" variant="outline"
             className="h-6 text-xs px-2 text-destructive border-destructive/30 hover:bg-destructive/10"
-            onClick={onExcluir}
-          >
+            onClick={isAula ? onExcluirAula : onExcluir}>
             <Trash2 className="h-3 w-3 mr-1" /> Excluir
           </Button>
         </div>
-      ) : null}
+      )}
     </div>
   );
 }
@@ -152,11 +138,18 @@ function EventoCard({
 export function DayPanel({
   data, eventos, podeEditar,
   onNovoEvento, onEditarEvento, onExcluirEvento,
-  onAbrirGradeRapida, onClose,
+  onEditarAulaRecorrente, onExcluirAulaRecorrente, onClose,
 }: DayPanelProps) {
   const panelRef = useRef<HTMLDivElement>(null);
-  const [excluindoId, setExcluindoId] = useState<string | null>(null);
-  const [confirmId,   setConfirmId]   = useState<string | null>(null);
+  const [excluindo, setExcluindo] = useState(false);
+
+  // Estado de confirmação unificado: eventos e aulas têm handlers diferentes
+  const [confirmData, setConfirmData] = useState<{
+    id: string;
+    tipo: 'evento' | 'aula';
+    titulo: string;
+  } | null>(null);
+
   const [visible, setVisible] = useState(false);
 
   // Slide-in animation
@@ -167,19 +160,21 @@ export function DayPanel({
 
   // Fechar com ESC
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
-    };
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [onClose]);
 
-  const handleExcluirConfirmado = async () => {
-    if (!confirmId) return;
-    setExcluindoId(confirmId);
-    await onExcluirEvento(confirmId);
-    setExcluindoId(null);
-    setConfirmId(null);
+  const handleConfirmado = async () => {
+    if (!confirmData) return;
+    setExcluindo(true);
+    if (confirmData.tipo === 'aula') {
+      await onExcluirAulaRecorrente(confirmData.id);
+    } else {
+      await onExcluirEvento(confirmData.id);
+    }
+    setExcluindo(false);
+    setConfirmData(null);
   };
 
   const eventosSorted = [...eventos].sort((a, b) => {
@@ -188,16 +183,10 @@ export function DayPanel({
     return (a.horario_inicio ?? '').localeCompare(b.horario_inicio ?? '');
   });
 
-  const eventoParaConfirmar = eventos.find(e => e.id === confirmId);
-
   return (
     <>
       {/* Overlay */}
-      <div
-        className="fixed inset-0 bg-black/50 z-40"
-        onClick={onClose}
-        aria-hidden
-      />
+      <div className="fixed inset-0 bg-black/50 z-40" onClick={onClose} aria-hidden />
 
       {/* Painel */}
       <div
@@ -224,11 +213,11 @@ export function DayPanel({
           </button>
         </div>
 
-        {/* Corpo — lista de eventos */}
+        {/* Corpo */}
         <div className="flex-1 overflow-y-auto p-4 space-y-3">
           {eventosSorted.length === 0 ? (
             <div className="text-center py-8">
-              <CalendarDays className="h-8 w-8 mx-auto mb-2 opacity-20" />
+              <CalendarDaysIcon className="h-8 w-8 mx-auto mb-2 opacity-20" />
               <p className="text-sm text-muted-foreground">Nenhum evento neste dia.</p>
             </div>
           ) : (
@@ -238,8 +227,13 @@ export function DayPanel({
                 evento={ev}
                 podeEditar={podeEditar}
                 onEditar={() => onEditarEvento(ev)}
-                onExcluir={() => setConfirmId(ev.id)}
-                onAbrirGradeRapida={onAbrirGradeRapida}
+                onExcluir={() => setConfirmData({ id: ev.id, tipo: 'evento', titulo: ev.titulo })}
+                onEditarAula={() => ev.aula_recorrente_id && onEditarAulaRecorrente(ev.aula_recorrente_id)}
+                onExcluirAula={() => ev.aula_recorrente_id && setConfirmData({
+                  id: ev.aula_recorrente_id,
+                  tipo: 'aula',
+                  titulo: ev.titulo,
+                })}
               />
             ))
           )}
@@ -248,11 +242,7 @@ export function DayPanel({
         {/* Footer */}
         {podeEditar && (
           <div className="shrink-0 border-t p-4">
-            <Button
-              className="w-full"
-              size="sm"
-              onClick={() => onNovoEvento(data)}
-            >
+            <Button className="w-full" size="sm" onClick={() => onNovoEvento(data)}>
               <Plus className="h-4 w-4 mr-1.5" />
               Novo Evento neste dia
             </Button>
@@ -261,24 +251,27 @@ export function DayPanel({
       </div>
 
       {/* Dialog de confirmação de exclusão */}
-      <Dialog open={!!confirmId} onOpenChange={open => { if (!open) setConfirmId(null); }}>
+      <Dialog open={!!confirmData} onOpenChange={open => { if (!open) setConfirmData(null); }}>
         <DialogContent className="max-w-sm z-[60]">
           <DialogHeader>
             <DialogTitle>Confirmar exclusão</DialogTitle>
           </DialogHeader>
           <p className="text-sm text-muted-foreground py-1">
-            Excluir <strong className="text-foreground">{eventoParaConfirmar?.titulo}</strong> de{' '}
+            Excluir <strong className="text-foreground">{confirmData?.titulo}</strong>
+            {confirmData?.tipo === 'aula' ? ' (aula recorrente)' : ''} de{' '}
             {formatarDataCurta(data)}? Esta ação não pode ser desfeita.
+            {confirmData?.tipo === 'aula' && (
+              <span className="block mt-1 text-yellow-500 text-xs">
+                ⚠️ Isso excluirá todas as futuras ocorrências desta aula.
+              </span>
+            )}
           </p>
           <DialogFooter>
-            <Button variant="outline" size="sm" onClick={() => setConfirmId(null)}
-              disabled={!!excluindoId}>
+            <Button variant="outline" size="sm" onClick={() => setConfirmData(null)} disabled={excluindo}>
               Cancelar
             </Button>
-            <Button variant="destructive" size="sm"
-              onClick={handleExcluirConfirmado}
-              disabled={!!excluindoId}>
-              {excluindoId ? 'Excluindo…' : 'Excluir'}
+            <Button variant="destructive" size="sm" onClick={handleConfirmado} disabled={excluindo}>
+              {excluindo ? 'Excluindo…' : 'Excluir'}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -287,8 +280,8 @@ export function DayPanel({
   );
 }
 
-// Re-export ícone usado no empty state (importado localmente)
-function CalendarDays({ className }: { className?: string }) {
+// Ícone inline para evitar dependência circular com lucide
+function CalendarDaysIcon({ className }: { className?: string }) {
   return (
     <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5}>
       <path strokeLinecap="round" strokeLinejoin="round"
