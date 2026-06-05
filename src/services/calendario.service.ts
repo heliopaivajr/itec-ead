@@ -511,20 +511,6 @@ export async function atualizarAulaRecorrente(
   const roleErr = await verificarRoleStaff(requesterId);
   if (roleErr) return { error: roleErr };
 
-  // Verificar conflito excluindo a própria aula
-  if (payload.turma_id && payload.dia_semana !== undefined && payload.horario_inicio) {
-    const { data: conflito } = await supabase
-      .from('aulas_recorrentes')
-      .select('id')
-      .eq('turma_id', payload.turma_id)
-      .eq('dia_semana', payload.dia_semana)
-      .eq('horario_inicio', payload.horario_inicio)
-      .eq('ativo', true)
-      .neq('id', aulaId)        // exclui a própria aula do conflict check
-      .maybeSingle();            // null quando não encontra (não retorna erro)
-    if (conflito) return { error: 'Já existe outra aula desta turma neste dia e horário' };
-  }
-
   const { error } = await supabase
     .from('aulas_recorrentes')
     .update(payload)
