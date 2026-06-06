@@ -90,14 +90,16 @@ export async function getUsuarios(
 
 // Lista paginada de alunos e pendentes — filtro de role feito no banco (não em memória)
 // Usar em Alunos.tsx em vez de getUsuarios + filtro client-side
+// CORRIGIDO: queries separadas para evitar falha do join aninhado com RLS ativo
 export async function getAlunos(
   page = 1,
   limit = 20,
   search = '',
 ): Promise<UsuariosPage> {
+  // ─── QUERY 1: buscar profiles sem join ────────────────────────────────────
   let query = supabase
     .from('profiles')
-    .select('*, matriculas(id, status, created_at)', { count: 'exact' })
+    .select('*', { count: 'exact' })
     .in('role', ['aluno', 'pendente'])
     .order('full_name', { ascending: true })
     .range((page - 1) * limit, page * limit - 1);
@@ -108,15 +110,33 @@ export async function getAlunos(
 
   const { data, count, error } = await query;
   if (error) return { data: [], total: 0 };
+  if (!data || data.length === 0) return { data: [], total: count ?? 0 };
 
-  const rows: UserRow[] = (data ?? []).map((perfil: Record<string, unknown>) => {
-    const matriculas = perfil.matriculas as { id: string; status: string; created_at: string }[] | null;
-    const matriculaAtiva = matriculas
-      ?.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0]
-      ?? null;
+  // ─── QUERY 2: buscar matriculas dos perfis retornados ─────────────────────
+  const alunoIds = data.map(p => p.id);
+  const { data: matriculasData } = await supabase
+    .from('matriculas')
+    .select('id, aluno_id, status, created_at')
+    .in('aluno_id', alunoIds);
+
+  // Agrupar matriculas por aluno_id (pegar a mais recente de cada)
+  const matriculasPorAluno = new Map<string, { id: string; status: string; created_at: string }>();
+  (matriculasData ?? []).forEach(mat => {
+    const existente = matriculasPorAluno.get(mat.aluno_id);
+    if (!existente || new Date(mat.created_at) > new Date(existente.created_at)) {
+      matriculasPorAluno.set(mat.aluno_id, {
+        id: mat.id,
+        status: mat.status,
+        created_at: mat.created_at,
+      });
+    }
+  });
+
+  // ─── MERGE: associar matrícula a cada perfil ──────────────────────────────
+  const rows: UserRow[] = data.map((perfil: Record<string, unknown>) => {
+    const matriculaAtiva = matriculasPorAluno.get(perfil.id as string) ?? null;
     return {
       ...(perfil as unknown as UserRow),
-      matriculas: undefined,
       matricula_id: matriculaAtiva?.id ?? null,
       matricula_status: matriculaAtiva?.status ?? null,
     };
