@@ -66,12 +66,8 @@ export default function ProtectedRoute({ children }: { children: React.ReactNode
       });
     }
 
-    // Warmup silencioso — acorda o Supabase Free antes de verificar o token.
-    // Sem isso, acessar /dashboard diretamente com banco frio pode fazer getRole()
-    // demorar o suficiente para o timeout de 30s redirecionar para /login.
-    supabase.from('profiles').select('id').limit(1)
-      .then(() => { if (montado) iniciar(); })
-      .catch(() => { if (montado) iniciar(); });
+    // Inicia verificação de autenticação
+    iniciar();
 
     return () => { montado = false; subscription?.unsubscribe(); };
   }, []);
