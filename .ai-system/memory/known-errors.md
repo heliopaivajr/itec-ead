@@ -595,4 +595,125 @@ ON CONFLICT (user_id) DO NOTHING;
 
 ---
 
+## BUG-RLS-001 — Join aninhado com RLS em ambas tabelas retorna vazio sem erro
+
+**Data:** 2026-06-06
+**Sprint:** RLS Segurança
+**Agente envolvido:** Supabase/PostgREST (limitação da plataforma, não do agente)
+**Tipo de erro:** segurança + performance
+**Gravidade:** alta
+
+**Descrição:**
+Query `.select('*, matriculas(id, status, created_at)')` em `getAlunos()` retornava array vazio quando RLS estava ativo em AMBAS as tabelas (`profiles` e `matriculas`). SQL Editor direto retornava 1 aluno ✅, mas UI mostrava "Nenhum aluno cadastrado" ❌.
+
+**Como foi descoberto:**
+Hélio reportou que a página `/dashboard/alunos` estava vazia após ativar RLS, mas SQL Editor com service_role mostrava dados. Agente 12 diagnosticou via log de erro no service.
+
+**Causa provável:**
+Supabase/PostgREST tem limitação conhecida: joins aninhados + RLS ativo em AMBAS as tabelas podem falhar silenciosamente. Policy de cada tabela isoladamente funcionava, mas o join combinado falhava sem erro explícito.
+
+**Impacto:**
+Página `/dashboard/alunos` completamente vazia após migrations 033 e 035. Feature crítica quebrada em produção.
+
+**Correção aplicada:**
+Refatorar `getAlunos()` para usar queries separadas + merge manual:
+```typescript
+// Query 1: buscar profiles
+const { data: profiles } = await supabase.from('profiles').select('*').in('role', ['aluno', 'pendente']);
+// Query 2: buscar matriculas separadamente
+const { data: matriculas } = await supabase.from('matriculas').select('*').in('aluno_id', profileIds);
+// Merge manual no service
+```
+
+**Como evitar no futuro:**
+Ao ativar RLS em uma tabela que é usada em joins aninhados: (1) verificar se a outra tabela também tem RLS; (2) se sim, preferir queries separadas; (3) testar na UI real antes de deploy.
+
+**Prompt precisa melhorar?** Sim — Agente 04 deve incluir checklist: "Se migration ativa RLS, verificar todos os services que fazem join com essa tabela e testar."
+**Skill precisa melhorar?** Sim — Agente 05 deve documentar padrão de queries separadas quando ambas tabelas têm RLS.
+**Checklist precisa melhorar?** Sim
+**Documento precisa melhorar?** Sim — adicionar em CLAUDE.md: "Joins aninhados + RLS = queries separadas"
+
+**Status:** corrigido
+**Aprovado pelo Hélio:** Sim
+
+---
+
+## BUG-RLS-002 — Erro de RLS silenciado no service sem log
+
+**Data:** 2026-06-06
+**Sprint:** RLS Segurança
+**Agente envolvido:** 05-backend-engineer (código legado de sprints anteriores)
+**Tipo de erro:** documentação + debugging
+**Gravidade:** média
+
+**Descrição:**
+`getAlunos()` fazia fallback silencioso: `if (error) return { data: [], total: 0 }` sem logar o erro. Quando RLS bloqueou a query, componente não tinha como saber — apenas recebia array vazio. Hélio achou que era bug de lógica, não erro de RLS.
+
+**Como foi descoberto:**
+Agente 12 diagnosticou durante investigação do BUG-RLS-001. Sugeriu adicionar log antes do fallback.
+
+**Causa provável:**
+Código escrito antes do Sprint RLS não previa que errors relacionados a RLS precisariam de diagnóstico visual. Padrão de "silenciar erro + fallback" era aceitável para erros de rede, mas não para RLS.
+
+**Impacto:**
+Diagnóstico de BUG-RLS-001 levou ~30 minutos a mais porque o erro não aparecia no Console do DevTools.
+
+**Correção aplicada:**
+```typescript
+const { data, count, error } = await query;
+if (error) {
+  console.error('[getAlunos] RLS error:', error);  // ← ADICIONADO
+  return { data: [], total: 0 };
+}
+```
+
+**Como evitar no futuro:**
+NUNCA fazer `if (error) return fallback` sem `console.error(contexto, error)` antes. Todo service deve logar erros de query mesmo que tenha fallback.
+
+**Prompt precisa melhorar?** Sim — Agente 05 deve incluir no checklist: "Todo fallback de error deve logar o erro antes."
+**Skill precisa melhorar?** Sim — padrão de error handling
+**Checklist precisa melhorar?** Sim
+**Documento precisa melhorar?** Não
+
+**Status:** corrigido
+**Aprovado pelo Hélio:** Não necessário
+
+---
+
+## BUG-UI-001 — Rota /dashboard/alunos/:id não registrada no React Router
+
+**Data:** 2026-06-06
+**Sprint:** RLS Segurança (identificado durante teste manual)
+**Agente envolvido:** 06-frontend-engineer (código legado de Sprint M)
+**Tipo de erro:** outro (omissão de rota)
+**Gravidade:** média
+
+**Descrição:**
+Componente `FichaAluno.tsx` existe e funciona, mas a rota `/dashboard/alunos/:id` não foi registrada no React Router. Clique no botão "Ver Ficha" na lista de alunos retorna 404.
+
+**Como foi descoberto:**
+Hélio testou manualmente a tela de Alunos após aplicar RLS. Tentou clicar em "Ver Ficha" e recebeu 404.
+
+**Causa provável:**
+`FichaAluno.tsx` foi criado no Sprint M como parte da migração do sistema, mas a rota não foi adicionada em `src/routes.tsx` ou no arquivo de rotas correspondente. Possível esquecimento durante merge ou implementação parcial.
+
+**Impacto:**
+Feature "Ver Ficha" completamente inacessível pela UI. Usuários não conseguem ver detalhes do aluno.
+
+**Correção aplicada:**
+Nenhuma ainda — registrado como pendência para próximo sprint (não faz parte do Sprint RLS).
+
+**Como evitar no futuro:**
+Ao criar novo componente de página: (1) criar componente; (2) registrar rota; (3) testar navegação ANTES do commit. Componente sem rota = feature invisível.
+
+**Prompt precisa melhorar?** Sim — Agente 06 deve incluir: "Componente de página criado? Registrar rota imediatamente."
+**Skill precisa melhorar?** Sim — checklist de entrega
+**Checklist precisa melhorar?** Sim
+**Documento precisa melhorar?** Não
+
+**Status:** identificado — pendente para próximo sprint
+**Aprovado pelo Hélio:** Não necessário (será tratado posteriormente)
+
+---
+
 *Mantido pelo agente-Osabio · ITEC-EAD · 2025*

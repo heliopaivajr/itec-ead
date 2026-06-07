@@ -195,6 +195,109 @@
 
 ---
 
+## LICAO-025 — VIEW sem RLS é a solução canônica para verificação de roles em policies
+
+**Data:** 2026-06-06
+**Contexto:** Sprint RLS Segurança — criação de `user_roles` VIEW sem RLS
+**Problema:** Policies de RLS precisam verificar role do usuário, mas consultar `profiles` diretamente causaria recursão infinita (policy chama SELECT → SELECT aciona policy → loop).
+**Decisão tomada:** Criar VIEW `user_roles` que projeta apenas `(user_id, role)` de `profiles` SEM RLS ativado. Policies de todas as tabelas usam `EXISTS (SELECT 1 FROM user_roles WHERE user_id = auth.uid() AND role IN (...))`.
+**Justificativa:** VIEW sem RLS quebra o ciclo de recursão. É a solução recomendada pela documentação do Supabase e PostgreSQL para esse padrão.
+**Agentes impactados:** 04-db-architect, 07-auth-specialist, 11-security-auditor
+**Mudança aplicada:** Migration 032 criada. Padrão documentado no resumo do sprint.
+**Resultado esperado:** Toda nova policy que precisa verificar role usa `user_roles`, nunca `profiles`.
+**Como aplicar no futuro:** Ao criar policy RLS que verifica role: `EXISTS (SELECT 1 FROM public.user_roles WHERE user_id = auth.uid() AND role IN (...))` — nunca `SELECT FROM profiles`.
+**Status:** aplicada
+
+---
+
+## LICAO-026 — Joins aninhados + RLS em ambas tabelas = falha silenciosa
+
+**Data:** 2026-06-06
+**Contexto:** Sprint RLS Segurança — BUG-RLS-001 em `/dashboard/alunos`
+**Problema:** Query `.select('*, matriculas(id, status, created_at)')` com RLS ativo em AMBAS `profiles` E `matriculas` falhava silenciosamente — retornava array vazio sem erro explícito. Policy de cada tabela isoladamente funcionava, mas o join aninhado falhava.
+**Decisão tomada:** Substituir join aninhado por queries separadas + merge manual no service:
+```typescript
+// Query 1: profiles
+const { data: profiles } = await supabase.from('profiles').select('*').in('role', ['aluno', 'pendente']);
+// Query 2: matriculas
+const { data: matriculas } = await supabase.from('matriculas').select('*').in('aluno_id', profileIds);
+// Merge manual
+```
+**Justificativa:** Supabase/PostgREST tem limitação conhecida com joins complexos quando ambas tabelas têm RLS. Queries separadas são mais verbosas mas funcionam de forma confiável.
+**Agentes impactados:** 05-backend-engineer, 04-db-architect
+**Mudança aplicada:** `getAlunos()` refatorado. Comentário adicionado na migration 035.
+**Resultado esperado:** Queries com join aninhado + RLS em ambas tabelas são evitadas. Preferir queries separadas.
+**Como aplicar no futuro:** Se ambas tabelas têm RLS E a query precisa de join → usar queries separadas + merge manual. Joins aninhados só quando UMA tabela tem RLS ou nenhuma tem.
+**Status:** aplicada
+
+---
+
+## LICAO-027 — Erros de query RLS NÃO devem ser silenciados — sempre logar
+
+**Data:** 2026-06-06
+**Contexto:** Sprint RLS Segurança — BUG-RLS-002
+**Problema:** Service retornava `if (error) return { data: [], total: 0 }` sem logar o erro. Quando RLS bloqueou a query, a UI mostrou "Nenhum aluno cadastrado" mas o Hélio não sabia que era erro de RLS — achou que era bug de lógica.
+**Decisão tomada:** Adicionar log explícito antes do fallback:
+```typescript
+if (error) {
+  console.error('[getAlunos] RLS error:', error);
+  return { data: [], total: 0 };
+}
+```
+**Justificativa:** Diagnóstico de RLS é impossível sem os logs. Fallback silencioso esconde a causa raiz.
+**Agentes impactados:** 05-backend-engineer, 13-performance-eng
+**Mudança aplicada:** Log adicionado em `getAlunos()`.
+**Resultado esperado:** Todo service que faz fallback silencioso loga o erro antes.
+**Como aplicar no futuro:** NUNCA fazer `if (error) return fallback` sem `console.error(contexto, error)` antes.
+**Status:** aplicada
+
+---
+
+## LICAO-028 — Testes manuais na UI são obrigatórios após ativar RLS
+
+**Data:** 2026-06-06
+**Contexto:** Sprint RLS Segurança — queries que passavam em SQL Editor falhavam na UI
+**Problema:** RLS pode passar em testes SQL diretos (via `service_role` que bypassa RLS) mas falhar na UI real (via `authenticated` role que respeita RLS). SQL Editor não simula o contexto real do `auth.uid()`.
+**Decisão tomada:** Sempre testar na UI real após aplicar RLS. Não confiar apenas em testes SQL.
+**Justificativa:** `service_role` bypassa RLS — testes SQL não representam o comportamento real do usuário.
+**Agentes impactados:** 11-security-auditor, 10-test-engineer
+**Mudança aplicada:** Checklist de RLS atualizado: "Testar login + navegação completa após ativar RLS".
+**Resultado esperado:** Zero casos de RLS que passa em SQL mas falha na UI.
+**Como aplicar no futuro:** Ao ativar RLS em qualquer tabela: (1) aplicar migration; (2) fazer login como usuário real; (3) testar TODAS as telas que acessam a tabela; (4) verificar DevTools Console por erros.
+**Status:** aplicada
+
+---
+
+## LICAO-029 — Rollback migrations devem ser criados ANTES da implementação, não depois
+
+**Data:** 2026-06-06
+**Contexto:** Sprint RLS Segurança — migrations 032-035
+**Problema:** Sem rollback, qualquer problema em produção requer troubleshooting sob pressão. Criar rollback depois de já ter deployado é mais arriscado.
+**Decisão tomada:** Todo arquivo `*_migration.sql` tem rollback `*_migration_rollback.sql` criado NO MESMO COMMIT. Rollback é parte da implementação, não afterthought.
+**Justificativa:** Rollback feito com calma antes do deploy é mais confiável que rollback improvisado durante incidente.
+**Agentes impactados:** 04-db-architect, 09-infra-engineer
+**Mudança aplicada:** Padrão estabelecido no Sprint RLS. Checklist atualizado.
+**Resultado esperado:** 100% das migrations futuras têm rollback antes do deploy.
+**Como aplicar no futuro:** Ao criar migration, criar rollback imediatamente. Testar o rollback localmente antes do deploy.
+**Status:** aplicada
+
+---
+
+## LICAO-030 — ERR-INFRA-001 funciona: migrations via SQL Editor > CLI
+
+**Data:** 2026-06-06
+**Contexto:** Sprint RLS Segurança — aplicação manual via SQL Editor
+**Problema:** CLI do Supabase não funciona com o formato de migrations deste projeto (YYYYMMDD_NNN vs YYYYMMDDHHMMSS). Tentativas de `db push` falhavam.
+**Decisão tomada:** Migrations SEMPRE via SQL Editor manual (service_role). Hélio copia/cola SQL completo e executa. Zero uso de CLI para migrations remotas.
+**Justificativa:** (1) CLI incompatível com o formato; (2) controle manual é mais seguro; (3) Hélio vê o SQL completo antes de aplicar.
+**Agentes impactados:** 09-infra-engineer, 04-db-architect
+**Mudança aplicada:** Procedimento consolidado. Padrão seguido com sucesso no Sprint RLS (4 migrations aplicadas sem erro).
+**Resultado esperado:** Zero tentativas de usar CLI para migrations remotas.
+**Como aplicar no futuro:** Toda migration: (1) Agente cria `.sql`; (2) Hélio copia/cola no SQL Editor; (3) Hélio executa manualmente. CLI só para dev local (`supabase start`).
+**Status:** aplicada
+
+---
+
 *Mantido pelo agente-Osabio · ITEC-EAD · 2025*
 
 
