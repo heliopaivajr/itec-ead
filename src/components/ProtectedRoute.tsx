@@ -16,12 +16,13 @@ type Estado = 'carregando' | 'autorizado' | 'pendente' | 'sem-sessao' | 'bloquea
 export default function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const [estado, setEstado] = useState<Estado>('carregando');
 
-  // Timeout de segurança: 30s — Supabase free tier pode pausar e levar 10-30s para acordar
+  // Timeout de segurança: 10s — evita loading infinito se refresh falhar
+  // BUG-UI-003: reduzido de 30s para 10s
   useEffect(() => {
     if (estado !== 'carregando') return;
     const timer = setTimeout(() => {
       setEstado(prev => prev === 'carregando' ? 'sem-sessao' : prev);
-    }, 30000);
+    }, 10000);
     return () => clearTimeout(timer);
   }, [estado]);
 
@@ -59,10 +60,37 @@ export default function ProtectedRoute({ children }: { children: React.ReactNode
       subscription = data.subscription;
 
       // 2. Verificar sessão já existente (ex: usuário que voltou à aba)
-      // Se null: NÃO redirecionar — aguardar INITIAL_SESSION/SIGNED_IN do onAuthStateChange
-      // O timeout de 30s garante que nunca ficará preso para sempre
-      supabase.auth.getSession().then(({ data: { session } }) => {
-        if (session) verificar(session);
+      // BUG-UI-003: correção para evitar loading infinito com token expirado
+      supabase.auth.getSession().then(async ({ data: { session } }) => {
+        if (!montado) return;
+
+        // Session null → redirecionar IMEDIATAMENTE
+        if (!session) {
+          setEstado('sem-sessao');
+          return;
+        }
+
+        // Verificar se token expirou
+        const now = Math.floor(Date.now() / 1000);
+        const expiresAt = session.expires_at || 0;
+
+        if (expiresAt < now) {
+          // Token expirado → forçar refresh explícito
+          const { data: refreshData, error } = await supabase.auth.refreshSession();
+
+          if (!montado) return;
+
+          if (error || !refreshData.session) {
+            // Refresh falhou → redirecionar para login
+            setEstado('sem-sessao');
+          } else {
+            // Refresh OK → verificar com sessão renovada
+            await verificar(refreshData.session);
+          }
+        } else {
+          // Token válido → verificar normalmente
+          await verificar(session);
+        }
       });
     }
 
