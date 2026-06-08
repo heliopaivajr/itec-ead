@@ -247,7 +247,7 @@ export default function GestaoTurmas() {
                       <td className="py-2 text-muted-foreground text-xs">{i + 1}</td>
                       <td className="py-2">
                         <Link
-                          to={`/dashboard/alunos/${a.aluno_id}`}
+                          to={`/dashboard/aluno/${a.aluno_id}`}
                           className="font-medium hover:text-primary hover:underline"
                           onClick={() => setAlunosModal(null)}
                         >

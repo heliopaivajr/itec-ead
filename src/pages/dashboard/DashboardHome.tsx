@@ -225,7 +225,7 @@ function AdminView({ name }: { name: string }) {
             {alunosEmRisco.slice(0, 8).map((a, i) => (
               <Link
                 key={`${a.aluno_id}-${i}`}
-                to={`/dashboard/alunos/${a.aluno_id}`}
+                to={`/dashboard/aluno/${a.aluno_id}`}
                 className="flex items-center gap-3 px-5 py-2.5 hover:bg-muted/30 transition-colors"
               >
                 <div className="h-7 w-7 rounded-full bg-primary/10 flex items-center justify-center text-xs font-bold text-primary shrink-0">
