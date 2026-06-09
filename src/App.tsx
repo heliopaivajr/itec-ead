@@ -60,6 +60,7 @@ const ConsolidadoNotas   = lazy(() => import("./pages/dashboard/ConsolidadoNotas
 const CalendarioAcademico = lazy(() => import("./pages/dashboard/CalendarioAcademico"));
 const Relatorios         = lazy(() => import("./pages/dashboard/Relatorios"));
 const R01_AlunosPorTurma = lazy(() => import("./components/dashboard/relatorios/R01_AlunosPorTurma"));
+const R05_Inadimplentes  = lazy(() => import("./components/dashboard/relatorios/R05_Inadimplentes"));
 const RelatorioEmBreve   = lazy(() => import("./components/dashboard/relatorios/RelatorioEmBreve"));
 import ProtectedRoute from '@/components/ProtectedRoute';
 import RoleGuard from '@/components/auth/RoleGuard';
@@ -132,7 +133,7 @@ const App = () => (
               <Route path="relatorios/lista-presenca" element={<RoleGuard allowedRoles={['superadmin','admin','administracao']}><RelatorioEmBreve codigo="R02" titulo="Lista de Presença" descricao="Controle de presença por disciplina e período" /></RoleGuard>} />
               <Route path="relatorios/disciplinas-aluno" element={<RoleGuard allowedRoles={['superadmin','admin','administracao']}><RelatorioEmBreve codigo="R03" titulo="Disciplinas por Aluno" descricao="Disciplinas cursadas, em andamento e pendentes" /></RoleGuard>} />
               <Route path="relatorios/situacao-financeira" element={<RoleGuard allowedRoles={['superadmin','admin','administracao']}><RelatorioEmBreve codigo="R04" titulo="Situação Financeira" descricao="Status de pagamento e mensalidades dos alunos" /></RoleGuard>} />
-              <Route path="relatorios/inadimplentes" element={<RoleGuard allowedRoles={['superadmin','admin','administracao']}><RelatorioEmBreve codigo="R05" titulo="Alunos Inadimplentes" descricao="Listagem de alunos com pagamentos em atraso" /></RoleGuard>} />
+              <Route path="relatorios/inadimplentes" element={<RoleGuard allowedRoles={['superadmin','admin','administracao']}><R05_Inadimplentes /></RoleGuard>} />
               <Route path="relatorios/historico-academico" element={<RoleGuard allowedRoles={['superadmin','admin','administracao']}><RelatorioEmBreve codigo="R06" titulo="Histórico Acadêmico" descricao="Histórico completo individual do aluno" /></RoleGuard>} />
               <Route path="calendario"    element={<CalendarioAcademico />} />
               <Route path="nova-matricula" element={<RoleGuard allowedRoles={['superadmin','admin','administracao']}><NovaMatricula /></RoleGuard>} />

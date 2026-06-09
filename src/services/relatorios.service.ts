@@ -231,13 +231,157 @@ export async function getSituacaoFinanceira(
 
 /**
  * R05 — Alunos inadimplentes
+ * Padrão RLS: queries separadas + merge manual (LICAO-026)
  */
-export async function getInadimplentes(
+export async function getInadimplentesRelatorio(
   filtro: FiltroInadimplentes
 ): Promise<InadimplenteRelatorio[]> {
-  // TODO: implementar na Fase 2
-  console.log('getInadimplentes:', filtro);
-  return [];
+  const hoje = new Date().toISOString().split('T')[0];
+
+  // Query 1: mensalidades atrasadas — agrupar por aluno
+  const { data: mensalidades, error: errorMens } = await supabase
+    .from('mensalidades')
+    .select('aluno_id, valor, data_vencimento, matricula_id')
+    .in('status', ['pendente', 'atrasado'])
+    .lt('data_vencimento', hoje)
+    .limit(1000);
+
+  if (errorMens) {
+    console.error('[R05] Erro ao buscar mensalidades:', errorMens.message);
+    return [];
+  }
+
+  if (!mensalidades || mensalidades.length === 0) {
+    return [];
+  }
+
+  // Agrupar por aluno_id em memória
+  type MensalidadeRow = {
+    aluno_id: string;
+    valor: number;
+    data_vencimento: string;
+    matricula_id: string | null;
+  };
+
+  const porAluno = new Map<
+    string,
+    {
+      count: number;
+      total: number;
+      vencimentoMaisAntigo: string;
+      matriculaId: string | null;
+    }
+  >();
+
+  for (const m of mensalidades as MensalidadeRow[]) {
+    const entry = porAluno.get(m.aluno_id) ?? {
+      count: 0,
+      total: 0,
+      vencimentoMaisAntigo: m.data_vencimento,
+      matriculaId: m.matricula_id,
+    };
+    entry.count++;
+    entry.total += m.valor;
+    if (m.data_vencimento < entry.vencimentoMaisAntigo) {
+      entry.vencimentoMaisAntigo = m.data_vencimento;
+    }
+    if (!entry.matriculaId && m.matricula_id) {
+      entry.matriculaId = m.matricula_id;
+    }
+    porAluno.set(m.aluno_id, entry);
+  }
+
+  const alunoIds = Array.from(porAluno.keys());
+
+  // Query 2: profiles — buscar dados pessoais
+  const { data: profiles, error: errorProfiles } = await supabase
+    .from('profiles')
+    .select('id, full_name, email, telefone, codigo_itec')
+    .in('id', alunoIds);
+
+  if (errorProfiles) {
+    console.error('[R05] Erro ao buscar profiles:', errorProfiles.message);
+    return [];
+  }
+
+  // Query 3: matriculas — buscar turma_id
+  const { data: matriculas, error: errorMat } = await supabase
+    .from('matriculas')
+    .select('aluno_id, turma_id, id')
+    .in('aluno_id', alunoIds)
+    .eq('status', 'ativa');
+
+  if (errorMat) {
+    console.error('[R05] Erro ao buscar matrículas:', errorMat.message);
+  }
+
+  // Mapear aluno → turma_id
+  const alunoTurmaMap = new Map<string, string>();
+  if (matriculas) {
+    for (const mat of matriculas) {
+      alunoTurmaMap.set(mat.aluno_id, mat.turma_id);
+    }
+  }
+
+  const turmaIds = Array.from(new Set(alunoTurmaMap.values())).filter(Boolean);
+
+  // Query 4: turmas — buscar nome das turmas
+  const { data: turmas, error: errorTurmas } = await supabase
+    .from('turmas')
+    .select('id, nome, codigo')
+    .in('id', turmaIds);
+
+  if (errorTurmas) {
+    console.error('[R05] Erro ao buscar turmas:', errorTurmas.message);
+  }
+
+  // Mapear turma_id → nome
+  const turmaNomeMap = new Map<string, string>();
+  if (turmas) {
+    for (const t of turmas) {
+      turmaNomeMap.set(t.id, `${t.codigo} — ${t.nome}`);
+    }
+  }
+
+  // Merge manual: combinar todos os dados
+  const resultado: InadimplenteRelatorio[] = [];
+
+  for (const [alunoId, alunoData] of porAluno.entries()) {
+    const profile = profiles?.find((p) => p.id === alunoId);
+    const turmaId = alunoTurmaMap.get(alunoId);
+    const turmaNome = turmaId ? turmaNomeMap.get(turmaId) || 'Sem turma' : 'Sem turma';
+
+    // Filtro opcional: turma
+    if (filtro.turmaId && turmaId !== filtro.turmaId) {
+      continue;
+    }
+
+    // Calcular dias de atraso
+    const vencimento = new Date(alunoData.vencimentoMaisAntigo);
+    const hojeDt = new Date(hoje);
+    const diasAtraso = Math.floor((hojeDt.getTime() - vencimento.getTime()) / (1000 * 60 * 60 * 24));
+
+    // Filtro opcional: dias mínimos de atraso
+    if (filtro.diasAtraso && diasAtraso < filtro.diasAtraso) {
+      continue;
+    }
+
+    resultado.push({
+      aluno_id: alunoId,
+      nome_aluno: profile?.full_name || 'Nome não disponível',
+      codigo_itec: profile?.codigo_itec || null,
+      email: profile?.email || '',
+      telefone: profile?.telefone || null,
+      turma: turmaNome,
+      mensalidades_atrasadas: alunoData.count,
+      valor_total_atrasado: Math.round(alunoData.total * 100) / 100,
+      dias_atraso: diasAtraso,
+      ultima_mensalidade_vencimento: alunoData.vencimentoMaisAntigo,
+    });
+  }
+
+  // Ordenar por dias de atraso (mais grave primeiro)
+  return resultado.sort((a, b) => b.dias_atraso - a.dias_atraso);
 }
 
 /**
