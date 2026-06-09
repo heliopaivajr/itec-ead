@@ -26,7 +26,7 @@ export interface FiltroDisciplinasAluno {
 
 export interface FiltroSituacaoFinanceira {
   turmaId?: string;
-  statusPagamento?: 'em_dia' | 'pendente' | 'atrasado';
+  status?: 'em_dia' | 'atrasado' | 'isento';
 }
 
 export interface FiltroInadimplentes {
@@ -75,11 +75,12 @@ export interface SituacaoFinanceiraRelatorio {
   nome_aluno: string;
   codigo_itec: string | null;
   turma: string;
+  tipo_financiamento: 'integral' | 'bolsista' | 'desconto_indicacao' | 'desconto_familia';
+  percentual_desconto: number;
   mensalidades_pagas: number;
   mensalidades_pendentes: number;
-  valor_total_pago: number;
-  valor_total_pendente: number;
-  status: 'em_dia' | 'pendente' | 'atrasado';
+  valor_em_aberto: number;
+  status_geral: 'em_dia' | 'atrasado' | 'isento';
 }
 
 export interface InadimplenteRelatorio {
@@ -220,13 +221,169 @@ export async function getDisciplinasPorAluno(
 
 /**
  * R04 — Situação financeira
+ * Padrão RLS: queries separadas + merge manual (LICAO-026)
  */
-export async function getSituacaoFinanceira(
+export async function getSituacaoFinanceiraRelatorio(
   filtro: FiltroSituacaoFinanceira
 ): Promise<SituacaoFinanceiraRelatorio[]> {
-  // TODO: implementar na Fase 2
-  console.log('getSituacaoFinanceira:', filtro);
-  return [];
+  const hoje = new Date().toISOString().split('T')[0];
+
+  // Query 1: matriculas ativas com dados de financiamento
+  let queryMatriculas = supabase
+    .from('matriculas')
+    .select('aluno_id, turma_id, tipo_financiamento, percentual_desconto')
+    .eq('status', 'ativa')
+    .limit(1000);
+
+  // Filtro opcional: turma
+  if (filtro.turmaId) {
+    queryMatriculas = queryMatriculas.eq('turma_id', filtro.turmaId);
+  }
+
+  const { data: matriculas, error: errorMat } = await queryMatriculas;
+
+  if (errorMat) {
+    console.error('[R04] Erro ao buscar matrículas:', errorMat.message);
+    return [];
+  }
+
+  if (!matriculas || matriculas.length === 0) {
+    return [];
+  }
+
+  const alunoIds = matriculas.map(m => m.aluno_id);
+
+  // Query 2: mensalidades — buscar todas por aluno
+  const { data: mensalidades, error: errorMens } = await supabase
+    .from('mensalidades')
+    .select('aluno_id, valor, status, data_vencimento')
+    .in('aluno_id', alunoIds)
+    .limit(5000);
+
+  if (errorMens) {
+    console.error('[R04] Erro ao buscar mensalidades:', errorMens.message);
+  }
+
+  // Agrupar mensalidades por aluno em memória
+  type MensalidadeRow = {
+    aluno_id: string;
+    valor: number;
+    status: string;
+    data_vencimento: string;
+  };
+
+  const porAluno = new Map<
+    string,
+    {
+      pagas: number;
+      pendentes: number;
+      valorEmAberto: number;
+      temAtrasada: boolean;
+    }
+  >();
+
+  if (mensalidades) {
+    for (const m of mensalidades as MensalidadeRow[]) {
+      const entry = porAluno.get(m.aluno_id) ?? {
+        pagas: 0,
+        pendentes: 0,
+        valorEmAberto: 0,
+        temAtrasada: false,
+      };
+
+      if (m.status === 'pago') {
+        entry.pagas++;
+      } else if (m.status === 'pendente' || m.status === 'atrasado') {
+        entry.pendentes++;
+        entry.valorEmAberto += m.valor;
+        // Verifica se está vencida
+        if (m.data_vencimento < hoje) {
+          entry.temAtrasada = true;
+        }
+      }
+
+      porAluno.set(m.aluno_id, entry);
+    }
+  }
+
+  // Query 3: profiles — buscar dados pessoais
+  const { data: profiles, error: errorProfiles } = await supabase
+    .from('profiles')
+    .select('id, full_name, codigo_itec')
+    .in('id', alunoIds);
+
+  if (errorProfiles) {
+    console.error('[R04] Erro ao buscar profiles:', errorProfiles.message);
+  }
+
+  // Query 4: turmas — buscar nomes
+  const turmaIds = Array.from(new Set(matriculas.map(m => m.turma_id))).filter(Boolean);
+  const { data: turmas, error: errorTurmas } = await supabase
+    .from('turmas')
+    .select('id, nome, codigo')
+    .in('id', turmaIds);
+
+  if (errorTurmas) {
+    console.error('[R04] Erro ao buscar turmas:', errorTurmas.message);
+  }
+
+  // Mapear turma_id → nome
+  const turmaNomeMap = new Map<string, string>();
+  if (turmas) {
+    for (const t of turmas) {
+      turmaNomeMap.set(t.id, `${t.codigo} — ${t.nome}`);
+    }
+  }
+
+  // Merge manual: combinar todos os dados
+  const resultado: SituacaoFinanceiraRelatorio[] = [];
+
+  for (const mat of matriculas) {
+    const profile = profiles?.find(p => p.id === mat.aluno_id);
+    const turmaNome = turmaNomeMap.get(mat.turma_id) || 'Sem turma';
+    const financeiro = porAluno.get(mat.aluno_id) ?? {
+      pagas: 0,
+      pendentes: 0,
+      valorEmAberto: 0,
+      temAtrasada: false,
+    };
+
+    // Calcular status_geral
+    let statusGeral: 'em_dia' | 'atrasado' | 'isento';
+
+    // Isento: tipo_financiamento diferente de 'integral' OU percentual_desconto > 0
+    const ehIsento = mat.tipo_financiamento !== 'integral' || (mat.percentual_desconto && mat.percentual_desconto > 0);
+
+    if (ehIsento) {
+      statusGeral = 'isento';
+    } else if (financeiro.temAtrasada) {
+      statusGeral = 'atrasado';
+    } else {
+      statusGeral = 'em_dia';
+    }
+
+    // Filtro opcional: status
+    if (filtro.status && statusGeral !== filtro.status) {
+      continue;
+    }
+
+    resultado.push({
+      aluno_id: mat.aluno_id,
+      nome_aluno: profile?.full_name || 'Nome não disponível',
+      codigo_itec: profile?.codigo_itec || null,
+      turma: turmaNome,
+      tipo_financiamento: mat.tipo_financiamento || 'integral',
+      percentual_desconto: mat.percentual_desconto || 0,
+      mensalidades_pagas: financeiro.pagas,
+      mensalidades_pendentes: financeiro.pendentes,
+      valor_em_aberto: Math.round(financeiro.valorEmAberto * 100) / 100,
+      status_geral: statusGeral,
+    });
+  }
+
+  // Ordenar: isentos primeiro, depois atrasados, depois em dia
+  const statusOrder = { isento: 0, atrasado: 1, em_dia: 2 };
+  return resultado.sort((a, b) => statusOrder[a.status_geral] - statusOrder[b.status_geral]);
 }
 
 /**

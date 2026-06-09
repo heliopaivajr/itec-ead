@@ -1,6 +1,6 @@
 # CLAUDE.md — ITEC-EAD
 # Lido automaticamente pelo Claude Code
-# Atualizado: 2026-06-03
+# Atualizado: 2026-06-08
 
 ## Projeto
 Plataforma EAD do Instituto de Teologia Cristã
@@ -46,7 +46,7 @@ Duas áreas distintas no mesmo React Router:
 
 `ProtectedRoute` verifica sessão + role. `pendente` → `/aguardando`. Role desconhecido → `/login`.
 
-## Services (src/services/) — 14 total
+## Services (src/services/) — 15 total
 
 ### Com testes ✅ (8)
 | Service | Responsabilidade |
@@ -60,7 +60,7 @@ Duas áreas distintas no mesmo React Router:
 | `usuarios.service.ts` | perfis admin — getUsuarios, updateRole, updatePerfil |
 | `matriculas.service.ts` | getMatriculas paginado, getMinhasMatriculas, updateStatus |
 
-### Sem testes — Sprint T3 pendente ⚠️ (6)
+### Sem testes — Sprint T3 pendente ⚠️ (7)
 | Service | Responsabilidade |
 |---|---|
 | `academico.service.ts` | cursos, módulos, disciplinas, verificarPrerequisitos |
@@ -69,8 +69,9 @@ Duas áreas distintas no mesmo React Router:
 | `matricula-academica.service.ts` | disciplinas, convalidações, exceções pré-req |
 | `financeiro.service.ts` | mensalidades, inadimplentes, gerarMensalidadesMes |
 | `material.service.ts` | materiais, progresso, uploadManualDisciplina |
+| `relatorios.service.ts` | R01-R06 queries RLS-compliant (LICAO-026) |
 
-`index.ts` — barrel export de todos os 14 services.
+`index.ts` — barrel export de todos os 15 services.
 
 ## Roles do sistema (completo)
 
@@ -93,10 +94,20 @@ TEO-2026-1 → 2ª turma (Módulo 1 em 2026)
 TEO-2026-2 → 3ª turma planejada (Ago/2026)
 ```
 
+## Sprint Atual
+**Sprint Relatórios** (Semana 4):
+- ✅ R01 Alunos por Turma — COMPLETO (PDF + Excel + CSV)
+- ✅ R04 Situação Financeira — COMPLETO (PDF + Excel + CSV)
+- ✅ R05 Alunos Inadimplentes — COMPLETO (PDF + Excel + CSV)
+- 🔜 R02 Lista de Presença (próximo)
+- 🔜 R03 Disciplinas por Aluno
+- 🔜 R06 Histórico Acadêmico (somente Print + PDF)
+
 ## Próximo Sprint
-Sprint RLS (Semana 3):
-- RLS + correções críticas antes de alunos reais
-- Segurança obrigatória para o lançamento de agosto
+Sprint RLS (Semana 5):
+- RLS em 25 tabelas restantes
+- Correções críticas antes de alunos reais
+- Segurança obrigatória para lançamento agosto
 
 ## Banco de dados — 19 tabelas (RLS em todas)
 
@@ -128,6 +139,11 @@ Sprint RLS (Semana 3):
 | 012 | 20260526_012_financeiro | taxa_matricula + mensalidades |
 | 013 | 20260526_013_convalidacoes | convalidacoes |
 | 014 | 20260526_014_seed_itec | Teologia: 6 módulos, 40 disciplinas, 22 prereqs |
+| 032 | 20260608_032_turmas_rls | RLS turmas + policies para alunos/professores |
+| 033 | 20260608_033_calendario_eventos | Tabela calendario_eventos (feriados, provas, etc.) |
+| 034 | 20260608_034_seed_feriados_2026 | Seed feriados nacionais 2026 |
+| 035 | 20260608_035_bug_ui_003_fix | Fix MatriculasPage counts + filtros |
+| 036 | 20260608_036_matriculas_financiamento | Campos tipo_financiamento, percentual_desconto, observacao_financeira |
 
 ## Testes
 ```bash
@@ -157,6 +173,63 @@ A pasta `.ai-system/` é um sistema documental independente
 que roda no Claude.ai (Projetos), não no Claude Code.
 Contém agentes, specs, auditorias e ADRs do projeto.
 Não misturar com o código da plataforma web.
+
+## Lições Aprendidas — Sprint Relatórios
+
+### LICAO-026: RLS com múltiplas tabelas
+**Problema**: Queries com nested joins falham silenciosamente quando ambas tabelas têm RLS.
+**Solução**: Usar queries separadas + merge manual em JavaScript.
+
+Exemplo (getInadimplentesRelatorio):
+```typescript
+// ❌ ERRADO: nested join com RLS ativo
+const { data } = await supabase
+  .from('mensalidades')
+  .select('*, profiles!mensalidades_aluno_id_fkey(full_name)')
+  .in('status', ['pendente', 'atrasado']);
+
+// ✅ CORRETO: queries separadas
+// Query 1: buscar mensalidades
+const { data: mensalidades } = await supabase.from('mensalidades')...
+// Query 2: buscar profiles
+const { data: profiles } = await supabase.from('profiles')...
+// Merge manual em JS
+const resultado = mensalidades.map(m => ({
+  ...m,
+  nome: profiles.find(p => p.id === m.aluno_id)?.full_name
+}));
+```
+
+**Aplicado em**: R01, R04, R05 (todos os relatórios com joins)
+
+### Regras de Negócio — Financeiro
+
+#### Status de Inadimplência (R05)
+- **Atrasado**: tem mensalidades vencidas não pagas
+- **Ordenação**: por dias de atraso (mais grave primeiro)
+
+#### Situação Financeira (R04)
+- **Isento**: `tipo_financiamento != 'integral'` OU `percentual_desconto > 0`
+- **Atrasado**: tem mensalidades vencidas não pagas
+- **Em dia**: integral sem atraso
+- **Ordenação**: isentos → atrasados → em dia
+
+#### Permissões de Acesso
+- **Relatórios R01, R04, R05**: `superadmin`, `admin`, `administracao`, `financeiro`
+- **Lançar pagamentos**: apenas `superadmin`, `admin`, `financeiro`
+- **Conceder bolsas**: apenas `superadmin`, `admin`, `financeiro`
+- **Visualizar/exportar**: `administracao` pode (somente leitura)
+
+### Bugs Corrigidos — Sprint Relatórios
+
+#### BUG-UI-001: Relatórios faltando no menu lateral
+**Problema**: Menu "Relatórios" não aparecia para roles `admin` e `superadmin`.
+**Causa**: Item só estava no array de menu de `administracao`.
+**Fix**: Adicionado item idêntico nos arrays de menu de `admin` e `superadmin` (Dashboard.tsx).
+
+#### BUG-UI-003: Rotas placeholder retornando 404
+**Problema**: Clicar em R02-R06 retornava 404 antes da implementação.
+**Fix**: Criado componente `RelatorioEmBreve` com mensagem e botão "Voltar" + rotas placeholder registradas no App.tsx.
 
 ## Roadmap de Features
 
