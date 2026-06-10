@@ -193,8 +193,24 @@ export async function verificarPrerequisitos(
 
   const cursadasIds = new Set((cursadas ?? []).map((r: { disciplina_id: string }) => r.disciplina_id));
 
+  // Busca exceções autorizadas para esta disciplina
+  const { data: excecoes } = await supabase
+    .from('excecoes_prerequisito')
+    .select('prerequisito_dispensado_id')
+    .eq('aluno_id', alunoId)
+    .eq('disciplina_id', disciplinaId);
+
+  const dispensados = new Set(
+    (excecoes ?? []).map((e: { prerequisito_dispensado_id: string }) => e.prerequisito_dispensado_id)
+  );
+
+  // Considera tanto disciplinas cursadas quanto exceções autorizadas
   const faltamIds = prereqs
-    .filter(p => p.tipo === 'prerequisito' && !cursadasIds.has(p.prerequisito_id))
+    .filter(p =>
+      p.tipo === 'prerequisito' &&
+      !cursadasIds.has(p.prerequisito_id) &&
+      !dispensados.has(p.prerequisito_id)
+    )
     .map(p => p.prerequisito_id);
 
   if (faltamIds.length === 0) return { aprovado: true, faltam: [] };
@@ -210,7 +226,7 @@ export async function verificarPrerequisitos(
   };
 }
 
-// Batch: pré-requisitos para múltiplas disciplinas de um aluno (2 queries)
+// Batch: pré-requisitos para múltiplas disciplinas de um aluno (3 queries)
 export async function verificarPrerequisitoBatch(
   alunoId: string,
   disciplinaIds: string[],
@@ -220,7 +236,7 @@ export async function verificarPrerequisitoBatch(
 
   const discMap = new Map(todasDisciplinas.map(d => [d.id, d]));
 
-  const [prereqRes, matriculaRes] = await Promise.all([
+  const [prereqRes, matriculaRes, excecoesRes] = await Promise.all([
     supabase
       .from('prerequisitos_v2')
       .select('disciplina_id, prerequisito_id, tipo')
@@ -232,6 +248,12 @@ export async function verificarPrerequisitoBatch(
       .in('status', ['aprovado', 'convalidado'])
       .eq('aluno_id', alunoId)
       .limit(200),
+    supabase
+      .from('excecoes_prerequisito')
+      .select('disciplina_id, prerequisito_dispensado_id')
+      .eq('aluno_id', alunoId)
+      .in('disciplina_id', disciplinaIds)
+      .limit(200),
   ]);
 
   type PreqRow = { disciplina_id: string; prerequisito_id: string; tipo: string };
@@ -239,6 +261,16 @@ export async function verificarPrerequisitoBatch(
   const cursadas = new Set(
     ((matriculaRes.data ?? []) as { disciplina_id: string }[]).map(r => r.disciplina_id)
   );
+
+  // Mapear exceções por disciplina
+  type ExcecaoRow = { disciplina_id: string; prerequisito_dispensado_id: string };
+  const excecoesPorDisc = new Map<string, Set<string>>();
+
+  for (const exc of (excecoesRes.data ?? []) as ExcecaoRow[]) {
+    const set = excecoesPorDisc.get(exc.disciplina_id) ?? new Set<string>();
+    set.add(exc.prerequisito_dispensado_id);
+    excecoesPorDisc.set(exc.disciplina_id, set);
+  }
 
   const byDisc = new Map<string, PreqRow[]>();
   for (const p of prereqs) {
@@ -254,10 +286,19 @@ export async function verificarPrerequisitoBatch(
       result.set(id, { aprovado: true, faltam: [] });
       continue;
     }
+
+    // Considera exceções autorizadas
+    const excecoesDaDisc = excecoesPorDisc.get(id) ?? new Set<string>();
+
     const faltam = reqs
-      .filter(p => p.tipo === 'prerequisito' && !cursadas.has(p.prerequisito_id))
+      .filter(p =>
+        p.tipo === 'prerequisito' &&
+        !cursadas.has(p.prerequisito_id) &&
+        !excecoesDaDisc.has(p.prerequisito_id)
+      )
       .map(p => discMap.get(p.prerequisito_id))
       .filter((d): d is Disciplina => d !== undefined);
+
     result.set(id, { aprovado: faltam.length === 0, faltam });
   }
   return result;

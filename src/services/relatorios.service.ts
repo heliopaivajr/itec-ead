@@ -59,6 +59,39 @@ export interface PresencaRelatorio {
   observacao: string | null;
 }
 
+export interface ListaPresencaRelatorio {
+  disciplina: {
+    id: string;
+    nome: string;
+  };
+  turma: {
+    id: string;
+    nome: string;
+    codigo: string;
+  };
+  periodo: {
+    inicio: string;
+    fim: string;
+  };
+  datas_aulas: string[];
+  alunos: {
+    aluno_id: string;
+    nome_aluno: string;
+    codigo_itec: string | null;
+    presencas: {
+      data_aula: string;
+      status: 'P' | 'F' | null;
+      justificada?: boolean;
+    }[];
+    resumo: {
+      total_aulas: number;
+      presencas: number;
+      faltas: number;
+      percentual: number;
+    };
+  }[];
+}
+
 export interface DisciplinaAlunoRelatorio {
   aluno_id: string;
   nome_aluno: string;
@@ -68,6 +101,37 @@ export interface DisciplinaAlunoRelatorio {
   status: string;
   nota_final: number | null;
   frequencia_percentual: number | null;
+}
+
+// R03 — Disciplinas por Aluno
+export interface FiltroR03 {
+  alunoId?: string;
+  turmaId?: string;
+  status?: 'cursando' | 'aprovado' | 'reprovado' | 'todos';
+}
+
+export interface DisciplinasPorAlunoRelatorio {
+  aluno_id: string;
+  nome_aluno: string;
+  codigo_itec: string | null;
+  turma: {
+    id: string;
+    nome: string;
+    codigo: string;
+  };
+  disciplinas: {
+    disciplina_id: string;
+    codigo: string;
+    nome: string;
+    status: 'cursando' | 'aprovado' | 'reprovado' | 'reprovado_falta' | 'convalidado' | 'trancado';
+    nota: number | null;
+  }[];
+  totais: {
+    cursando: number;
+    aprovadas: number;
+    reprovadas: number;
+    convalidadas: number;
+  };
 }
 
 export interface SituacaoFinanceiraRelatorio {
@@ -198,14 +262,260 @@ export async function getAlunosPorTurma(
 }
 
 /**
- * R02 — Lista de presença
+ * R02 — Lista de presença (grade alunos × datas)
+ * Padrão RLS: queries separadas + merge manual (LICAO-026)
+ * Gera datas baseado em aulas_recorrentes + eventos_calendario
  */
-export async function getListaPresenca(
+export async function getListaPresencaRelatorio(
   filtro: FiltroListaPresenca
-): Promise<PresencaRelatorio[]> {
-  // TODO: implementar na Fase 3
-  console.log('getListaPresenca:', filtro);
-  return [];
+): Promise<ListaPresencaRelatorio | { erro: string }> {
+  const { turmaId, disciplinaId, dataInicio, dataFim } = filtro;
+
+  // Query 1: buscar aula recorrente da disciplina/turma
+  const { data: aulaRecorrente, error: errorAula } = await supabase
+    .from('aulas_recorrentes')
+    .select('dia_semana, data_inicio, data_fim')
+    .eq('disciplina_id', disciplinaId)
+    .eq('turma_id', turmaId)
+    .eq('ativo', true)
+    .single();
+
+  if (errorAula || !aulaRecorrente) {
+    console.error('[R02] Erro ao buscar aula recorrente:', errorAula?.message);
+    return {
+      erro: 'sem_calendario',
+    };
+  }
+
+  // Determinar período efetivo
+  const periodoInicio = dataInicio || aulaRecorrente.data_inicio;
+  const periodoFim = dataFim || aulaRecorrente.data_fim;
+
+  // Query 2: buscar eventos do período (cancelamentos + reposições)
+  const { data: eventos, error: errorEventos } = await supabase
+    .from('eventos_calendario')
+    .select('data, tipo, cancelar_aula, turma_id, disciplina_id')
+    .gte('data', periodoInicio)
+    .lte('data', periodoFim);
+
+  if (errorEventos) {
+    console.error('[R02] Erro ao buscar eventos:', errorEventos.message);
+  }
+
+  // Gerar datas recorrentes em memória
+  const datasRecorrentes: string[] = [];
+  const dataAtual = new Date(
+    Math.max(new Date(periodoInicio).getTime(), new Date(aulaRecorrente.data_inicio).getTime())
+  );
+  const dataLimite = new Date(
+    Math.min(new Date(periodoFim).getTime(), new Date(aulaRecorrente.data_fim).getTime())
+  );
+
+  while (dataAtual <= dataLimite) {
+    if (dataAtual.getDay() === aulaRecorrente.dia_semana) {
+      datasRecorrentes.push(dataAtual.toISOString().split('T')[0]);
+    }
+    dataAtual.setDate(dataAtual.getDate() + 1);
+  }
+
+  // Filtrar cancelamentos (eventos que cancelam aula)
+  const cancelamentos = new Set<string>();
+  const reposicoes = new Set<string>();
+
+  if (eventos) {
+    for (const evt of eventos) {
+      const afetaTurma = evt.turma_id === null || evt.turma_id === turmaId;
+      const afetaDisciplina = evt.disciplina_id === null || evt.disciplina_id === disciplinaId;
+
+      if (!afetaTurma && !afetaDisciplina) continue;
+
+      // Cancelamentos
+      if (
+        evt.cancelar_aula &&
+        (evt.tipo === 'feriado_nacional' ||
+          evt.tipo === 'feriado_estadual' ||
+          evt.tipo === 'feriado_institucional' ||
+          evt.tipo === 'recesso' ||
+          evt.tipo === 'cancelamento_aula')
+      ) {
+        cancelamentos.add(evt.data);
+      }
+
+      // Reposições
+      if (evt.tipo === 'reposicao' && evt.disciplina_id === disciplinaId) {
+        reposicoes.add(evt.data);
+      }
+    }
+  }
+
+  // Aplicar cancelamentos e adicionar reposições
+  const datasComCancelamentos = datasRecorrentes.filter((d) => !cancelamentos.has(d));
+  const datasFinais = [...new Set([...datasComCancelamentos, ...reposicoes])].sort();
+
+  if (datasFinais.length === 0) {
+    console.error('[R02] Nenhuma data de aula encontrada no período');
+    return {
+      erro: 'sem_datas',
+    };
+  }
+
+  // Query 3: buscar matrículas ativas da turma
+  const { data: matriculas, error: errorMatriculas } = await supabase
+    .from('matriculas')
+    .select('id, aluno_id')
+    .eq('turma_id', turmaId)
+    .eq('status', 'ativa')
+    .limit(100);
+
+  if (errorMatriculas || !matriculas || matriculas.length === 0) {
+    console.error('[R02] Erro ao buscar matrículas:', errorMatriculas?.message);
+    return {
+      erro: 'sem_alunos',
+    };
+  }
+
+  const matriculaIds = matriculas.map((m) => m.id);
+  const alunoIdsPorMatricula = new Map(matriculas.map((m) => [m.id, m.aluno_id]));
+
+  // Query 4: buscar matriculas_disciplina
+  const { data: matsDisc, error: errorMatsDisc } = await supabase
+    .from('matriculas_disciplina')
+    .select('matricula_id')
+    .eq('disciplina_id', disciplinaId)
+    .in('matricula_id', matriculaIds);
+
+  if (errorMatsDisc || !matsDisc || matsDisc.length === 0) {
+    console.error('[R02] Nenhum aluno matriculado na disciplina');
+    return {
+      erro: 'sem_alunos_disciplina',
+    };
+  }
+
+  const alunoIds = matsDisc
+    .map((md) => alunoIdsPorMatricula.get(md.matricula_id))
+    .filter(Boolean) as string[];
+
+  // Query 5: buscar profiles dos alunos
+  const { data: profiles, error: errorProfiles } = await supabase
+    .from('profiles')
+    .select('id, full_name, codigo_itec')
+    .in('id', alunoIds);
+
+  if (errorProfiles) {
+    console.error('[R02] Erro ao buscar profiles:', errorProfiles.message);
+  }
+
+  // Query 6: buscar frequências do período
+  const { data: frequencias, error: errorFreq } = await supabase
+    .from('frequencia')
+    .select('aluno_id, data_aula, presente, justificada')
+    .eq('disciplina_id', disciplinaId)
+    .in('aluno_id', alunoIds)
+    .gte('data_aula', periodoInicio)
+    .lte('data_aula', periodoFim)
+    .limit(alunoIds.length * datasFinais.length);
+
+  if (errorFreq) {
+    console.error('[R02] Erro ao buscar frequências:', errorFreq.message);
+  }
+
+  // Criar mapa de frequências: aluno_id:data_aula -> registro
+  type FreqKey = string;
+  const freqMap = new Map<FreqKey, { presente: boolean; justificada: boolean }>();
+  if (frequencias) {
+    for (const f of frequencias) {
+      const key = `${f.aluno_id}:${f.data_aula}`;
+      freqMap.set(key, { presente: f.presente, justificada: f.justificada });
+    }
+  }
+
+  // Buscar dados da disciplina e turma
+  const { data: disciplinaData } = await supabase
+    .from('disciplinas_v2')
+    .select('id, nome')
+    .eq('id', disciplinaId)
+    .single();
+
+  const { data: turmaData } = await supabase
+    .from('turmas')
+    .select('id, nome, codigo')
+    .eq('id', turmaId)
+    .single();
+
+  // Merge manual: construir resultado
+  const resultado: ListaPresencaRelatorio = {
+    disciplina: {
+      id: disciplinaData?.id || disciplinaId,
+      nome: disciplinaData?.nome || 'Disciplina não encontrada',
+    },
+    turma: {
+      id: turmaData?.id || turmaId,
+      nome: turmaData?.nome || 'Turma não encontrada',
+      codigo: turmaData?.codigo || '',
+    },
+    periodo: {
+      inicio: periodoInicio,
+      fim: periodoFim,
+    },
+    datas_aulas: datasFinais,
+    alunos: [],
+  };
+
+  for (const alunoId of alunoIds) {
+    const profile = profiles?.find((p) => p.id === alunoId);
+    const presencas: {
+      data_aula: string;
+      status: 'P' | 'F' | null;
+      justificada?: boolean;
+    }[] = [];
+
+    let totalPresencas = 0;
+    let totalFaltas = 0;
+
+    for (const data of datasFinais) {
+      const key = `${alunoId}:${data}`;
+      const freq = freqMap.get(key);
+
+      if (freq) {
+        const status = freq.presente ? 'P' : 'F';
+        presencas.push({
+          data_aula: data,
+          status,
+          justificada: freq.justificada || undefined,
+        });
+        if (freq.presente) totalPresencas++;
+        else totalFaltas++;
+      } else {
+        presencas.push({
+          data_aula: data,
+          status: null,
+        });
+      }
+    }
+
+    const percentual =
+      datasFinais.length > 0
+        ? Math.round((totalPresencas / (totalPresencas + totalFaltas || 1)) * 100)
+        : 0;
+
+    resultado.alunos.push({
+      aluno_id: alunoId,
+      nome_aluno: profile?.full_name || 'Nome não disponível',
+      codigo_itec: profile?.codigo_itec || null,
+      presencas,
+      resumo: {
+        total_aulas: datasFinais.length,
+        presencas: totalPresencas,
+        faltas: totalFaltas,
+        percentual,
+      },
+    });
+  }
+
+  // Ordenar alunos por nome
+  resultado.alunos.sort((a, b) => a.nome_aluno.localeCompare(b.nome_aluno));
+
+  return resultado;
 }
 
 /**
@@ -539,6 +849,185 @@ export async function getInadimplentesRelatorio(
 
   // Ordenar por dias de atraso (mais grave primeiro)
   return resultado.sort((a, b) => b.dias_atraso - a.dias_atraso);
+}
+
+/**
+ * R03 — Disciplinas por Aluno
+ * Padrão RLS: queries separadas + merge manual (LICAO-026)
+ */
+export async function getDisciplinasPorAlunoRelatorio(
+  filtro: FiltroR03
+): Promise<DisciplinasPorAlunoRelatorio[]> {
+  // Query 1: matriculas WHERE turma_id (se filtro) + status='ativa'
+  let queryMatriculas = supabase
+    .from('matriculas')
+    .select('id, aluno_id, turma_id')
+    .eq('status', 'ativa')
+    .limit(500);
+
+  if (filtro.turmaId) {
+    queryMatriculas = queryMatriculas.eq('turma_id', filtro.turmaId);
+  }
+
+  if (filtro.alunoId) {
+    queryMatriculas = queryMatriculas.eq('aluno_id', filtro.alunoId);
+  }
+
+  const { data: matriculas, error: errorMat } = await queryMatriculas;
+
+  if (errorMat) {
+    console.error('[R03] Erro ao buscar matrículas:', errorMat.message);
+    return [];
+  }
+
+  if (!matriculas || matriculas.length === 0) {
+    return [];
+  }
+
+  const alunoIds = Array.from(new Set(matriculas.map((m) => m.aluno_id)));
+  const turmaIds = Array.from(new Set(matriculas.map((m) => m.turma_id).filter(Boolean)));
+  const matriculaIds = matriculas.map((m) => m.id);
+
+  // Query 2: profiles WHERE id IN alunoIds
+  const { data: profiles, error: errorProfiles } = await supabase
+    .from('profiles')
+    .select('id, full_name, codigo_itec')
+    .in('id', alunoIds);
+
+  if (errorProfiles) {
+    console.error('[R03] Erro ao buscar profiles:', errorProfiles.message);
+    return [];
+  }
+
+  // Query 3: turmas WHERE id IN turmaIds
+  const { data: turmas, error: errorTurmas } = await supabase
+    .from('turmas')
+    .select('id, nome, codigo')
+    .in('id', turmaIds);
+
+  if (errorTurmas) {
+    console.error('[R03] Erro ao buscar turmas:', errorTurmas.message);
+  }
+
+  // Query 4: matriculas_disciplina WHERE matricula_id IN matriculaIds + filtro status
+  let queryMatDisc = supabase
+    .from('matriculas_disciplina')
+    .select('id, matricula_id, disciplina_id, status, nota')
+    .in('matricula_id', matriculaIds)
+    .limit(2000);
+
+  if (filtro.status && filtro.status !== 'todos') {
+    queryMatDisc = queryMatDisc.eq('status', filtro.status);
+  }
+
+  const { data: matriculasDisc, error: errorMatDisc } = await queryMatDisc;
+
+  if (errorMatDisc) {
+    console.error('[R03] Erro ao buscar matriculas_disciplina:', errorMatDisc.message);
+    return [];
+  }
+
+  if (!matriculasDisc || matriculasDisc.length === 0) {
+    return [];
+  }
+
+  const disciplinaIds = Array.from(new Set(matriculasDisc.map((md) => md.disciplina_id)));
+
+  // Query 5: disciplinas_v2 WHERE id IN disciplinaIds
+  const { data: disciplinas, error: errorDisc } = await supabase
+    .from('disciplinas_v2')
+    .select('id, codigo, nome')
+    .in('id', disciplinaIds);
+
+  if (errorDisc) {
+    console.error('[R03] Erro ao buscar disciplinas:', errorDisc.message);
+    return [];
+  }
+
+  // Merge manual em memória (LICAO-026)
+  // Mapear para acesso rápido
+  const profileMap = new Map(profiles?.map((p) => [p.id, p]) ?? []);
+  const turmaMap = new Map(turmas?.map((t) => [t.id, t]) ?? []);
+  const disciplinaMap = new Map(disciplinas?.map((d) => [d.id, d]) ?? []);
+
+  // Mapear matricula_id → aluno_id + turma_id
+  const matriculaMap = new Map(
+    matriculas.map((m) => [
+      m.id,
+      { aluno_id: m.aluno_id, turma_id: m.turma_id },
+    ])
+  );
+
+  // Agrupar matriculas_disciplina por aluno
+  const porAluno = new Map<string, typeof matriculasDisc>();
+
+  for (const md of matriculasDisc) {
+    const mat = matriculaMap.get(md.matricula_id);
+    if (!mat) continue;
+
+    const alunoId = mat.aluno_id;
+    const arr = porAluno.get(alunoId) ?? [];
+    arr.push(md);
+    porAluno.set(alunoId, arr);
+  }
+
+  // Construir resultado
+  const resultado: DisciplinasPorAlunoRelatorio[] = [];
+
+  for (const [alunoId, discs] of porAluno.entries()) {
+    const profile = profileMap.get(alunoId);
+    if (!profile) continue;
+
+    // Buscar turma do aluno (primeira matrícula)
+    const primeiraMatricula = matriculas.find((m) => m.aluno_id === alunoId);
+    const turmaId = primeiraMatricula?.turma_id;
+    const turma = turmaId ? turmaMap.get(turmaId) : null;
+
+    if (!turma) continue;
+
+    // Montar lista de disciplinas
+    const disciplinasAluno = discs
+      .map((md) => {
+        const disc = disciplinaMap.get(md.disciplina_id);
+        if (!disc) return null;
+
+        return {
+          disciplina_id: disc.id,
+          codigo: disc.codigo,
+          nome: disc.nome,
+          status: md.status as DisciplinasPorAlunoRelatorio['disciplinas'][0]['status'],
+          nota: md.nota,
+        };
+      })
+      .filter((d): d is NonNullable<typeof d> => d !== null)
+      .sort((a, b) => a.nome.localeCompare(b.nome));
+
+    // Calcular totais
+    const totais = {
+      cursando: disciplinasAluno.filter((d) => d.status === 'cursando').length,
+      aprovadas: disciplinasAluno.filter((d) => d.status === 'aprovado').length,
+      reprovadas: disciplinasAluno.filter(
+        (d) => d.status === 'reprovado' || d.status === 'reprovado_falta'
+      ).length,
+      convalidadas: disciplinasAluno.filter((d) => d.status === 'convalidado').length,
+    };
+
+    resultado.push({
+      aluno_id: alunoId,
+      nome_aluno: profile.full_name,
+      codigo_itec: profile.codigo_itec || null,
+      turma: {
+        id: turma.id,
+        nome: turma.nome,
+        codigo: turma.codigo,
+      },
+      disciplinas: disciplinasAluno,
+      totais,
+    });
+  }
+
+  // Ordenar por nome_aluno
+  return resultado.sort((a, b) => a.nome_aluno.localeCompare(b.nome_aluno));
 }
 
 /**
