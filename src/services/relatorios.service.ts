@@ -103,6 +103,37 @@ export interface DisciplinaAlunoRelatorio {
   frequencia_percentual: number | null;
 }
 
+// R03 — Disciplinas por Aluno
+export interface FiltroR03 {
+  alunoId?: string;
+  turmaId?: string;
+  status?: 'cursando' | 'aprovado' | 'reprovado' | 'todos';
+}
+
+export interface DisciplinasPorAlunoRelatorio {
+  aluno_id: string;
+  nome_aluno: string;
+  codigo_itec: string | null;
+  turma: {
+    id: string;
+    nome: string;
+    codigo: string;
+  };
+  disciplinas: {
+    disciplina_id: string;
+    codigo: string;
+    nome: string;
+    status: 'cursando' | 'aprovado' | 'reprovado' | 'reprovado_falta' | 'convalidado' | 'trancado';
+    nota: number | null;
+  }[];
+  totais: {
+    cursando: number;
+    aprovadas: number;
+    reprovadas: number;
+    convalidadas: number;
+  };
+}
+
 export interface SituacaoFinanceiraRelatorio {
   aluno_id: string;
   nome_aluno: string;
@@ -818,6 +849,185 @@ export async function getInadimplentesRelatorio(
 
   // Ordenar por dias de atraso (mais grave primeiro)
   return resultado.sort((a, b) => b.dias_atraso - a.dias_atraso);
+}
+
+/**
+ * R03 — Disciplinas por Aluno
+ * Padrão RLS: queries separadas + merge manual (LICAO-026)
+ */
+export async function getDisciplinasPorAlunoRelatorio(
+  filtro: FiltroR03
+): Promise<DisciplinasPorAlunoRelatorio[]> {
+  // Query 1: matriculas WHERE turma_id (se filtro) + status='ativa'
+  let queryMatriculas = supabase
+    .from('matriculas')
+    .select('id, aluno_id, turma_id')
+    .eq('status', 'ativa')
+    .limit(500);
+
+  if (filtro.turmaId) {
+    queryMatriculas = queryMatriculas.eq('turma_id', filtro.turmaId);
+  }
+
+  if (filtro.alunoId) {
+    queryMatriculas = queryMatriculas.eq('aluno_id', filtro.alunoId);
+  }
+
+  const { data: matriculas, error: errorMat } = await queryMatriculas;
+
+  if (errorMat) {
+    console.error('[R03] Erro ao buscar matrículas:', errorMat.message);
+    return [];
+  }
+
+  if (!matriculas || matriculas.length === 0) {
+    return [];
+  }
+
+  const alunoIds = Array.from(new Set(matriculas.map((m) => m.aluno_id)));
+  const turmaIds = Array.from(new Set(matriculas.map((m) => m.turma_id).filter(Boolean)));
+  const matriculaIds = matriculas.map((m) => m.id);
+
+  // Query 2: profiles WHERE id IN alunoIds
+  const { data: profiles, error: errorProfiles } = await supabase
+    .from('profiles')
+    .select('id, full_name, codigo_itec')
+    .in('id', alunoIds);
+
+  if (errorProfiles) {
+    console.error('[R03] Erro ao buscar profiles:', errorProfiles.message);
+    return [];
+  }
+
+  // Query 3: turmas WHERE id IN turmaIds
+  const { data: turmas, error: errorTurmas } = await supabase
+    .from('turmas')
+    .select('id, nome, codigo')
+    .in('id', turmaIds);
+
+  if (errorTurmas) {
+    console.error('[R03] Erro ao buscar turmas:', errorTurmas.message);
+  }
+
+  // Query 4: matriculas_disciplina WHERE matricula_id IN matriculaIds + filtro status
+  let queryMatDisc = supabase
+    .from('matriculas_disciplina')
+    .select('id, matricula_id, disciplina_id, status, nota')
+    .in('matricula_id', matriculaIds)
+    .limit(2000);
+
+  if (filtro.status && filtro.status !== 'todos') {
+    queryMatDisc = queryMatDisc.eq('status', filtro.status);
+  }
+
+  const { data: matriculasDisc, error: errorMatDisc } = await queryMatDisc;
+
+  if (errorMatDisc) {
+    console.error('[R03] Erro ao buscar matriculas_disciplina:', errorMatDisc.message);
+    return [];
+  }
+
+  if (!matriculasDisc || matriculasDisc.length === 0) {
+    return [];
+  }
+
+  const disciplinaIds = Array.from(new Set(matriculasDisc.map((md) => md.disciplina_id)));
+
+  // Query 5: disciplinas_v2 WHERE id IN disciplinaIds
+  const { data: disciplinas, error: errorDisc } = await supabase
+    .from('disciplinas_v2')
+    .select('id, codigo, nome')
+    .in('id', disciplinaIds);
+
+  if (errorDisc) {
+    console.error('[R03] Erro ao buscar disciplinas:', errorDisc.message);
+    return [];
+  }
+
+  // Merge manual em memória (LICAO-026)
+  // Mapear para acesso rápido
+  const profileMap = new Map(profiles?.map((p) => [p.id, p]) ?? []);
+  const turmaMap = new Map(turmas?.map((t) => [t.id, t]) ?? []);
+  const disciplinaMap = new Map(disciplinas?.map((d) => [d.id, d]) ?? []);
+
+  // Mapear matricula_id → aluno_id + turma_id
+  const matriculaMap = new Map(
+    matriculas.map((m) => [
+      m.id,
+      { aluno_id: m.aluno_id, turma_id: m.turma_id },
+    ])
+  );
+
+  // Agrupar matriculas_disciplina por aluno
+  const porAluno = new Map<string, typeof matriculasDisc>();
+
+  for (const md of matriculasDisc) {
+    const mat = matriculaMap.get(md.matricula_id);
+    if (!mat) continue;
+
+    const alunoId = mat.aluno_id;
+    const arr = porAluno.get(alunoId) ?? [];
+    arr.push(md);
+    porAluno.set(alunoId, arr);
+  }
+
+  // Construir resultado
+  const resultado: DisciplinasPorAlunoRelatorio[] = [];
+
+  for (const [alunoId, discs] of porAluno.entries()) {
+    const profile = profileMap.get(alunoId);
+    if (!profile) continue;
+
+    // Buscar turma do aluno (primeira matrícula)
+    const primeiraMatricula = matriculas.find((m) => m.aluno_id === alunoId);
+    const turmaId = primeiraMatricula?.turma_id;
+    const turma = turmaId ? turmaMap.get(turmaId) : null;
+
+    if (!turma) continue;
+
+    // Montar lista de disciplinas
+    const disciplinasAluno = discs
+      .map((md) => {
+        const disc = disciplinaMap.get(md.disciplina_id);
+        if (!disc) return null;
+
+        return {
+          disciplina_id: disc.id,
+          codigo: disc.codigo,
+          nome: disc.nome,
+          status: md.status as DisciplinasPorAlunoRelatorio['disciplinas'][0]['status'],
+          nota: md.nota,
+        };
+      })
+      .filter((d): d is NonNullable<typeof d> => d !== null)
+      .sort((a, b) => a.nome.localeCompare(b.nome));
+
+    // Calcular totais
+    const totais = {
+      cursando: disciplinasAluno.filter((d) => d.status === 'cursando').length,
+      aprovadas: disciplinasAluno.filter((d) => d.status === 'aprovado').length,
+      reprovadas: disciplinasAluno.filter(
+        (d) => d.status === 'reprovado' || d.status === 'reprovado_falta'
+      ).length,
+      convalidadas: disciplinasAluno.filter((d) => d.status === 'convalidado').length,
+    };
+
+    resultado.push({
+      aluno_id: alunoId,
+      nome_aluno: profile.full_name,
+      codigo_itec: profile.codigo_itec || null,
+      turma: {
+        id: turma.id,
+        nome: turma.nome,
+        codigo: turma.codigo,
+      },
+      disciplinas: disciplinasAluno,
+      totais,
+    });
+  }
+
+  // Ordenar por nome_aluno
+  return resultado.sort((a, b) => a.nome_aluno.localeCompare(b.nome_aluno));
 }
 
 /**

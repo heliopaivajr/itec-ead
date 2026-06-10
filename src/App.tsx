@@ -61,6 +61,7 @@ const CalendarioAcademico = lazy(() => import("./pages/dashboard/CalendarioAcade
 const Relatorios              = lazy(() => import("./pages/dashboard/Relatorios"));
 const R01_AlunosPorTurma      = lazy(() => import("./components/dashboard/relatorios/R01_AlunosPorTurma"));
 const R02_ListaPresenca       = lazy(() => import("./components/dashboard/relatorios/R02_ListaPresenca"));
+const R03_DisciplinasPorAluno = lazy(() => import("./components/dashboard/relatorios/R03_DisciplinasPorAluno"));
 const R04_SituacaoFinanceira  = lazy(() => import("./components/dashboard/relatorios/R04_SituacaoFinanceira"));
 const R05_Inadimplentes       = lazy(() => import("./components/dashboard/relatorios/R05_Inadimplentes"));
 const RelatorioEmBreve        = lazy(() => import("./components/dashboard/relatorios/RelatorioEmBreve"));
@@ -133,7 +134,7 @@ const App = () => (
               <Route path="relatorios"    element={<RoleGuard allowedRoles={['superadmin','admin','administracao']}><Relatorios /></RoleGuard>} />
               <Route path="relatorios/alunos-turma" element={<RoleGuard allowedRoles={['superadmin','admin','administracao']}><R01_AlunosPorTurma /></RoleGuard>} />
               <Route path="relatorios/lista-presenca" element={<RoleGuard allowedRoles={['superadmin','admin','administracao','professor']}><R02_ListaPresenca /></RoleGuard>} />
-              <Route path="relatorios/disciplinas-aluno" element={<RoleGuard allowedRoles={['superadmin','admin','administracao']}><RelatorioEmBreve codigo="R03" titulo="Disciplinas por Aluno" descricao="Disciplinas cursadas, em andamento e pendentes" /></RoleGuard>} />
+              <Route path="relatorios/disciplinas-aluno" element={<RoleGuard allowedRoles={['superadmin','admin','administracao','professor']}><R03_DisciplinasPorAluno /></RoleGuard>} />
               <Route path="relatorios/situacao-financeira" element={<RoleGuard allowedRoles={['superadmin','admin','administracao','financeiro']}><R04_SituacaoFinanceira /></RoleGuard>} />
               <Route path="relatorios/inadimplentes" element={<RoleGuard allowedRoles={['superadmin','admin','administracao']}><R05_Inadimplentes /></RoleGuard>} />
               <Route path="relatorios/historico-academico" element={<RoleGuard allowedRoles={['superadmin','admin','administracao']}><RelatorioEmBreve codigo="R06" titulo="Histórico Acadêmico" descricao="Histórico completo individual do aluno" /></RoleGuard>} />
