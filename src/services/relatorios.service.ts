@@ -4,6 +4,7 @@
  */
 
 import { supabase } from '@/lib/supabase';
+import { getHistoricoAluno, type HistoricoAluno } from './academico.service';
 
 // ===== TIPOS =====
 
@@ -36,6 +37,11 @@ export interface FiltroInadimplentes {
 
 export interface FiltroHistoricoAcademico {
   alunoId: string;
+}
+
+export interface FiltroR06 {
+  alunoId: string;
+  turmaId: string;
 }
 
 // ===== TIPOS DE RETORNO =====
@@ -186,6 +192,17 @@ export interface HistoricoAcademicoRelatorio {
     media_geral: number | null;
     frequencia_media: number | null;
   };
+}
+
+export interface R06_HistoricoAcademicoRelatorio {
+  dados_pessoais: {
+    nome_completo: string;
+    codigo_itec: string | null;
+    cpf: string | null;
+    turma_codigo: string;
+    turma_nome: string;
+  };
+  historico: HistoricoAluno;
 }
 
 // ===== FUNÇÕES (stubs para Fase 2+) =====
@@ -1039,4 +1056,124 @@ export async function getHistoricoAcademico(
   // TODO: implementar na Fase 4
   console.log('getHistoricoAcademico:', filtro);
   return null;
+}
+
+/**
+ * R06 — Histórico Acadêmico Individual
+ * Padrão RLS: queries separadas + merge manual (LICAO-026)
+ */
+export async function getHistoricoAcademicoR06(
+  filtro: FiltroR06
+): Promise<R06_HistoricoAcademicoRelatorio | null> {
+  const { alunoId, turmaId } = filtro;
+
+  // Query 1: Buscar dados do aluno (profile)
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('full_name, codigo_itec, cpf')
+    .eq('id', alunoId)
+    .single();
+
+  if (!profile) {
+    console.error('getHistoricoAcademicoR06: aluno não encontrado', alunoId);
+    return null;
+  }
+
+  // Query 2: Buscar dados da turma
+  type TurmaRow = { codigo: string; nome: string };
+  const { data: turma } = await supabase
+    .from('turmas')
+    .select('codigo, nome')
+    .eq('id', turmaId)
+    .single();
+
+  if (!turma) {
+    console.error('getHistoricoAcademicoR06: turma não encontrada', turmaId);
+    return null;
+  }
+
+  const turmaData = turma as TurmaRow;
+
+  // Query 3: Buscar histórico acadêmico completo (reusar função existente)
+  const historico = await getHistoricoAluno(alunoId, turmaId);
+
+  // Verificar se aluno tem disciplinas cursadas
+  if (historico.modulos.length === 0) {
+    console.warn('getHistoricoAcademicoR06: aluno sem disciplinas cursadas', alunoId);
+    // Retornar estrutura vazia mas válida
+  }
+
+  // Merge manual: montar objeto de retorno
+  return {
+    dados_pessoais: {
+      nome_completo: (profile as { full_name: string }).full_name,
+      codigo_itec: (profile as { codigo_itec: string | null }).codigo_itec,
+      cpf: (profile as { cpf: string | null }).cpf,
+      turma_codigo: turmaData.codigo,
+      turma_nome: turmaData.nome,
+    },
+    historico,
+  };
+}
+
+/**
+ * Busca alunos de uma turma (para dropdown)
+ * Padrão RLS: queries separadas + merge manual (LICAO-026)
+ */
+export async function getAlunosDaTurma(
+  turmaId: string
+): Promise<{ id: string; nome: string; codigo_itec: string | null }[]> {
+  // Query 1: Buscar alunos matriculados na turma
+  const { data: matriculas } = await supabase
+    .from('matriculas')
+    .select('aluno_id')
+    .eq('turma_id', turmaId)
+    .eq('status', 'ativa')
+    .limit(200);
+
+  if (!matriculas || matriculas.length === 0) {
+    return [];
+  }
+
+  type MatriculaRow = { aluno_id: string };
+  const alunoIds = (matriculas as MatriculaRow[]).map((m) => m.aluno_id);
+
+  // Query 2: Buscar dados dos alunos
+  type ProfileRow = {
+    id: string;
+    full_name: string;
+    codigo_itec: string | null;
+  };
+
+  const { data: profiles } = await supabase
+    .from('profiles')
+    .select('id, full_name, codigo_itec')
+    .in('id', alunoIds)
+    .limit(200);
+
+  if (!profiles || profiles.length === 0) {
+    return [];
+  }
+
+  // Merge manual: Map para lookup O(1)
+  const profilesMap = new Map<string, ProfileRow>();
+  for (const p of profiles as ProfileRow[]) {
+    profilesMap.set(p.id, p);
+  }
+
+  // Merge: criar lista final
+  const alunos = alunoIds
+    .map((id) => {
+      const profile = profilesMap.get(id);
+      if (!profile) return null;
+      return {
+        id,
+        nome: profile.full_name,
+        codigo_itec: profile.codigo_itec,
+      };
+    })
+    .filter((a): a is { id: string; nome: string; codigo_itec: string | null } => a !== null)
+    .sort((a, b) => a.nome.localeCompare(b.nome)); // Ordenar alfabeticamente
+
+  return alunos;
 }

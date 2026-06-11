@@ -64,6 +64,7 @@ const R02_ListaPresenca       = lazy(() => import("./components/dashboard/relato
 const R03_DisciplinasPorAluno = lazy(() => import("./components/dashboard/relatorios/R03_DisciplinasPorAluno"));
 const R04_SituacaoFinanceira  = lazy(() => import("./components/dashboard/relatorios/R04_SituacaoFinanceira"));
 const R05_Inadimplentes       = lazy(() => import("./components/dashboard/relatorios/R05_Inadimplentes"));
+const R06_HistoricoAcademico  = lazy(() => import("./components/dashboard/relatorios/R06_HistoricoAcademico"));
 const RelatorioEmBreve        = lazy(() => import("./components/dashboard/relatorios/RelatorioEmBreve"));
 import ProtectedRoute from '@/components/ProtectedRoute';
 import RoleGuard from '@/components/auth/RoleGuard';
@@ -137,7 +138,7 @@ const App = () => (
               <Route path="relatorios/disciplinas-aluno" element={<RoleGuard allowedRoles={['superadmin','admin','administracao','professor']}><R03_DisciplinasPorAluno /></RoleGuard>} />
               <Route path="relatorios/situacao-financeira" element={<RoleGuard allowedRoles={['superadmin','admin','administracao','financeiro']}><R04_SituacaoFinanceira /></RoleGuard>} />
               <Route path="relatorios/inadimplentes" element={<RoleGuard allowedRoles={['superadmin','admin','administracao']}><R05_Inadimplentes /></RoleGuard>} />
-              <Route path="relatorios/historico-academico" element={<RoleGuard allowedRoles={['superadmin','admin','administracao']}><RelatorioEmBreve codigo="R06" titulo="Histórico Acadêmico" descricao="Histórico completo individual do aluno" /></RoleGuard>} />
+              <Route path="relatorios/historico-academico" element={<RoleGuard allowedRoles={['superadmin','admin','administracao','professor']}><R06_HistoricoAcademico /></RoleGuard>} />
               <Route path="calendario"    element={<CalendarioAcademico />} />
               <Route path="nova-matricula" element={<RoleGuard allowedRoles={['superadmin','admin','administracao']}><NovaMatricula /></RoleGuard>} />
               <Route path="financeiro"    element={<RoleGuard allowedRoles={['superadmin','admin','administracao','financeiro']}><FinanceiroPage /></RoleGuard>} />
