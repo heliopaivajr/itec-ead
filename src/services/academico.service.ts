@@ -17,6 +17,7 @@ export interface DisciplinaHistorico {
   id: string;
   nome: string;
   carga_horaria: number;
+  creditos: number;
   notas: {
     n1: number | null;
     n2: number | null;
@@ -44,6 +45,7 @@ export interface HistoricoAluno {
   modulos: ModuloHistorico[];
   media_geral: number | null;
   total_carga_horaria: number;
+  total_creditos: number;
   disciplinas_aprovadas: number;
   disciplinas_reprovadas: number;
   disciplinas_em_andamento: number;
@@ -367,6 +369,7 @@ export async function getHistoricoAluno(
       id: string;
       nome: string;
       carga_horaria_presencial: number;
+      creditos: number;
       modulo_id: string;
       modulos: { id: string; nome: string; ordem: number };
     };
@@ -377,7 +380,7 @@ export async function getHistoricoAluno(
     .select(`
       disciplina_id,
       disciplinas_v2(
-        id, nome, carga_horaria_presencial, modulo_id,
+        id, nome, carga_horaria_presencial, creditos, modulo_id,
         modulos(id, nome, ordem)
       )
     `)
@@ -414,6 +417,7 @@ export async function getHistoricoAluno(
       id: d.id,
       nome: d.nome,
       carga_horaria: d.carga_horaria_presencial,
+      creditos: d.creditos,
       notas: {
         n1: notas.n1,
         n2: notas.n2,
@@ -440,6 +444,7 @@ export async function getHistoricoAluno(
   let reprovadas = 0;
   let emAndamento = 0;
   let totalCH = 0;
+  let totalCreditos = 0;
 
   const modulos: ModuloHistorico[] = [...modulosMap.values()]
     .sort((a, b) => a.meta.ordem - b.meta.ordem)
@@ -456,6 +461,7 @@ export async function getHistoricoAluno(
 
       for (const d of disciplinas) {
         totalCH += d.carga_horaria;
+        totalCreditos += d.creditos;
         if (d.status === 'aprovado_direto') aprovadas++;
         else if (d.status === 'reprovado_nota' || d.status === 'reprovado_falta') reprovadas++;
         else emAndamento++;
@@ -476,6 +482,7 @@ export async function getHistoricoAluno(
     modulos,
     media_geral,
     total_carga_horaria: totalCH,
+    total_creditos: totalCreditos,
     disciplinas_aprovadas: aprovadas,
     disciplinas_reprovadas: reprovadas,
     disciplinas_em_andamento: emAndamento,

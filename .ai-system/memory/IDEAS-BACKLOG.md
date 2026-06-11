@@ -221,6 +221,21 @@ Este documento registra todas as ideias, melhorias e funcionalidades discutidas 
 **Versão alvo**: V2 (Setembro/Outubro 2026)  
 **Status**: Planejado  
 
+### 8.4 Sistema de Cobrança por Quantidade de Disciplinas
+**Descrição**: Implementar tabela oficial de cobrança progressiva baseada na quantidade de disciplinas cursadas (não por disciplina individual).  
+**Recursos**:
+- Tabela Padrão (matrícula + mensalidade com acréscimo pós-vencimento)
+- Tabela Família (desconto automático)
+- Vencimento dia 10 (acréscimo automático após vencimento)
+- Aprovação de descontos: financeiro (Breno) + superadmin
+- Integração com Asaas para emissão automática de boleto/PIX
+
+**Prioridade**: ALTA  
+**Versão alvo**: V1 (Agosto 2026)  
+**Status**: Aprovado — Sprint Financeiro (Semanas 5-6)  
+**Dependências**: Conta Asaas configurada, tabelas de preços no banco.  
+**Referência**: `.ai-system/memory/REGRAS-FINANCEIRO.md`  
+
 ---
 
 ## 9. OUTRAS IDEIAS
@@ -254,6 +269,139 @@ Este documento registra todas as ideias, melhorias e funcionalidades discutidas 
 **Prioridade**: Média  
 **Versão alvo**: V2 (2026)  
 **Status**: Em Discussão  
+
+---
+
+## 10. CAMADA ANALÍTICA DE DADOS
+
+### 10.1 Dashboard Analítico Interno com Python + Streamlit
+**Descrição**: Ferramenta de análise de dados interna para coordenação acadêmica, separada da plataforma principal.  
+**Tecnologias**: Python, Streamlit, pandas, plotly, scikit-learn.  
+**Prioridade**: Média  
+**Versão alvo**: V3 (Pós-agosto 2026)  
+**Status**: Em Discussão  
+
+**Recursos planejados**:
+- Dashboard interativo com métricas avançadas
+- Gráficos e visualizações para tomada de decisão
+- Análise de tendências históricas
+- Exportação de relatórios customizados
+
+**Observações importantes**:
+- **NÃO substitui** o sistema React + Supabase (plataforma do aluno/secretaria)
+- Streamlit serve apenas para **dashboards internos analíticos**
+- Acesso restrito: coordenação acadêmica e direção
+- Alinhado com transição de carreira do Hélio para área de dados
+- **Valor triplo**: melhoria do projeto + aprendizado prático + portfólio
+
+**Dependências**:
+- Lançamento V1 concluído (agosto 2026)
+- Dados históricos consolidados no Supabase
+- Python 3.11+ instalado no ambiente de produção
+
+### 10.2 ETL de Dados Históricos com pandas
+**Descrição**: Pipeline de importação automática de dados históricos dos ~30 alunos que já cursaram módulos anteriores.  
+**Formato de entrada**: Planilha Excel (.xlsx) com colunas padronizadas.  
+**Processamento**: Validação, limpeza, transformação e carga no Supabase.  
+**Prioridade**: Média  
+**Versão alvo**: V3 (Pós-agosto 2026)  
+**Status**: Em Discussão  
+
+**Fluxo do ETL**:
+1. **Extract**: Leitura de Excel com pandas
+2. **Transform**: 
+   - Validação de CPF, email, datas
+   - Padronização de nomes e códigos
+   - Cálculo de médias e status
+   - Detecção de inconsistências
+3. **Load**: Inserção via `supabase-py` ou SQL direto
+
+**Benefícios**:
+- Automação da importação (evita erros manuais)
+- Validação de dados antes da inserção
+- Log de erros e inconsistências
+- Reutilizável para futuras migrações
+
+### 10.3 Análise de Evasão, Retenção e Desempenho
+**Descrição**: Relatórios analíticos avançados para identificar padrões e tendências.  
+**Métricas**:
+- Taxa de evasão por módulo/semestre
+- Taxa de retenção (alunos que continuam até o final)
+- Desempenho médio por turma/disciplina
+- Comparativo entre turmas
+- Identificação de disciplinas mais difíceis
+
+**Prioridade**: Média  
+**Versão alvo**: V3 (Pós-agosto 2026)  
+**Status**: Em Discussão  
+
+**Visualizações**:
+- Gráficos de linha: evolução temporal de métricas
+- Heatmaps: desempenho por disciplina × turma
+- Funil de conversão: matrícula → conclusão
+- Tabelas pivot interativas
+
+### 10.4 IA Preditiva — Alerta de Risco de Reprovação
+**Descrição**: Modelo de machine learning para prever risco de reprovação antes da avaliação final.  
+**Tecnologias**: scikit-learn, XGBoost, ou modelos simples (Regressão Logística).  
+**Prioridade**: Baixa  
+**Versão alvo**: V3+ (2027)  
+**Status**: Ideia Preliminar  
+
+**Features do modelo**:
+- Frequência acumulada até o momento
+- Nota N1 (primeira avaliação)
+- Histórico de notas em disciplinas anteriores
+- Tempo médio de entrega de atividades EAD
+- Engajamento na plataforma (acessos, materiais baixados)
+
+**Output**:
+- Score de risco: 0-100%
+- Classificação: Baixo | Médio | Alto risco
+- Ação recomendada: monitoria, reforço, conversa com coordenação
+
+**Benefícios**:
+- Intervenção precoce para evitar reprovações
+- Melhoria da taxa de aprovação
+- Suporte personalizado ao aluno
+
+**Observação**: Requer volume mínimo de dados históricos (~100 alunos) para treinar o modelo com precisão aceitável.
+
+### 10.5 Gráficos Avançados para Coordenação Acadêmica
+**Descrição**: Visualizações interativas com Plotly/Streamlit para análise exploratória.  
+**Prioridade**: Média  
+**Versão alvo**: V3 (Pós-agosto 2026)  
+**Status**: Em Discussão  
+
+**Tipos de gráficos**:
+- **Distribuição de notas**: histograma + boxplot
+- **Frequência × Nota**: scatter plot com linha de tendência
+- **Taxa de aprovação por professor**: comparativo
+- **Evolução temporal**: linha do tempo de métricas-chave
+- **Correlação entre variáveis**: matriz de correlação + heatmap
+
+**Interatividade**:
+- Filtros: turma, módulo, disciplina, período
+- Drill-down: clicar em barra → ver detalhes
+- Exportação: PNG, PDF, CSV
+
+---
+
+## REGRA CRÍTICA — Camada Analítica
+
+**APENAS avaliar após lançamento de agosto 2026.**
+
+Razões:
+1. **Foco**: Prioridade total no lançamento V1 (agosto)
+2. **Dados**: Precisa de volume mínimo para análises significativas
+3. **Stack**: Adicionar Python/Streamlit agora aumenta complexidade desnecessariamente
+4. **Risco**: Desvio de foco em fase crítica do projeto
+
+**Aprovação condicional**:
+- ✅ Hélio pode estudar Python/pandas/Streamlit paralelamente (aprendizado pessoal)
+- ✅ Pode criar protótipos locais com dados fictícios
+- ❌ NÃO adicionar ao projeto oficial antes de agosto
+- ❌ NÃO integrar com ambiente de produção antes de agosto
 
 ---
 
