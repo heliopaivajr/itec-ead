@@ -716,4 +716,107 @@ Ao criar novo componente de página: (1) criar componente; (2) registrar rota; (
 
 ---
 
+## BUG-ACAD-001 — verificarPrerequisitos ignorava excecoes_prerequisito
+
+**Data:** 2026-06-11
+**Sprint:** sprint-relatorios-r02-r03-r06 (identificado durante revisão)
+**Agente envolvido:** 05-backend-engineer
+**Tipo de erro:** regra de negócio violada
+**Gravidade:** alta
+
+**Descrição:**
+`verificarPrerequisitos` e `verificarPrerequisitosBatch` em `matricula-academica.service.ts` verificavam apenas `prerequisitos_v2` para bloquear matrícula, ignorando completamente a tabela `excecoes_prerequisito`. Alunos com exceção aprovada pela coordenação eram incorretamente bloqueados de se matricular.
+
+**Como foi descoberto:**
+Revisão pós-sprint identificou que nenhum dos dois métodos consultava `excecoes_prerequisito`.
+
+**Causa provável:**
+Tabela `excecoes_prerequisito` criada na migration 008, mas a lógica dos services foi implementada em sprint posterior sem cruzar com a tabela de exceções.
+
+**Impacto:**
+Alunos com exceção legítima (aprovada pela coordenação) impedidos de matricular-se em disciplinas. Erro de negócio grave — secretaria não conseguia efetivar matrícula mesmo com documento de exceção em mãos.
+
+**Correção aplicada:**
+Ambos os métodos corrigidos para consultar `excecoes_prerequisito` antes de bloquear: se existir exceção ativa para o aluno + disciplina, o pré-requisito é considerado cumprido.
+
+**Como evitar no futuro:**
+Ao implementar qualquer lógica de validação que tenha tabela de exceção correspondente no schema, sempre incluir a consulta à tabela de exceção no mesmo método. Verificar migrations de tabelas relacionadas antes de implementar.
+
+**Prompt precisa melhorar?** Sim — spec deve listar TODAS as tabelas envolvidas na regra de negócio, incluindo exceções.
+**Skill precisa melhorar?** Sim — Agente 05 deve incluir: "Para validações com tabela de exceção, sempre consultar ambas."
+**Checklist precisa melhorar?** Sim
+**Documento precisa melhorar?** Não
+
+**Status:** corrigido
+**Aprovado pelo Hélio:** Sim
+
+---
+
+## ERR-RLS-003 — Calendário entregue sem policies INSERT/UPDATE/DELETE
+
+**Data:** 2026-06-11
+**Sprint:** Calendário RLS (identificado em revisão)
+**Agente envolvido:** 04-db-architect
+**Tipo de erro:** segurança
+**Gravidade:** alta
+
+**Descrição:**
+A tabela `eventos_calendario` foi entregue com apenas a policy SELECT corretamente configurada. As policies INSERT, UPDATE e DELETE estavam ausentes. Usuários com role `administracao`, `admin` e `superadmin` não conseguiam criar, editar ou excluir eventos, apesar de terem acesso visual à interface.
+
+**Como foi descoberto:**
+Revisão pós-sprint de RLS confirmou ausência via `SELECT policyname, cmd FROM pg_policies WHERE tablename = 'eventos_calendario'`.
+
+**Causa provável:**
+Migration de calendário focou na estrutura da tabela e na policy de leitura, sem completar o ciclo de policies de escrita.
+
+**Impacto:**
+Secretaria (administracao) e admin sem capacidade de gerenciar o calendário acadêmico. Feature entregue parcialmente.
+
+**Correção aplicada:**
+Migration complementar com policies INSERT/UPDATE/DELETE usando `user_roles` como fonte de roles (padrão anti-recursão — LICAO-007/025).
+
+**Como evitar no futuro:**
+Checklist obrigatório ao criar RLS em tabela editável: SELECT + INSERT + UPDATE + DELETE. Tabela com apenas SELECT é tabela read-only — documentar isso explicitamente se for intencional.
+
+**Status:** corrigido
+**Aprovado pelo Hélio:** Sim
+
+---
+
+## ERR-RLS-004 — Agente assumiu nomes de policies sem verificar no banco
+
+**Data:** 2026-06-11
+**Sprint:** sprint-rls-completo (migration 037)
+**Agente envolvido:** 04-db-architect / 11-security-auditor
+**Tipo de erro:** prompt fraco / spec incorreta
+**Gravidade:** média
+
+**Descrição:**
+Ao propor DROP de policies antigas em `taxa_matricula`, o agente inferiu os nomes das policies com base nas convenções do projeto. O nome real no banco era `taxa_aluno_ve_propria` — diferente do nome assumido. O `DROP POLICY` falhou com "policy not found". A migration precisou ser corrigida antes de ser executada.
+
+**Como foi descoberto:**
+Hélio executou a migration no SQL Editor e recebeu erro. Consultou `pg_policies` e identificou o nome correto.
+
+**Causa provável:**
+Agente leu migrations para inferir nomes, mas policies podem ter sido criadas com nomes diferentes dos inferidos, ou alteradas manualmente. Apenas o banco sabe o nome real.
+
+**Impacto:**
+Migration travada até correção manual. Sem impacto em dados — o erro ocorreu antes de qualquer mudança.
+
+**Correção aplicada:**
+Workflow corrigido: consultar `SELECT policyname FROM pg_policies WHERE tablename = 'X'` antes de qualquer `DROP POLICY`. Usar o nome exato retornado.
+
+**Como evitar no futuro:**
+NUNCA inferir nomes de policies — sempre verificar no banco via `pg_policies`. O Supabase MCP read-only permite essa verificação sem risco.
+
+**Prompt precisa melhorar?** Sim — migrations com DROP POLICY devem incluir etapa de verificação prévia.
+**Skill precisa melhorar?** Sim — Agente 04 deve incluir verificação de `pg_policies` como passo obrigatório antes de DROP.
+**Checklist precisa melhorar?** Sim
+**Documento precisa melhorar?** Não
+
+**Status:** corrigido
+**Aprovado pelo Hélio:** Sim
+
+---
+
 *Mantido pelo agente-Osabio · ITEC-EAD · 2025*

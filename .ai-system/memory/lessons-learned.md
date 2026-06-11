@@ -695,6 +695,83 @@ Checklist visual de documentos com controle de status por item:
 
 ---
 
+## LICAO-031 — Auditoria deve verificar no banco antes de classificar severidade
+
+**Data:** 2026-06-11
+**Contexto:** Revisão pós-sprint 11/06 — Agente 14 emitiu relatório de auditoria
+**Problema:** Agente 14 reportou "14 tabelas sem RLS" quando TODAS as 29 tabelas já tinham RLS ativo. O diagnóstico foi feito por inferência de leitura parcial de arquivos de migration, sem consultar `pg_policies` no banco real.
+**Decisão tomada:** Agente 11 validou via MCP read-only (`SELECT tablename FROM pg_policies GROUP BY tablename`) e confirmou que o relatório estava completamente errado. Nenhuma tabela estava sem RLS.
+**Justificativa:** Migrations são artefatos históricos — não representam necessariamente o estado atual do banco. Policies podem ter sido adicionadas fora do histórico de arquivos, alteradas manualmente, ou o agente pode ter lido migrations parcialmente.
+**Agentes impactados:** 14-security-auditor (correção crítica de comportamento)
+**Mudança aplicada:** MELHORIA-007 proposta para Agente 14 — ver abaixo.
+**Como aplicar no futuro:** Antes de classificar qualquer tabela como "sem RLS" ou emitir qualquer alerta de severidade sobre o banco: executar `SELECT tablename FROM pg_policies GROUP BY tablename` e comparar com a lista de tabelas. Só reportar ausência se confirmado pelo banco — nunca por inferência de arquivos.
+**Status:** registrada — melhoria obrigatória no Agente 14
+
+---
+
+## LICAO-032 — Verificar nomes reais de policies antes de DROP POLICY
+
+**Data:** 2026-06-11
+**Contexto:** Migration 037 — DROP de policies antigas em taxa_matricula falhou
+**Problema:** Agente inferiu nomes de policies com base em convenções do projeto. O nome real no banco era `taxa_aluno_ve_propria` — diferente do assumido. `DROP POLICY` falhou com "policy not found".
+**Decisão tomada:** Workflow corrigido — consultar `SELECT policyname FROM pg_policies WHERE tablename = 'X'` antes de qualquer DROP. Usar nome exato retornado.
+**Justificativa:** Policies podem ser criadas com nomes arbitrários. O banco é a única fonte de verdade. Inferência por convenção é arriscada e causa falha de migration.
+**Agentes impactados:** 04-db-architect, 11-security-auditor
+**Mudança aplicada:** ERR-RLS-004 registrado. Workflow de migrations com DROP atualizado.
+**Como aplicar no futuro:** DROP POLICY em migrations → passo obrigatório antes: `SELECT policyname FROM pg_policies WHERE tablename = 'alvo'`. O Supabase MCP read-only permite essa verificação com segurança.
+**Status:** aplicada
+
+---
+
+## LICAO-033 — LICAO-026 reforçada: join aninhado com RLS = vazio silencioso (confirmado em R06)
+
+**Data:** 2026-06-11
+**Contexto:** Relatório R06 (Histórico Acadêmico) — join `profiles!fk → full_name` retornou vazio
+**Problema:** Query de R06 usava join aninhado `profiles!mensalidades_aluno_id_fkey(full_name)` com RLS ativo em ambas as tabelas. Resultado: array vazio sem erro explícito — exatamente o padrão documentado na LICAO-026.
+**Decisão tomada:** Igual a R01/R04/R05: queries separadas + merge manual em JavaScript. Padrão consolidado em todos os 6 relatórios.
+**Justificativa:** Supabase/PostgREST não propaga corretamente o contexto de `auth.uid()` em joins complexos quando ambas tabelas têm RLS. Comportamento reproduzível e documentado. A solução de queries separadas é confiável e adotada como padrão definitivo do projeto.
+**Agentes impactados:** 05-backend-engineer, relatorios.service.ts
+**Mudança aplicada:** R06 implementado com queries separadas. Padrão LICAO-026 agora cobrindo R01-R06 completo.
+**Como aplicar no futuro:** Para qualquer relatório ou query que une `profiles` + outra tabela com RLS: queries separadas + merge manual. Nunca join aninhado.
+**Status:** aplicada
+
+---
+
+## LICAO-034 — Migration manual + MCP read-only = workflow seguro de DDL
+
+**Data:** 2026-06-11
+**Contexto:** Sprint RLS completo — workflow de validação antes de aplicar migrations
+**Problema:** Agentes propunham SQL com DDL (DROP POLICY, CREATE POLICY) baseado em inferência de arquivos. Sem validação prévia, migrations podiam falhar ou afetar policies erradas.
+**Decisão tomada:** Workflow estabelecido: (1) Agente propõe SQL; (2) Hélio usa Supabase MCP read-only para confirmar estado real do banco (`pg_policies`, `pg_tables`, etc.); (3) Hélio aplica no SQL Editor com nomes confirmados.
+**Justificativa:** MCP read-only permite consultas SELECT sem risco de alteração acidental. É a ferramenta ideal para validar nomes, estrutura e estado antes de qualquer DDL. Combina o conhecimento do agente com a verdade do banco.
+**Agentes impactados:** 04-db-architect, 09-infra-engineer, 11-security-auditor
+**Mudança aplicada:** Supabase MCP configurado em modo read-only (confirmado em sessão de 11/06). Workflow documentado.
+**Como aplicar no futuro:** Antes de qualquer migration com DROP/ALTER: usar MCP read-only para confirmar o estado atual. `execute_sql` com SELECT → sempre seguro. DDL → sempre via SQL Editor com aprovação do Hélio.
+**Status:** aplicada
+
+---
+
+## MELHORIA-007 — 14-security-auditor — Verificação real no banco antes de classificar severidade
+
+**Data:** 2026-06-11
+**Agente:** 14-security-auditor
+**Nível anterior:** não definido
+**Nível novo:** sem mudança de nível (correção de comportamento crítico)
+
+**Problema identificado:**
+Agente 14 emitiu relatório classificando "14 tabelas sem RLS" com base em leitura de arquivos de migration. O estado real do banco (verificado via `pg_policies`) mostrava que TODAS as 29 tabelas tinham RLS. Falso-positivo com potencial de gerar retrabalho e desconfiança nos relatórios de auditoria.
+
+**Melhoria aplicada:**
+Adicionar ao SKILL.md do Agente 14 etapa obrigatória ANTES de classificar qualquer item como problema:
+> "Para afirmações sobre estado do banco (RLS, policies, índices, constraints): executar query de verificação no banco antes de classificar. Nunca inferir de arquivos de migration. Query mínima: `SELECT tablename FROM pg_policies GROUP BY tablename` para RLS."
+
+**Risco da alteração:** baixo — adiciona passo de verificação, não remove capacidade
+**Resultado esperado:** Zero falsos-positivos em relatórios de auditoria por inferência de arquivos.
+**Aprovado por:** Hélio (2026-06-11)
+**Status:** proposta — aplicar no próximo uso do Agente 14
+
+---
+
 ## LICAO-017 — Supabase Studio usa contexto postgres — não valida JWT de usuários
 
 **Data:** 2026-06-02
