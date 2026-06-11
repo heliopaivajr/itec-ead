@@ -221,6 +221,21 @@ Este documento registra todas as ideias, melhorias e funcionalidades discutidas 
 **Versão alvo**: V2 (Setembro/Outubro 2026)  
 **Status**: Planejado  
 
+### 8.4 Sistema de Cobrança por Quantidade de Disciplinas
+**Descrição**: Implementar tabela oficial de cobrança progressiva baseada na quantidade de disciplinas cursadas (não por disciplina individual).  
+**Recursos**:
+- Tabela Padrão (matrícula + mensalidade com acréscimo pós-vencimento)
+- Tabela Família (desconto automático)
+- Vencimento dia 10 (acréscimo automático após vencimento)
+- Aprovação de descontos: financeiro (Breno) + superadmin
+- Integração com Asaas para emissão automática de boleto/PIX
+
+**Prioridade**: ALTA  
+**Versão alvo**: V1 (Agosto 2026)  
+**Status**: Aprovado — Sprint Financeiro (Semanas 5-6)  
+**Dependências**: Conta Asaas configurada, tabelas de preços no banco.  
+**Referência**: `.ai-system/memory/REGRAS-FINANCEIRO.md`  
+
 ---
 
 ## 9. OUTRAS IDEIAS
