@@ -1,6 +1,6 @@
 # CLAUDE.md — ITEC-EAD
 # Lido automaticamente pelo Claude Code
-# Atualizado: 2026-06-08
+# Atualizado: 2026-06-11
 
 ## Projeto
 Plataforma EAD do Instituto de Teologia Cristã
@@ -144,6 +144,7 @@ Sprint RLS (Semana 5):
 | 034 | 20260608_034_seed_feriados_2026 | Seed feriados nacionais 2026 |
 | 035 | 20260608_035_bug_ui_003_fix | Fix MatriculasPage counts + filtros |
 | 036 | 20260608_036_matriculas_financiamento | Campos tipo_financiamento, percentual_desconto, observacao_financeira |
+| 037 | 20260611_037_rls_financeiro | Role financeiro com acesso a mensalidades e taxa_matricula (SELECT/INSERT/UPDATE, sem DELETE). Policies ALL antigas separadas em INSERT/UPDATE/DELETE específicas. Seção 2 (restringir professor) ADIADA pós-agosto. |
 
 ## Testes
 ```bash
@@ -230,6 +231,38 @@ const resultado = mensalidades.map(m => ({
 #### BUG-UI-003: Rotas placeholder retornando 404
 **Problema**: Clicar em R02-R06 retornava 404 antes da implementação.
 **Fix**: Criado componente `RelatorioEmBreve` com mensagem e botão "Voltar" + rotas placeholder registradas no App.tsx.
+
+### Decisões de Segurança — Sprint RLS
+
+#### Migration 037: Seção 2 (Restringir Professor) ADIADA
+**Contexto**: Migration 037 originalmente planejada em 2 seções:
+1. ✅ Seção 1: Adicionar role `financeiro` em mensalidades e taxa_matricula
+2. ⏸️ Seção 2: Restringir professor apenas às disciplinas que leciona (6 tabelas)
+
+**Decisão (11/06/2026)**: Seção 2 ADIADA para pós-agosto.
+
+**Motivo**: Zero contratos cadastrados em `contratos_professor` hoje. Restringir agora quebraria acesso legítimo dos professores a frequência, notas e materiais.
+
+**Tabelas afetadas pela Seção 2 (pendentes)**:
+- `notas_aluno` — professor vê TODAS as notas
+- `frequencia` — professor vê TODA a frequência
+- `materiais` — professor gerencia TODOS os materiais
+- `matriculas_disciplina` — professor vê TODAS as matrículas
+- `progresso_aluno` — professor NÃO vê (deveria ver suas disciplinas)
+- `avaliacoes` — professor cria em QUALQUER disciplina
+
+**Ação futura**: Após cadastrar contratos de professores (pós-agosto), aplicar migration complementar com restrição via:
+```sql
+EXISTS (
+  SELECT 1 FROM professores p
+  JOIN contratos_professor c ON c.professor_id = p.id
+  WHERE p.user_id = auth.uid()
+    AND c.disciplina_id = [tabela].disciplina_id
+    AND c.status IN ('assinado', 'impresso')
+)
+```
+
+**Diagnóstico completo**: `.ai-system/audit/2026-06-11-auditoria-completa/diagnostico-rls-completo.md`
 
 ## Roadmap de Features
 
