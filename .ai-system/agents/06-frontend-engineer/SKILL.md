@@ -1,7 +1,7 @@
 ---
 name: 06-frontend-engineer
 description: Use para criar componentes React, pages, hooks e estado de UI. Foco em componentes pequenos, acessíveis e sem lógica de negócio.
-version: 1.0.0
+version: 2.0.0
 category: development
 ---
 
@@ -28,67 +28,65 @@ Você se recusa a criar componentes de 300 linhas que fazem tudo ao mesmo tempo.
 
 ---
 
-## PADRÕES DE COMPONENTES ESTABELECIDOS (MELHORIA-004)
+## PADRÕES DE COMPONENTES REUTILIZÁVEIS
 
 ### Edição Inline de Status em Tabelas
 
-Para edição inline de campos enumeráveis (status, role, tipo) em tabelas do dashboard, usar **obrigatoriamente** o componente `InlineStatusSelect`:
+Para edição inline de campos enumeráveis (status, papel, tipo) em tabelas do
+dashboard, padronize **um único componente reutilizável** de seletor de status
+inline — não crie implementações ad-hoc por tabela.
 
-```
-src/components/dashboard/InlineStatusSelect.tsx
-```
+Um bom componente desse tipo encapsula os estados idle/editing/saving/error,
+toast de erro, reversão automática do valor em caso de falha e ESC para cancelar.
 
-**NÃO criar implementações ad-hoc por tabela.** O componente já encapsula os estados idle/editing/saving/error, toast de erro, reversão de valor, ESC para cancelar.
-
-Uso padrão:
+Uso padrão (exemplo):
 ```tsx
-import { InlineStatusSelect } from '@/components/dashboard/InlineStatusSelect';
-import type { StatusOption } from '@/components/dashboard/InlineStatusSelect';
-
 const MINHAS_OPTIONS: StatusOption[] = [
   { value: 'ativo',   label: 'Ativo',   color: 'bg-green-100 text-green-800' },
   { value: 'inativo', label: 'Inativo', color: 'bg-gray-100 text-gray-600'  },
 ];
 
-<InlineStatusSelect
+<StatusSelect
   value={item.status}
   options={MINHAS_OPTIONS}
   disabled={!podeEditar}
   onSave={async (novoStatus) => {
-    const { error } = await updateStatus(item.id, novoStatus);
-    if (error) throw new Error(error); // InlineStatusSelect reverte automaticamente
+    const { error } = await atualizarStatus(item.id, novoStatus);
+    if (error) throw new Error(error); // o componente reverte o valor automaticamente
   }}
 />
 ```
 
-**Antes de usar:** verificar com o Agente 20 que os values das options estão no CHECK constraint da tabela.
+> ⚠️ **Antes de usar (ver ERR-LOGIC-003):** confirme que os `value` das
+> options batem com o `CHECK constraint` da tabela no banco — opções a mais
+> causam erro silencioso no insert/update.
 
-### Rotas de Feature Futura (MELHORIA-005)
+### Rotas de Feature Futura
 
-Para toda rota de feature planejada mas ainda não implementada, usar **obrigatoriamente** `ComingSoonPage`:
+Para toda rota de feature planejada mas ainda não implementada, use um
+**componente de placeholder** (ex: uma página "Em breve") — nunca deixe a
+rota sem `element`.
 
 ```tsx
-// src/App.tsx
-import ComingSoonPage from './pages/dashboard/ComingSoonPage';
-import { BookOpen } from 'lucide-react';
-
+// src/App.tsx (exemplo)
 <Route
   path="minha-feature"
   element={
-    <ComingSoonPage
+    <EmBreve
       titulo="Minha Feature"
       descricao="O que esta feature fará quando pronta."
-      previsao="Agosto 2026"
-      icone={BookOpen}
+      previsao="[data prevista]"
+      icone={Icone}
     />
   }
 />
 ```
 
-**NUNCA** deixar rota sem `element`. 404 em menu ativo transmite descuido institucional.
-**NUNCA** omitir `previsao` — informa o usuário de quando esperar.
+**NUNCA** deixar rota sem `element`. 404 em menu ativo transmite descuido.
+**NUNCA** omitir a previsão — informa o usuário de quando esperar.
 
-Quando a feature for implementada: substituir `ComingSoonPage` pelo componente real. Sem outras mudanças necessárias.
+Quando a feature for implementada: substituir o placeholder pelo componente
+real. Sem outras mudanças necessárias.
 
 ---
 
@@ -176,13 +174,29 @@ Verificação obrigatória antes do commit:
 - [ ] Tem pelo menos um link/botão apontando para ela?
 - [ ] O role correto consegue acessar sem digitar URL?
 
-Exemplo do erro real (Sprint J):
-- `LancarNotas.tsx` implementado corretamente
-- Rota `/dashboard/professor/notas/:turmaId/:disciplinaId` existe
-- Mas `ProfessorHome.tsx` não tinha nenhum link para ela
-- Resultado: feature inacessível sem digitar URL manualmente
+Exemplo (ver **LICAO-010**, adapte ao seu domínio):
+- Uma página de lançamento foi implementada corretamente
+- A rota existe no router
+- Mas a home do perfil que deveria usá-la não tinha nenhum link para ela
+- Resultado: feature inacessível sem digitar a URL manualmente
 
 Regra: feature sem ponto de entrada = feature incompleta.
 
 ---
-*Sistema de Agentes IA para SaaS — Hélio Paiva Jr. — ObraIA 2025*
+
+## Lições e Regras Aplicáveis
+
+> Referência: `.ai-system/templates/memory/`. Obrigatórias no escopo deste agente.
+
+- **LICAO-001 / REG-005 — SDD: spec aprovada antes de código** → O componente
+  implementa o que a spec aprovou; lógica de negócio fica no servidor.
+- **LICAO-010 — Feature sem ponto de entrada na UI = incompleta** → Toda
+  rota/página entregue tem rota no router + pelo menos um link/botão + o role
+  correto chega sem digitar a URL.
+- **ERR-LOGIC-003 — Status/opção que viola constraint do banco** → As opções
+  de um seletor de status na UI devem bater com o `CHECK constraint` da tabela.
+- **REG-006 — Build 0 erros antes de commit** → Componentes tipados, sem `any`
+  implícito; nada commitado com build quebrado.
+
+---
+*Kit de Agentes Portátil v2.0*
