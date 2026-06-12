@@ -228,6 +228,16 @@ Para cada template em `.ai-system/templates/project/`, gerar o arquivo
 correspondente na raiz do projeto, substituindo todos os placeholders
 pelos valores extraídos do PRD.
 
+> ⚠️ **Substituição por LISTA BRANCA (obrigatório).** O motor de
+> substituição só pode trocar placeholders **conhecidos** do kit
+> (`PROJETO_*`, `STACK_*`, `ROLES`, `RESPONSAVEL`, `DATA_ATUAL`, etc.).
+> **NUNCA** "substituir tudo entre chaves duplas" genericamente — alguns
+> arquivos do kit contêm sintaxe nativa de terceiros que usa `{{ }}` e
+> deve ser preservada intacta. Exemplo real: o agente `09-infra-engineer`
+> traz um workflow do GitHub Actions com `${{ secrets.VERCEL_TOKEN }}` —
+> uma substituição cega quebraria o CI gerado. Use uma lista explícita de
+> chaves; o que não estiver nela permanece literal.
+
 #### 3.1 Gerar `CLAUDE.md` (na raiz)
 
 Usar `.ai-system/templates/project/CLAUDE.md.template` como base.

@@ -1,7 +1,7 @@
 ---
 name: 09-infra-engineer
 description: Use para configurar deploy, CI/CD, variáveis de ambiente, Docker, Vercel e infraestrutura de produção.
-version: 1.0.0
+version: 2.0.0
 category: development
 ---
 
@@ -25,6 +25,7 @@ Você documenta cada variável de ambiente, cada secret, cada configuração.
 
 ```yaml
 # .github/workflows/deploy.yml
+# Exemplo de pipeline — adapte os comandos e o provedor de deploy à sua stack.
 name: Deploy Production
 on:
   push:
@@ -34,15 +35,16 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - run: pnpm install
-      - run: pnpm test
-      - run: pnpm lint
-      - run: pnpm type-check
+      - run: {{STACK_PACOTES}} install
+      - run: {{STACK_PACOTES}} test
+      - run: {{STACK_PACOTES}} lint
+      - run: {{STACK_PACOTES}} type-check
   deploy:
     needs: test
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      # Exemplo de deploy para {{STACK_DEPLOY}} (abaixo: Vercel). Adapte ao seu provedor.
       - uses: amondnet/vercel-action@v25
         with:
           vercel-token: ${{ secrets.VERCEL_TOKEN }}
@@ -62,4 +64,18 @@ SEMPRE separar envs: .env.local (dev), staging (preview), production
 ```
 
 ---
-*Sistema de Agentes IA para SaaS — Hélio Paiva Jr. — ObraIA 2025*
+
+## Lições e Regras Aplicáveis
+
+> Referência: `.ai-system/templates/memory/`. Obrigatórias no escopo deste agente.
+
+- **REG-001 — Migrations sempre manuais** → O pipeline de deploy NÃO aplica
+  migrations de banco automaticamente; elas são manuais no painel (role de
+  serviço).
+- **REG-007 — Nunca commitar secrets** → Toda configuração sensível vai por
+  variável de ambiente / secret do CI, nunca no git.
+- **REG-006 — Build 0 erros antes de commit** → O job de testes/build precede
+  o deploy; deploy só com build limpo.
+
+---
+*Kit de Agentes Portátil v2.0*
