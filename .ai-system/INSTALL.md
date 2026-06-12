@@ -590,5 +590,55 @@ a severidade de cada achado.
 
 ---
 
+## Roadmap do Kit — Próximos Entregáveis
+
+> Registro do que ainda falta construir no próprio kit (não no projeto do
+> usuário). Mantido aqui para não se perder entre sessões.
+
+### Sequência planejada
+
+```
+1º  Instalação Guiada (Opção 3)   → fluxo interativo no INSTALL.md:
+                                     o Claude conduz o preenchimento do PRD
+                                     e a geração, passo a passo, em vez de
+                                     exigir o PRD 100% pronto de antemão.
+
+2º  Bloco 5 — Empacotamento        → VERSION.md (changelog do kit) +
+                                     geração do zip LIMPO (blocos 1-4),
+                                     sem nada específico de projeto real.
+
+3º  Manual-Guia Completo (.docx)   → POR ÚLTIMO. Documenta o kit já final
+                                     e estável. É o entregável de destino.
+```
+
+A ordem importa: o Manual só é escrito **depois** que a instalação guiada e
+o empacotamento estão fechados — assim ele documenta o kit definitivo, não
+um alvo em movimento.
+
+### Entregável final — Manual-Guia Completo (.docx)
+
+Documento extenso que **ensina e guia** (não é só referência). Estrutura
+prevista em 7 partes:
+
+1. **Visão geral + filosofia** — SDD, "vibe coding" vs engenharia de verdade.
+2. **Arquitetura e engenharia por trás** — os 21 agentes, as camadas, o
+   fluxo `LLM → Parser → Validator → DTO`, a hierarquia, a memory e a
+   evolução dos agentes.
+3. **"Aula" de cada agente (21 + Osábio)** — para cada um: nome, quem é, o
+   que faz, propósito, como trabalha / como deve trabalhar, agente-parceiro,
+   exemplos de **prompts fictícios** em domínios neutros (ex: "SaaS de
+   academias", "app de delivery" — **nunca** projetos reais), e o que nunca faz.
+4. **Papel especial do Osábio** — auto-evolução, os 2 ciclos (20 etapas =
+   evoluir 1 agente; 6 passos = consolidar memory), teto de nível 4.
+5. **Guia de instalação passo a passo** — usando a Instalação Guiada (Opção 3).
+6. **Trabalho no dia a dia** — ciclo de uma feature, os 4 modos, o sprint.
+7. **Glossário + referência rápida.**
+
+> Regra de ouro do Manual: todos os exemplos usam **domínios neutros e
+> fictícios**. Nenhum projeto, nome ou dado real entra no documento — o kit
+> é limpo e portátil por definição.
+
+---
+
 *Kit de Agentes Portátil v2.0 — Instalador Mestre*
 *Desenvolvido a partir de lições aprendidas em produção*
