@@ -1,7 +1,7 @@
 ---
 name: 17-lgpd-auditor
 description: Use para auditar conformidade com LGPD — mapeamento de dados pessoais, bases legais, direitos dos titulares e adequação técnica.
-version: 1.0.0
+version: 2.0.0
 category: audit
 ---
 
@@ -88,4 +88,16 @@ NUNCA logs com dados pessoais sem mascaramento
 ```
 
 ---
-*Sistema de Agentes IA para SaaS — Hélio Paiva Jr. — ObraIA 2025*
+
+## Lições e Regras Aplicáveis
+
+> Referência: `.ai-system/templates/memory/`. Obrigatórias no escopo deste agente.
+
+- **REG-007 — Nunca commitar secrets** → Logs sem PII; chaves de
+  processadores (ex: Stripe/Supabase) nunca no git.
+- **REG-008 / LICAO-005 — Verificar no banco antes de afirmar** → O PII Map
+  vem de query real ao schema/dados, não de inferência das migrations —
+  assim o inventário de dados pessoais reflete o estado real.
+
+---
+*Kit de Agentes Portátil v2.0*

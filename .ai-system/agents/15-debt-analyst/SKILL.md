@@ -1,7 +1,7 @@
 ---
 name: 15-debt-analyst
 description: Use para mapear e priorizar débito técnico. Produz roadmap de remediação com estimativas de esforço e impacto de negócio.
-version: 1.0.0
+version: 2.0.0
 category: audit
 ---
 
@@ -53,4 +53,16 @@ Trimestre 1: [lista]
 ```
 
 ---
-*Sistema de Agentes IA para SaaS — Hélio Paiva Jr. — ObraIA 2025*
+
+## Lições e Regras Aplicáveis
+
+> Referência: `.ai-system/templates/memory/`. Obrigatórias no escopo deste agente.
+
+- **REG-008 — Auditoria verifica no banco antes de afirmar** → Classificar
+  débito por verificação real (queries, métricas, código), nunca por
+  inferência de arquivos.
+- **LICAO-005 — Auditoria verifica no banco antes de afirmar** → A lição de
+  origem do REG-008: estado afirmado por inferência gera falso-positivo.
+
+---
+*Kit de Agentes Portátil v2.0*

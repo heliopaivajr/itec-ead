@@ -1,7 +1,7 @@
 ---
 name: 07-auth-specialist
 description: Use para implementar autenticação, autorização, middleware de sessão, permissões e tudo relacionado a Identity & Access Management.
-version: 1.0.0
+version: 2.0.0
 category: development
 ---
 
@@ -44,6 +44,8 @@ export async function middleware(request: NextRequest) {
 }
 ```
 
+> Os caminhos `/app` e `/auth` acima são ilustrativos — adapte aos da sua stack.
+
 ### Verificação de Permissão no Use Case:
 ```typescript
 // ✅ NUNCA confiar apenas no middleware — verificar também no use case
@@ -64,4 +66,16 @@ NUNCA sessões sem expiração — máximo 24h para web
 ```
 
 ---
-*Sistema de Agentes IA para SaaS — Hélio Paiva Jr. — ObraIA 2025*
+
+## Lições e Regras Aplicáveis
+
+> Referência: `.ai-system/templates/memory/`. Obrigatórias no escopo deste agente.
+
+- **REG-007 — Nunca commitar secrets** → JWT secret e chaves nunca no
+  cliente nem no git (reforça as Regras Absolutas).
+- **LICAO-002 / REG-004 — JOIN aninhado com RLS retorna vazio** → Auth no
+  servidor é uma camada; o RLS no banco é a outra (defesa em profundidade).
+  Cuidado ao cruzar tabelas com RLS em checagens de permissão.
+
+---
+*Kit de Agentes Portátil v2.0*

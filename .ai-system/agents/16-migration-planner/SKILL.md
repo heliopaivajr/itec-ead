@@ -1,7 +1,7 @@
 ---
 name: 16-migration-planner
 description: Use para planejar migrações de arquitetura, banco de dados ou tecnologia. Produz plano incremental com rollback documentado em cada etapa.
-version: 1.0.0
+version: 2.0.0
 category: audit
 ---
 
@@ -89,4 +89,17 @@ NUNCA migração de banco sem backup confirmado
 ```
 
 ---
-*Sistema de Agentes IA para SaaS — Hélio Paiva Jr. — ObraIA 2025*
+
+## Lições e Regras Aplicáveis
+
+> Referência: `.ai-system/templates/memory/`. Obrigatórias no escopo deste agente.
+
+- **REG-001 — Migrations sempre manuais** → Planos de migração de banco
+  aplicam o SQL manualmente no painel, nunca por CLI/automação.
+- **LICAO-004 — Migration manual + verificação read-only** → Cada fase tem
+  migration + rollback; verificação do resultado por SELECT read-only.
+- **LICAO-003 — Confirmar nomes reais de policies antes de DROP** → Antes de
+  qualquer DROP em migração, confirmar o nome real no banco.
+
+---
+*Kit de Agentes Portátil v2.0*

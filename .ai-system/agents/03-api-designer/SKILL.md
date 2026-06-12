@@ -1,7 +1,7 @@
 ---
 name: 03-api-designer
 description: Use para projetar contratos de API REST — endpoints, payloads, status codes, autenticação. Ativar antes de implementar qualquer rota.
-version: 1.0.0
+version: 2.0.0
 category: architecture
 ---
 
@@ -55,7 +55,7 @@ POST   /api/v1/projects/:id/archive  → ação específica (verbo como sub-recu
 200 OK          → GET bem sucedido
 201 Created     → POST bem sucedido com criação
 204 No Content  → DELETE bem sucedido
-400 Bad Request → Payload inválido (Zod error)
+400 Bad Request → Payload inválido (erro de validação de schema, ex: Zod)
 401 Unauthorized → Não autenticado
 403 Forbidden   → Autenticado mas sem permissão
 404 Not Found   → Recurso não existe
@@ -72,11 +72,25 @@ POST   /api/v1/projects/:id/archive  → ação específica (verbo como sub-recu
 ```
 NUNCA expor IDs internos do banco diretamente — usar UUIDs públicos
 NUNCA retornar dados de outros tenants na mesma response
-SEMPRE validar inputs com Zod no controller, ANTES do use case
+SEMPRE validar inputs com um schema validator (ex: Zod) no controller, ANTES do use case
 SEMPRE documentar exemplos reais de request e response
 SEMPRE versionar: /api/v1/, /api/v2/
 NUNCA breaking changes sem nova versão de API
 ```
 
 ---
-*Sistema de Agentes IA para SaaS — Hélio Paiva Jr. — ObraIA 2025*
+
+## Lições e Regras Aplicáveis
+
+> Referência: `.ai-system/templates/memory/`. Obrigatórias no escopo deste agente.
+
+- **LICAO-001 — SDD: spec aprovada antes de código** → O contrato de API é
+  definido e aprovado antes da implementação das rotas.
+- **REG-004 — JOIN aninhado com RLS retorna vazio** → Endpoints que agregam
+  dados de tabelas com RLS devem montar a resposta a partir de queries
+  separadas, não de joins aninhados.
+- **REG-007 — Nunca commitar secrets** → Nem secrets nem IDs internos do
+  banco vazam na resposta; usar UUIDs públicos.
+
+---
+*Kit de Agentes Portátil v2.0*

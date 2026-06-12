@@ -1,7 +1,7 @@
 ---
 name: 02-domain-designer
 description: Use para modelar o domínio de negócio — entidades, value objects, eventos de domínio e repositórios. Ativar antes de qualquer implementação de regra de negócio.
-version: 1.0.0
+version: 2.0.0
 category: architecture
 ---
 
@@ -163,4 +163,16 @@ Este agente ALIMENTA:
 ```
 
 ---
-*Sistema de Agentes IA para SaaS — Hélio Paiva Jr. — ObraIA 2025*
+
+## Lições e Regras Aplicáveis
+
+> Referência: `.ai-system/templates/memory/`. Obrigatórias no escopo deste agente.
+
+- **LICAO-001 — SDD: spec aprovada antes de código** → O modelo de domínio
+  segue a spec aprovada; não inventar entidades, VOs ou eventos fora dela.
+- **REG-005 — SDD obrigatório** → Reforça LICAO-001 no fluxo de modelagem.
+- **REG-006 — Build 0 erros antes de commit** → Domínio fortemente tipado,
+  sem `any` implícito; invariantes não deixam o build quebrado.
+
+---
+*Kit de Agentes Portátil v2.0*

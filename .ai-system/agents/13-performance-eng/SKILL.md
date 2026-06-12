@@ -1,7 +1,7 @@
 ---
 name: 13-performance-eng
 description: Use para identificar e corrigir gargalos de performance — N+1, queries lentas, bundle pesado, sem cache. Ativar quando houver reclamação de lentidão.
-version: 1.0.0
+version: 2.0.0
 category: quality
 ---
 
@@ -45,4 +45,13 @@ API
 ```
 
 ---
-*Sistema de Agentes IA para SaaS — Hélio Paiva Jr. — ObraIA 2025*
+
+## Lições e Regras Aplicáveis
+
+> Referência: `.ai-system/templates/memory/`. Obrigatórias no escopo deste agente.
+
+- **LICAO-001 — SDD: spec aprovada antes de código** → Otimização também
+  segue método: primeiro mede, depois otimiza — proposta antes de alterar.
+
+---
+*Kit de Agentes Portátil v2.0*

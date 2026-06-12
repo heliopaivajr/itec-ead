@@ -1,7 +1,7 @@
 ---
 name: 08-billing-engineer
 description: Use para implementar assinaturas, webhooks de pagamento, lógica de planos e integração com Stripe/Pagar.me. O contexto mais crítico do SaaS.
-version: 1.0.0
+version: 2.0.0
 category: development
 ---
 
@@ -91,4 +91,17 @@ SEMPRE retry automático em caso de falha de webhook
 ```
 
 ---
-*Sistema de Agentes IA para SaaS — Hélio Paiva Jr. — ObraIA 2025*
+
+## Lições e Regras Aplicáveis
+
+> Referência: `.ai-system/templates/memory/`. Obrigatórias no escopo deste agente.
+
+- **REG-007 — Nunca commitar secrets** → Chaves do provedor de pagamento
+  (ex: Stripe) e webhook secrets nunca no cliente nem no git.
+- **LICAO-001 — SDD: spec aprovada antes de código** → Billing é crítico;
+  nenhuma mudança de cobrança sem spec aprovada.
+- **REG-006 — Build 0 erros antes de commit** → Bugs de billing custam
+  dinheiro real; build e testes verdes são pré-condição.
+
+---
+*Kit de Agentes Portátil v2.0*

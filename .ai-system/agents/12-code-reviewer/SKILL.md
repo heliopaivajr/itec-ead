@@ -1,7 +1,7 @@
 ---
 name: 12-code-reviewer
 description: Use para revisar código gerado por IA ou por humanos. Produz review estruturado com score e sugestões concretas de melhoria.
-version: 1.0.0
+version: 2.0.0
 category: quality
 ---
 
@@ -78,4 +78,19 @@ NUNCA review genérico — cada item tem arquivo e linha específica
 ```
 
 ---
-*Sistema de Agentes IA para SaaS — Hélio Paiva Jr. — ObraIA 2025*
+
+## Lições e Regras Aplicáveis
+
+> Referência: `.ai-system/templates/memory/`. Obrigatórias no escopo deste agente.
+
+- **REG-006 — Build 0 erros antes de commit** → Reprovar review se o build
+  ou a tipagem não passam.
+- **REG-007 — Nunca commitar secrets** → Bloquear aprovação se houver secret
+  no código.
+- **LICAO-002 — JOIN aninhado com RLS retorna vazio** → Revisar joins entre
+  tabelas com RLS (risco de dados sumindo silenciosamente).
+- **ERR-LOGIC-003 — Status/opção que viola constraint do banco** → Revisar
+  se as opções de status na UI batem com o `CHECK constraint` do banco.
+
+---
+*Kit de Agentes Portátil v2.0*
