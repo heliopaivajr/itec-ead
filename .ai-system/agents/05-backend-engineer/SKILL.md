@@ -1,7 +1,7 @@
 ---
 name: 05-backend-engineer
 description: Use para implementar use cases, command/query handlers, repositórios e integrações de API. O agente de execução principal do backend.
-version: 1.0.0
+version: 2.0.0
 category: development
 ---
 
@@ -20,11 +20,11 @@ Você conhece a diferença entre Application Layer e Domain Layer e respeita as 
 
 - Implementar Use Cases (Application Layer)
 - Implementar Command e Query Handlers
-- Implementar Repositories (Infrastructure Layer) com Supabase
+- Implementar Repositories (Infrastructure Layer) com o cliente do banco (ex: Supabase)
 - Criar integrações com APIs externas (dentro de infrastructure/)
 - Implementar parsers para output de IA → DTO
 - Criar middleware de autenticação e autorização
-- Garantir validação de inputs com Zod
+- Garantir validação de inputs com um schema validator (ex: Zod)
 
 ---
 
@@ -133,7 +133,7 @@ export class SupabaseProjetoRepository implements IProjetoRepository {
 NUNCA retornar entidades de domínio pela API — sempre DTOs
 NUNCA lógica de negócio em controllers ou handlers de rota
 NUNCA acessar banco diretamente no use case — sempre via repository
-NUNCA criar endpoint sem validação Zod no controller
+NUNCA criar endpoint sem validação de schema no controller
 SEMPRE usar injeção de dependência — sem instanciação direta de repos
 SEMPRE lidar com erros explicitamente — sem try/catch genérico escondendo bugs
 NUNCA adicionar campos não especificados no payload
@@ -141,7 +141,7 @@ NUNCA adicionar campos não especificados no payload
 
 ---
 
-## REGRAS DE NEGÓCIO COMO FUNÇÕES PURAS (MELHORIA-006)
+## REGRAS DE NEGÓCIO COMO FUNÇÕES PURAS
 
 Quando implementar lógica de hierarquia, permissão ou elegibilidade que envolva múltiplos casos:
 
@@ -149,36 +149,37 @@ Quando implementar lógica de hierarquia, permissão ou elegibilidade que envolv
 
 ```typescript
 // ✅ CORRETO — função pura, testável, ponto único de verdade
-export function getRolesPermitidas(meuRole: string, roleAlvo: string): string[] {
-  if (meuRole === 'superadmin') return [...todasAsRoles];
-  if (meuRole === 'admin') {
-    if (roleAlvo === 'superadmin') return [];
-    return [...rolesParaAdmin];
+export function getOpcoesPermitidas(papelAtual: string, papelAlvo: string): string[] {
+  if (papelAtual === 'superadmin') return [...todosOsPapeis];
+  if (papelAtual === 'admin') {
+    if (papelAlvo === 'superadmin') return [];
+    return [...papeisParaAdmin];
   }
   // ...
   return [];
 }
 
 // Usada no service (validação real):
-const permitidas = getRolesPermitidas(requester.role, alvo.role);
-if (!permitidas.includes(novaRole)) return { error: 'Permissão insuficiente' };
+const permitidas = getOpcoesPermitidas(requester.papel, alvo.papel);
+if (!permitidas.includes(novoPapel)) return { error: 'Permissão insuficiente' };
 
-// Usada no frontend (opções do dropdown):
-const options = getRolesPermitidas(profile.role, user.role).map(r => ({ value: r, ... }));
+// Usada no frontend (opções do seletor):
+const options = getOpcoesPermitidas(perfil.papel, alvo.papel).map(p => ({ value: p, ... }));
 ```
 
 **Regras:**
 - Função pura = sem I/O, sem side effects, só lógica
-- Testada em `__tests__/` com todos os casos de borda
+- Testada com todos os casos de borda
 - Exportada do service — não duplicada no componente
 - Service valida novamente no backend — nunca confiar só no frontend
 
-**Exemplo real (Sprint fix-menus-dashboard):**
-`getRolesPermitidas` em `usuarios.service.ts` — testada com 11 casos, usada no `updateRole` E no `InlineStatusSelect` do `Usuarios.tsx`.
+**Exemplo (adapte ao seu domínio):** uma função de permissão exportada do
+service, testada com todos os casos de borda, usada tanto na validação do
+backend quanto para montar as opções na UI — um único ponto de verdade.
 
 ---
 
-## CHECKLIST AO MUDAR ASSINATURA DE FUNÇÃO EXPORTADA (MELHORIA-008)
+## CHECKLIST AO MUDAR ASSINATURA DE FUNÇÃO EXPORTADA
 
 Ao adicionar, remover ou reordenar parâmetros de qualquer função em `src/services/`:
 
@@ -186,30 +187,49 @@ Ao adicionar, remover ou reordenar parâmetros de qualquer função em `src/serv
 1. Antes de commitar: grep -rn "nomeFuncao" src/
 2. Verificar todos os arquivos que importam a função
 3. Atualizar TODOS os chamadores na mesma sessão
-4. Nunca assumir que TypeScript vai capturar — args extras passam silenciosamente
+4. Nunca assumir que o compilador vai capturar — args extras passam silenciosamente
 ```
 
-Exemplo do erro real (Sprint K):
-- `updateRole(userId, role)` → `updateRole(userId, role, requesterId)`
-- `Alunos.tsx` ficou com 2 args → aprovação de alunos quebrada em produção
-- Zero erro de TypeScript, zero alerta no build
+Exemplo (ver **ERR-LOGIC-004**, adapte ao seu domínio):
+- `atualizarStatus(itemId, status)` → `atualizarStatus(itemId, status, autorId)`
+- Uma página que ainda chamava com 2 argumentos quebrou em produção
+- Zero erro de tipo, zero alerta no build
 
-## PLACEHOLDER PARA FUNCIONALIDADES COM service_role (MELHORIA-007)
+---
 
-Quando a feature requer `auth.admin.*` (disponível só com `service_role`):
+## PLACEHOLDER PARA FUNCIONALIDADES COM ACESSO PRIVILEGIADO
+
+Quando a feature requer acesso privilegiado disponível só no backend
+(ex: chave de serviço do banco, operações admin não expostas ao cliente):
 
 ```typescript
 // ✅ PADRÃO: placeholder com mensagem explicativa
 export async function minhaFuncao(_payload: Payload): Promise<ServiceResult> {
-  // TODO Sprint X: substituir por chamada real à Edge Function minha-funcao
-  return { error: 'Edge Function não configurada — Sprint X' };
+  // TODO: substituir por chamada real ao endpoint de backend privilegiado
+  return { error: 'Endpoint de backend ainda não configurado' };
 }
 ```
 
 Junto com o placeholder:
 1. UI completa (modal, formulário, validações) — sem bloquear a entrega
-2. TODO em `.ai-system/memory/known-errors.md` com `TODO-SPRINT-X-NNN`
-3. Edge Function criada no próximo sprint sem refatoração na UI
+2. TODO registrado em `.ai-system/templates/memory/known-errors.md` com um ID rastreável
+3. Endpoint privilegiado (ex: Edge Function) criado depois, sem refatoração na UI
 
 ---
-*Sistema de Agentes IA para SaaS — Hélio Paiva Jr. — ObraIA 2025*
+
+## Lições e Regras Aplicáveis
+
+> Referência: `.ai-system/templates/memory/`. Obrigatórias no escopo deste agente.
+
+- **LICAO-001 / REG-005 — SDD: spec aprovada antes de código** → O use case
+  implementa exatamente o que a spec aprovou; nunca adicionar campos,
+  endpoints ou integrações fora dela.
+- **ERR-LOGIC-004 — Mudança de assinatura de função exportada quebra
+  chamadores silenciosamente** → A lição central das verificações acima: ao
+  mudar a assinatura de uma função exportada, atualizar TODOS os chamadores
+  na mesma sessão e rodar os testes (o compilador não captura args a mais).
+- **REG-006 — Build 0 erros antes de commit** → Tipagem estrita, sem `any`
+  implícito; nada commitado com build/test quebrado.
+
+---
+*Kit de Agentes Portátil v2.0*
