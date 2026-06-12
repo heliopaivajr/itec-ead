@@ -104,6 +104,36 @@
   valores aceitos pelo `CHECK constraint` no banco. UI e schema sempre
   alinhados.
 
+### ERR-LOGIC-004 — Mudança de assinatura de função exportada quebra chamadores
+- **Sintoma:** Após adicionar/remover/reordenar parâmetros de uma função
+  exportada, um chamador continua passando os argumentos antigos e o
+  comportamento quebra em produção — sem erro de compilação nem alerta no build.
+- **Causa raiz:** A função foi alterada, mas nem todos os chamadores foram
+  atualizados na mesma sessão. Em configurações permissivas, argumentos a
+  mais/a menos passam silenciosamente (ex: um parâmetro novo chega `undefined`).
+- **Prevenção:** Ao mudar a assinatura de qualquer função exportada, buscar
+  TODOS os chamadores (`grep -rn "nomeFuncao" src/`) e atualizá-los na mesma
+  sessão. Não confiar no compilador para capturar — rodar os testes. Preferir
+  objeto de parâmetros nomeados quando a lista de parâmetros cresce.
+
+---
+
+## ERR-TEST — Erros de Testes
+
+### ERR-TEST-001 — Mock desatualizado após mudar método de query
+- **Sintoma:** O teste passa (ou falha com `TypeError: x is not a function`)
+  de forma enganosa após o código de produção trocar o método de query
+  (ex: `.eq()` → `.not()`, `.filter()` → `.or()`). O verde do teste não
+  reflete o comportamento real.
+- **Causa raiz:** O mock encadeia os métodos antigos; quando o service passa
+  a usar um método que o mock não implementa, o teste quebra por motivo
+  errado — ou pior, passa sem exercitar o caminho real.
+- **Prevenção:** Ao mudar o método de filtro/query de um service, buscar os
+  testes que o cobrem (`grep -rn "nomeDaFuncao"` na pasta de testes) e
+  atualizar o encadeamento do mock. Adicionar asserção do método realmente
+  chamado. Rodar a suíte — não confiar no build (a tipagem geralmente não
+  detecta esta quebra).
+
 ---
 
 *Memory do Kit de Agentes Portátil v2.0 — quando um erro novo for

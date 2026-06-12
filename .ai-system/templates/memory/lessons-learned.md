@@ -179,5 +179,24 @@ custo, limites e alternativa sem dependência.
 
 ---
 
+## LICAO-010 — Feature sem ponto de entrada na UI = incompleta
+
+**Contexto:** Uma feature pode estar 100% implementada e com rota registrada,
+mas se nenhum menu, botão ou card aponta para ela, o usuário não tem como
+chegar — na prática ela é inexistente. Pior: passa despercebida em testes
+que navegam por URL direta.
+
+**Regra:** Nenhuma feature/rota é considerada entregue sem pelo menos um
+ponto de entrada navegável (link de menu, botão na página pai, ou card no
+painel do role correto).
+
+**Como aplicar:**
+1. Ao entregar uma página/rota, verificar: a rota existe no router?
+2. Existe pelo menos um link/botão apontando para ela?
+3. O role correto chega nela sem digitar a URL?
+Só então a feature está completa.
+
+---
+
 *Memory do Kit de Agentes Portátil v2.0 — adicione lições conforme o
 projeto ensina. O Osábio mantém este arquivo vivo.*
