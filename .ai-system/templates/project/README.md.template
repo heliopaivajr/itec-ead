@@ -1,0 +1,126 @@
+# {{PROJETO_NOME}}
+
+{{PROJETO_DESCRICAO}}
+
+> **Domínio:** {{PROJETO_DOMINIO}}
+> **Produção:** {{PROJETO_URL}}
+
+---
+
+## Sobre o projeto
+
+[PREENCHER — 2 a 4 frases sobre o que o produto faz e para quem.
+Exemplo neutro: "Plataforma de gestão de tarefas para equipes remotas.
+Centraliza tarefas, responsáveis e prazos em uma timeline única, eliminando
+a fragmentação entre planilhas, e-mail e chat."]
+
+---
+
+## Stack
+
+| Camada | Tecnologia |
+|--------|------------|
+| Frontend | {{STACK_FRONTEND}} |
+| Backend / API | {{STACK_BACKEND}} |
+| Banco de dados | {{STACK_BANCO}} |
+| Deploy | {{STACK_DEPLOY}} |
+
+Detalhes em [STACK.md](STACK.md) e [ARCHITECTURE.md](ARCHITECTURE.md).
+
+---
+
+## Rodando localmente
+
+### Pré-requisitos
+- Node.js 18+
+- {{STACK_PACOTES}}
+- Git
+
+### Passos
+
+```bash
+# 1. Clonar o repositório
+git clone {{PROJETO_URL}}
+cd {{PROJETO_NOME}}
+
+# 2. Instalar dependências
+{{STACK_PACOTES}} install
+
+# 3. Configurar variáveis de ambiente
+cp .env.example .env.local
+# edite .env.local com os valores reais (NUNCA commite este arquivo)
+
+# 4. Rodar em desenvolvimento
+{{STACK_PACOTES}} dev
+```
+
+A aplicação sobe em `http://localhost:[PORTA]` (ver saída do comando).
+
+### Outros comandos
+
+```bash
+{{STACK_PACOTES}} build       # Build de produção
+{{STACK_PACOTES}} lint        # Linter
+{{STACK_PACOTES}} test:run    # Rodar testes (one-shot)
+```
+
+---
+
+## Estrutura de pastas
+
+```
+[PREENCHER — cole a árvore real criada na instalação. Exemplo:]
+
+src/
+  components/    ← componentes de UI
+  pages/         ← rotas
+  services/      ← acesso a dados e regras
+  hooks/         ← custom hooks
+  types/         ← tipos compartilhados
+  test/          ← testes
+.ai-system/      ← kit de agentes (specs, ADRs, templates)
+```
+
+---
+
+## Como contribuir
+
+Este projeto segue **SDD (Spec-Driven Development)**:
+
+1. Toda feature começa por uma **spec** aprovada — código só depois.
+2. `{{STACK_PACOTES}} test:run` deve passar **100%** antes de commit.
+3. Build com **0 erros** antes de abrir PR (REG-006).
+4. **Nunca** commitar `.env*` ou secrets (REG-007).
+5. Migrations são aplicadas **manualmente** no painel (REG-001).
+
+Fluxo completo e regras de segurança em [CLAUDE.md](CLAUDE.md).
+
+### Padrão de commits
+
+```
+feat(modulo): descrição curta no imperativo
+fix(modulo): ...
+docs(modulo): ...
+chore: ...
+```
+
+---
+
+## Documentação
+
+| Documento | Conteúdo |
+|-----------|----------|
+| [CLAUDE.md](CLAUDE.md) | A "lei" do projeto — lida pelo Claude Code |
+| [STACK.md](STACK.md) | Detalhamento da stack |
+| [ARCHITECTURE.md](ARCHITECTURE.md) | Decisões arquiteturais e fluxo de dados |
+| [SYSTEM.md](SYSTEM.md) | Estado atual do sistema (vivo) |
+
+---
+
+## Responsável
+
+{{RESPONSAVEL}}
+
+---
+
+*Projeto inicializado com o Kit de Agentes Portátil v2.0.*

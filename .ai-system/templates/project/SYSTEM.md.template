@@ -1,0 +1,119 @@
+# SYSTEM.md — {{PROJETO_NOME}}
+# Estado atual do sistema (documento vivo)
+# Gerado pelo Kit de Agentes Portátil v2.0 em {{DATA_ATUAL}}
+
+> Este é um documento **vivo**. Atualize-o ao final de cada sprint para
+> refletir o que está implementado, em andamento e planejado. É o retrato
+> do "agora" do projeto — diferente do CLAUDE.md (a lei) e do
+> ARCHITECTURE.md (o desenho).
+
+---
+
+## Status geral
+
+| Campo | Valor |
+|-------|-------|
+| **Fase atual** | 🟡 Recém-instalado (bootstrap concluído) |
+| **Sprint atual** | — (nenhum iniciado) |
+| **Última atualização** | {{DATA_ATUAL}} |
+| **Score de qualidade** | — (sem auditoria ainda) |
+
+---
+
+## Módulos — estado de implementação
+
+Lista derivada da Seção 5 do PRD. Atualize o status conforme avança.
+
+Legenda: 🔴 Não iniciado · 🟡 Em andamento · 🟢 Concluído
+
+{{MODULOS}}
+
+> Ao instalar, todos os módulos começam como 🔴 **Não iniciado**.
+> Marque o progresso real a cada sprint.
+
+---
+
+## Implementado ✅
+
+> Vazio na instalação. Liste aqui o que já está em produção e validado.
+
+- _(nada ainda — projeto recém-instalado)_
+
+---
+
+## Em andamento 🟡
+
+> O que está sendo construído no sprint atual.
+
+- _(nada ainda)_
+
+---
+
+## Próximos passos 🔜
+
+> O backlog priorizado. O Agente 20 (project-manager) ajuda a ordenar.
+
+1. Preencher/validar o PRD em `.ai-system/prd/PRD.md`
+2. Planejar o Sprint 1 com o Agente 20
+3. Escrever a primeira spec (SDD) e obter aprovação do {{RESPONSAVEL}}
+4. Implementar o primeiro módulo prioritário
+
+---
+
+## Tabelas do banco — estado de RLS
+
+> Mantenha esta tabela honesta: o status de RLS deve vir de **query real**
+> no banco (REG-008), nunca de inferência das migrations.
+
+| Tabela | RLS ativo? | Verificado em | Observação |
+|--------|-----------|---------------|------------|
+| [PREENCHER] | [Sim/Não] | [data] | [ex: policies de SELECT/INSERT] |
+
+Comando de verificação:
+```sql
+SELECT tablename FROM pg_policies WHERE schemaname = 'public';
+```
+
+---
+
+## Migrations aplicadas
+
+> Registre cada migration aplicada manualmente no painel (REG-001).
+
+| # | Arquivo | Conteúdo | Aplicada em |
+|---|---------|----------|-------------|
+| [PREENCHER] | [ex: 001_init.sql] | [ex: tabelas base + RLS] | [data] |
+
+---
+
+## Testes
+
+| Métrica | Valor |
+|---------|-------|
+| Total de testes | 0 |
+| Status | — |
+| Cobertura | — |
+
+Meta: `{{STACK_PACOTES}} test:run` deve passar **100%** antes de cada commit.
+
+---
+
+## Dívida técnica conhecida
+
+> Registre aqui atalhos conscientes e o que precisa voltar a ser resolvido.
+
+| ID | Descrição | Severidade | Sprint alvo |
+|----|-----------|-----------|-------------|
+| _(nenhuma ainda)_ | | | |
+
+---
+
+## Histórico de sprints
+
+| Sprint | Tema | Resultado | Data |
+|--------|------|-----------|------|
+| _(nenhum ainda)_ | | | |
+
+---
+
+*SYSTEM.md gerado pelo Kit de Agentes Portátil v2.0 — atualize a cada sprint.*

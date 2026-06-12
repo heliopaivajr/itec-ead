@@ -1,0 +1,117 @@
+# STACK.md — {{PROJETO_NOME}}
+# Detalhamento técnico da stack
+# Gerado pelo Kit de Agentes Portátil v2.0 em {{DATA_ATUAL}}
+
+> Este documento descreve **o que** usamos, **qual versão**, **por que**
+> foi escolhido e **como instalar**. Mantenha sincronizado com o
+> `package.json` real do projeto.
+
+---
+
+## Visão geral
+
+| Camada | Tecnologia escolhida | Gerenciador de pacotes |
+|--------|----------------------|------------------------|
+| Frontend | {{STACK_FRONTEND}} | {{STACK_PACOTES}} |
+| Backend / API | {{STACK_BACKEND}} | — |
+| Banco de dados | {{STACK_BANCO}} | — |
+| Deploy | {{STACK_DEPLOY}} | — |
+
+---
+
+## Frontend — {{STACK_FRONTEND}}
+
+- **Papel:** camada de apresentação e interação com o usuário.
+- **Por que esta escolha:** [PREENCHER — ex: ecossistema maduro, tipagem
+  forte, produtividade da equipe].
+- **Versão alvo:** [PREENCHER — ex: React 18.x].
+
+### Convenções
+- Componentes de UI **não** acessam o banco diretamente (ver REG e
+  [ARCHITECTURE.md](ARCHITECTURE.md)).
+- Tipagem estrita habilitada — sem `any` implícito (REG-006).
+
+---
+
+## Backend / API — {{STACK_BACKEND}}
+
+- **Papel:** regras de negócio, autenticação, acesso a dados.
+- **Por que esta escolha:** [PREENCHER].
+- **Versão alvo:** [PREENCHER].
+
+### Acesso a dados
+- Toda query passa pela camada de serviços/casos de uso.
+- Migrations aplicadas **manualmente** no painel (REG-001), nunca via CLI.
+
+---
+
+## Banco de dados — {{STACK_BANCO}}
+
+- **Papel:** persistência.
+- **Por que esta escolha:** [PREENCHER].
+
+### Segurança de dados
+- **RLS ativo** em toda tabela com dados de usuário.
+- Diagnóstico via MCP **read-only** (REG-002); escrita sempre manual.
+- Antes de `DROP POLICY`, confirmar o nome exato no banco (REG-003).
+- JOIN aninhado com RLS em ambas as tabelas → usar queries separadas +
+  merge em código (REG-004).
+
+### Migrations
+- Localização sugerida: `supabase/migrations/` (ou equivalente da stack).
+- Numeradas e idempotentes sempre que possível.
+- Cada migration tem seu rollback correspondente.
+
+---
+
+## Deploy — {{STACK_DEPLOY}}
+
+- **Papel:** publicação e hospedagem.
+- **Estratégia:** [PREENCHER — ex: deploy automático via push na branch
+  principal].
+- **Pré-requisito:** build com **0 erros** (REG-006) antes de qualquer merge.
+
+---
+
+## Gerenciador de pacotes — {{STACK_PACOTES}}
+
+> **Use sempre {{STACK_PACOTES}}.** Misturar gerenciadores corrompe o
+> lockfile. Se o projeto adotou {{STACK_PACOTES}}, não usar outro.
+
+### Comandos comuns
+```bash
+{{STACK_PACOTES}} install          # Instalar dependências
+{{STACK_PACOTES}} add <pacote>     # Adicionar dependência de produção
+{{STACK_PACOTES}} add -D <pacote>  # Adicionar dependência de desenvolvimento
+```
+
+> Antes de adicionar qualquer pacote novo, seguir a regra de aprovação
+> de dependências do [CLAUDE.md](CLAUDE.md).
+
+---
+
+## Variáveis de ambiente
+
+| Variável | Descrição | Onde obter |
+|----------|-----------|------------|
+| [PREENCHER] | [ex: URL do banco] | [ex: painel do provedor] |
+| [PREENCHER] | [ex: chave pública] | [ex: painel do provedor] |
+
+- Valores reais ficam em `.env.local` — **nunca commitado** (REG-007).
+- O repositório versiona apenas `.env.example` com as chaves vazias.
+
+---
+
+## Dependências externas e custos
+
+| Serviço | Plano atual | Limite | Custo |
+|---------|-------------|--------|-------|
+| [PREENCHER] | [ex: Free] | [ex: 500 MB] | [ex: $0/mês] |
+
+> Qualquer nova dependência paga ou com limite requer aprovação prévia
+> do {{RESPONSAVEL}} (ver [CLAUDE.md](CLAUDE.md)).
+
+---
+
+*STACK.md gerado pelo Kit de Agentes Portátil v2.0 — mantenha sincronizado
+com o `package.json`.*

@@ -1,0 +1,127 @@
+# ARCHITECTURE.md — {{PROJETO_NOME}}
+# Decisões arquiteturais e fluxo de dados
+# Gerado pelo Kit de Agentes Portátil v2.0 em {{DATA_ATUAL}}
+
+> Este documento explica **como o sistema é organizado** e **por quê**.
+> Decisões estruturais entram aqui. Mudanças de arquitetura viram um ADR
+> em `.ai-system/` antes de serem implementadas.
+
+---
+
+## Padrão arquitetural
+
+**Adotado:** {{ARQUITETURA_PADRAO}}
+
+**Justificativa:** [PREENCHER — por que este padrão serve ao
+{{PROJETO_DOMINIO}} e ao tamanho atual do time].
+
+---
+
+## Camadas
+
+> As camadas abaixo são uma referência. Adapte os nomes às pastas reais
+> criadas na instalação (ver estrutura no [README.md](README.md)).
+
+### 1. Apresentação (UI)
+- Componentes visuais, páginas, rotas.
+- **Não** contém regra de negócio nem acesso direto ao banco.
+- Consome casos de uso / serviços.
+
+### 2. Aplicação (casos de uso)
+- Orquestra as regras de negócio para cada operação.
+- Recebe DTOs validados, retorna resultados para a UI.
+- Não conhece detalhes de framework de UI nem de banco.
+
+### 3. Domínio (entidades e regras)
+- O coração do sistema: entidades, invariantes, regras de negócio.
+- **Zero dependência** de infraestrutura, framework ou banco.
+- As [Regras de Negócio Críticas](CLAUDE.md) vivem aqui.
+
+### 4. Infraestrutura
+- Implementações concretas: banco, storage, serviços externos, e-mail.
+- Adapta o mundo externo às interfaces que o domínio espera.
+
+### 5. Compartilhado (shared)
+- Tipos, utilitários e helpers usados por mais de uma camada.
+
+---
+
+## Regra de dependência
+
+```
+UI → Aplicação → Domínio
+        ↑            ↑
+   Infraestrutura ───┘  (implementa interfaces do domínio)
+```
+
+**As setas apontam para dentro.** Camadas externas dependem das internas,
+**nunca** o contrário. O domínio não importa nada de infraestrutura.
+
+Consequência prática:
+- Um componente de UI **não** chama o banco — chama um caso de uso.
+- Trocar o banco ou o provedor não deve exigir mudança no domínio.
+
+---
+
+## Fluxo de dados — operação típica
+
+```
+Usuário (UI)
+   → dispara ação
+   → Caso de uso (Aplicação)
+      → valida entrada (DTO)
+      → aplica regra de negócio (Domínio)
+      → persiste via repositório (Infraestrutura)
+   → retorna resultado
+→ UI atualiza
+```
+
+---
+
+## Fluxo com IA / LLM (se aplicável)
+
+Se o projeto usa IA, toda saída de LLM passa por validação antes de tocar
+o domínio. **Nunca** confie na saída bruta do modelo.
+
+```
+LLM (saída bruta)
+  → Parser        (extrai estrutura: JSON, campos)
+  → Validator     (valida schema, tipos, limites, regras)
+  → DTO           (objeto tipado e confiável)
+  → Use Case      (aplica a operação de negócio)
+  → Entity        (estado final, invariantes garantidas)
+```
+
+Regras:
+- Saída do LLM é **input não confiável** — trate como entrada de usuário.
+- Falha de validação nunca propaga para o domínio: rejeite cedo.
+- Chaves de API de LLM seguem REG-007 (nunca no frontend, nunca no git).
+
+> Se o projeto **não** usa IA, ignore esta seção.
+
+---
+
+## Segurança na arquitetura
+
+- **RLS** é a última linha de defesa no banco — ative em toda tabela com
+  dados de usuário, independente das checagens na aplicação.
+- Migrations manuais (REG-001); diagnóstico read-only (REG-002).
+- Autenticação e autorização verificadas na camada de aplicação **e**
+  reforçadas por RLS no banco (defesa em profundidade).
+
+---
+
+## Decisões registradas (ADRs)
+
+Decisões arquiteturais relevantes são documentadas como ADRs em
+`.ai-system/`. Liste-as aqui conforme forem criadas:
+
+| ADR | Título | Status |
+|-----|--------|--------|
+| ADR-001 | [ex: Escolha do padrão arquitetural] | [Proposto/Aceito] |
+| [PREENCHER] | | |
+
+---
+
+*ARCHITECTURE.md gerado pelo Kit de Agentes Portátil v2.0 — toda mudança
+estrutural começa por um ADR.*

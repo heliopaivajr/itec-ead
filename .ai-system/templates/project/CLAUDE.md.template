@@ -1,0 +1,191 @@
+# CLAUDE.md — {{PROJETO_NOME}}
+# Lido automaticamente pelo Claude Code no início de cada sessão
+# Gerado pelo Kit de Agentes Portátil v2.0 em {{DATA_ATUAL}}
+
+## Projeto
+{{PROJETO_DESCRICAO}}
+- **Domínio:** {{PROJETO_DOMINIO}}
+- **URL:** {{PROJETO_URL}}
+- **Responsável técnico:** {{RESPONSAVEL}}
+
+> Este arquivo é a **lei do projeto**. Quando algo aqui conflitar com um
+> hábito padrão, este arquivo vence. Mantenha-o atualizado a cada sprint.
+
+---
+
+## Stack
+
+| Camada | Tecnologia |
+|--------|------------|
+| Frontend | {{STACK_FRONTEND}} |
+| Backend / API | {{STACK_BACKEND}} |
+| Banco de dados | {{STACK_BANCO}} |
+| Deploy | {{STACK_DEPLOY}} |
+| Gerenciador de pacotes | {{STACK_PACOTES}} |
+
+Detalhamento completo em [STACK.md](STACK.md).
+
+---
+
+## Comandos
+
+> **Exemplo para stack Node + {{STACK_PACOTES}} (Vite/Vitest).**
+> Ajuste aos scripts reais do `package.json` / da stack do projeto:
+
+```bash
+{{STACK_PACOTES}} dev           # Servidor de desenvolvimento
+{{STACK_PACOTES}} build         # Build de produção (deve passar com 0 erros)
+{{STACK_PACOTES}} lint          # Linter
+{{STACK_PACOTES}} test          # Testes (modo watch)
+{{STACK_PACOTES}} test:run      # Testes one-shot (CI)
+```
+
+---
+
+## Arquitetura
+
+**Padrão adotado:** {{ARQUITETURA_PADRAO}}
+
+Decisões completas, camadas e fluxo de dados em [ARCHITECTURE.md](ARCHITECTURE.md).
+Estado atual de implementação em [SYSTEM.md](SYSTEM.md).
+
+### Regra de dependência
+A lógica de negócio nunca depende de detalhes de infraestrutura.
+Componentes de UI **não** acessam o banco diretamente — toda query passa
+pela camada de serviços/casos de uso. (Ver ARCHITECTURE.md.)
+
+---
+
+## Módulos
+
+{{MODULOS}}
+
+---
+
+## Roles e Permissões
+
+{{ROLES}}
+
+> As permissões acima devem estar refletidas em policies de RLS no banco.
+> Toda tabela com dados de usuário tem RLS ativo (ver REG abaixo).
+
+---
+
+## Regras de Negócio Críticas
+
+Estas regras **nunca** podem ser violadas. Se o código quebrar uma delas,
+o código está errado — não a regra.
+
+{{REGRAS_NEGOCIO}}
+
+---
+
+## Restrições e Decisões Tomadas
+
+Decisões já fechadas. Não reabrir sem aprovação explícita do {{RESPONSAVEL}}.
+
+{{RESTRICOES}}
+
+---
+
+## Metodologia — SDD (Spec-Driven Development)
+
+Toda feature nova segue 6 etapas, nesta ordem. Não pular etapas.
+
+```
+1. SPEC          → Escrever a spec técnica e apresentar para aprovação
+2. APROVAÇÃO     → Responsável aprova a spec ANTES de qualquer código
+3. IMPLEMENTAÇÃO → Código conforme a spec aprovada
+4. TESTES        → Cobertura dos caminhos críticos; test:run passa 100%
+5. REVIEW        → Revisão de código + segurança
+6. DEPLOY        → Build com 0 erros → merge → deploy
+```
+
+**Regra de ouro:** nenhuma linha de código de feature antes da spec aprovada.
+Reescrever custa mais do que revisar uma spec.
+
+---
+
+## Regras de Segurança (obrigatórias)
+
+Lições aprendidas em produção. Detalhe completo em `.ai-system/INSTALL.md`.
+
+- **REG-001 — Migrations sempre manuais.** Nunca aplicar via CLI/MCP.
+  Copiar o SQL e executar no SQL Editor do painel (role de serviço).
+- **REG-002 — MCP de banco só leitura.** Conexão MCP ao banco apenas para
+  SELECT de diagnóstico. Nunca DDL/DML.
+
+> Ferramenta recomendada: configurar um MCP de banco em modo
+> READ-ONLY para diagnóstico rápido (consultar policies, tabelas,
+> dados) sem copiar/colar queries. Escrita continua manual (REG-001).
+
+- **REG-003 — Confirmar policy antes de DROP.** Verificar no banco que o
+  nome existe exatamente antes de `DROP POLICY IF EXISTS`.
+- **REG-004 — JOIN aninhado com RLS retorna vazio.** Com RLS em ambas as
+  tabelas, usar queries separadas + merge manual em JS.
+- **REG-005 — SDD obrigatório.** Spec aprovada antes de código.
+- **REG-006 — Build 0 erros antes de commit.** Tipagem estrita, sem `any`
+  implícito. Build quebrado bloqueia todo mundo.
+- **REG-007 — Nunca commitar secrets.** `.env*`, chaves e credenciais fora
+  do git. `.gitignore` configurado antes do primeiro `git add`.
+- **REG-008 — Auditoria verifica no banco antes de afirmar.** Nunca
+  classificar estado do banco ("sem RLS") por inferência de migrations —
+  rodar query real (`pg_policies`) e comparar com a lista de tabelas.
+
+---
+
+## Como acionar os agentes
+
+Os agentes do kit (em `.ai-system/agents/`) são acionados por um bloco de
+contexto no início da sua mensagem, neste formato:
+
+```
+MODO: DESENVOLVIMENTO | AUDITORIA | PLANEJAMENTO
+PROJETO: {{PROJETO_NOME}}
+AGENTE: <número e nome do agente, ex: 12-code, 18-doc-writer>
+SPRINT: <sprint atual, se aplicável>
+TAREFA: <descrição objetiva do que fazer>
+
+CONTEXTO:
+<o que o agente precisa saber>
+
+REGRAS:
+<restrições específicas desta tarefa>
+```
+
+### Agentes estratégicos
+- **Agente 19 (product-analyst)** → responde **O QUÊ** e **POR QUÊ**
+  (o que falta, se o fluxo está correto, quais campos um formulário precisa).
+- **Agente 20 (project-manager)** → responde **COMO** e **EM QUE ORDEM**
+  (como implementar sem quebrar, por onde começar, ordem das tarefas).
+
+### Fluxo padrão
+```
+1. Agente 20 classifica a demanda
+2. Agente 19 analisa o negócio (se for funcional)
+3. {{RESPONSAVEL}} aprova o plano
+4. Agentes técnicos executam (seguindo SDD)
+5. Agente 19 valida o resultado
+6. Agente 18 documenta
+7. Build → deploy
+```
+
+**Decisão final é sempre do {{RESPONSAVEL}}.**
+
+---
+
+## Antes de usar API externa ou biblioteca nova
+
+Antes de `{{STACK_PACOTES}} add` de qualquer pacote novo, ou de usar uma
+API externa não listada na stack:
+
+1. **PARAR e avisar o {{RESPONSAVEL}}**
+2. Informar: nome, por que é necessária, gratuita ou paga, limites de uso,
+   e se há alternativa sem dependência externa.
+3. **Aguardar aprovação explícita.**
+
+Bibliotecas já presentes no `package.json` não precisam de aviso.
+
+---
+
+*CLAUDE.md gerado pelo Kit de Agentes Portátil v2.0 — mantenha vivo.*
