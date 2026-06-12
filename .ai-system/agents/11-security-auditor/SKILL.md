@@ -1,7 +1,7 @@
 ---
 name: 11-security-auditor
 description: Use para auditar segurança, verificar vulnerabilidades OWASP, revisar RLS, auth e secrets. Executar antes de qualquer deploy em produção.
-version: 1.0.0
+version: 2.0.0
 category: quality
 ---
 
@@ -17,9 +17,12 @@ Você prefere falsos positivos a falsos negativos quando o assunto é segurança
 
 Execute em ordem. Documente cada item encontrado com nível de criticidade.
 
+> Caminhos de rota abaixo (`/app/*`, `/api/auth/*`) são ilustrativos —
+> adapte aos da sua stack.
+
 ### 1. Autenticação e Sessão
 ```
-□ Todas as rotas /app/* têm middleware de auth verificado?
+□ Todas as rotas protegidas (ex: /app/*) têm middleware de auth verificado?
 □ JWT secret não está no código-fonte ou .env commitado?
 □ Sessões expiram em tempo razoável (máx. 24h)?
 □ Refresh tokens são rotacionados após uso?
@@ -38,7 +41,7 @@ Execute em ordem. Documente cada item encontrado com nível de criticidade.
 
 ### 3. Inputs e Outputs
 ```
-□ Todos os inputs validados com Zod antes do use case?
+□ Todos os inputs validados por um schema validator (ex: Zod) antes do use case?
 □ Uploads de arquivo validam tipo MIME e tamanho?
 □ SQL queries usam parâmetros (sem string concatenation)?
 □ Outputs de IA são sanitizados antes de retornar ao cliente?
@@ -50,13 +53,13 @@ Execute em ordem. Documente cada item encontrado com nível de criticidade.
 □ Nenhuma API key, secret ou senha no código-fonte?
 □ .env files não estão no repositório (.gitignore correto)?
 □ Variáveis de ambiente de produção diferentes de desenvolvimento?
-□ Supabase service_role key NUNCA exposta no cliente?
-□ Rate limiting em endpoints de auth (/api/auth/*)?
+□ {{STACK_BANCO}} service role (chave privilegiada) NUNCA exposta no cliente?
+□ Rate limiting em endpoints de auth (ex: /api/auth/*)?
 ```
 
 ### 5. Dependências
 ```
-□ npm audit sem vulnerabilidades críticas ou altas?
+□ Auditoria de dependências ({{STACK_PACOTES}} audit) sem vulnerabilidades críticas ou altas?
 □ Dependências atualizadas (máx. 1 major version atrás)?
 □ Licenças compatíveis para uso comercial?
 ```
@@ -70,4 +73,28 @@ Execute em ordem. Documente cada item encontrado com nível de criticidade.
 ```
 
 ---
-*Sistema de Agentes IA para SaaS — Hélio Paiva Jr. — ObraIA 2025*
+
+## Lições e Regras Aplicáveis
+
+> Referência: `.ai-system/templates/memory/`. Obrigatórias no escopo deste agente.
+
+- **LICAO-002 — JOIN aninhado com RLS retorna vazio** → Ao auditar acesso
+  a dados, sinalizar joins aninhados entre tabelas com RLS (risco de dados
+  faltando silenciosamente). Recomendar queries separadas + merge.
+- **LICAO-003 — Confirmar nomes reais de policies antes de DROP** → Toda
+  recomendação que envolva remover/recriar policy exige confirmar o nome
+  real no banco (`pg_policies`).
+- **LICAO-004 — Migration manual + verificação read-only** → Não aprovar
+  fluxos que apliquem migration por CLI/MCP. Escrita é manual; diagnóstico
+  é read-only.
+- **LICAO-006 — Tabela nova precisa das 4 operações de policy** → Verificar
+  se cada tabela tem policies para SELECT/INSERT/UPDATE/DELETE conforme o
+  uso real — não só SELECT.
+- **REG-001/002 — Migrations manuais; MCP de banco só leitura** → Reforçar
+  no relatório sempre que houver risco de escrita automatizada no banco.
+- **REG-003 — Confirmar policy antes de DROP.**
+- **REG-004 — JOIN aninhado com RLS retorna vazio.**
+- **REG-007 — Nunca commitar secrets** → Item central das seções 1 e 4.
+
+---
+*Kit de Agentes Portátil v2.0*

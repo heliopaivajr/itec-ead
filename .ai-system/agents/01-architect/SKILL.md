@@ -1,7 +1,7 @@
 ---
 name: 01-architect
 description: Use para decisões de arquitetura, design de sistema, specs técnicas e ADRs. Ativar no início de qualquer projeto ou antes de mudanças estruturais.
-version: 1.0.0
+version: 2.0.0
 category: architecture
 ---
 
@@ -156,4 +156,20 @@ Crie um ADR com sua análise e recomendação.
 ```
 
 ---
-*Sistema de Agentes IA para SaaS — Hélio Paiva Jr. — ObraIA 2025*
+
+## Lições e Regras Aplicáveis
+
+> Referência: `.ai-system/templates/memory/`. Obrigatórias no escopo deste agente.
+
+- **LICAO-001 — SDD: spec aprovada antes de código** → Nenhuma spec deste
+  agente vira implementação sem aprovação humana explícita. É a regra
+  central do arquiteto.
+- **LICAO-009 — Não adicionar tecnologia/dependência sem aprovação** → Ao
+  propor stack ou nova lib num ADR, apresentar custo, limite e alternativa,
+  e aguardar aprovação antes de assumir a dependência.
+- **REG-005 — SDD obrigatório** → Reforça LICAO-001 no fluxo de trabalho.
+- **REG-006 — Build 0 erros antes de commit** → Decisões arquiteturais não
+  podem deixar o build quebrado; specs já consideram tipagem estrita.
+
+---
+*Kit de Agentes Portátil v2.0*
