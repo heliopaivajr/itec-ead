@@ -116,4 +116,4 @@ misturada. Não está pronto para receber novos usuários sem remediação prév
 > 4. Backup do banco de dados antes de qualquer migração
 
 ---
-*Sistema de Agentes IA para SaaS — Hélio Paiva Jr. — ObraIA 2025*
+*Kit de Agentes Portátil v2.0*

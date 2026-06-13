@@ -25,6 +25,10 @@ lerna-debug.log*
 lighthouse-report.json
 *.local
 
+# ── Pacotes do kit portátil (gerados, não commitar) ──────────────────────────
+*.zip
+_kit-build/
+
 # ── Vídeos fonte (pasta raiz /videos/) ───────────────────────────────────────
 # Os vídeos servidos ficam em /public/videos/ e SÃO commitados.
 # Esta pasta /videos/ são os arquivos originais/brutos — não commitar (pesados).

@@ -15,8 +15,8 @@
 Feature:     [nome claro da feature — ex: "Sistema de convite de membros"]
 Data:        [YYYY-MM-DD]
 Solicitante: [quem pediu — você, cliente, etc.]
-Agente:      [qual dos 18 agentes vai liderar — ex: 05-backend-engineer]
-Projeto:     [ObraPrice | ITEC-EAD | outro]
+Agente:      [qual agente vai liderar — ex: 05-backend-engineer]
+Projeto:     [nome do projeto]
 Prioridade:  [ALTA | MÉDIA | BAIXA]
 ```
 
@@ -136,4 +136,4 @@ Após receber este template preenchido, o agente deve:
 5. **Entregar Resumo** do que foi feito e como testar
 
 ---
-*Sistema de Agentes IA para SaaS — Hélio Paiva Jr. — ObraIA 2025*
+*Kit de Agentes Portátil v2.0*

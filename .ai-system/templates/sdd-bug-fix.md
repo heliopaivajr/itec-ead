@@ -87,4 +87,4 @@ Após receber este template:
 6. **Entregar resumo** com: causa raiz, o que foi corrigido, como testar
 
 ---
-*Sistema de Agentes IA para SaaS — Hélio Paiva Jr. — ObraIA 2025*
+*Kit de Agentes Portátil v2.0*

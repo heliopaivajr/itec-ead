@@ -89,4 +89,4 @@ Esta decisão deve ser revisada quando:
 - [ADR relacionado: ADR-NNN]
 
 ---
-*Sistema de Agentes IA para SaaS — Hélio Paiva Jr. — ObraIA 2025*
+*Kit de Agentes Portátil v2.0*

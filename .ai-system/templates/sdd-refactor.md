@@ -58,4 +58,4 @@ O controller deve apenas chamar o use case, que usa o VO."]
 ```
 
 ---
-*Sistema de Agentes IA para SaaS — Hélio Paiva Jr. — ObraIA 2025*
+*Kit de Agentes Portátil v2.0*
