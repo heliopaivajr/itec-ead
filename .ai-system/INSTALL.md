@@ -1,6 +1,6 @@
 # Kit de Agentes Portátil — Instalador Mestre
 **Versão:** 2.0
-**Compatível com:** Claude Code, projetos Node/TypeScript (a stack do produto é definida no PRD)
+**Compatível com:** Claude Code, projetos Node/TypeScript (a stack do produto é definida na entrevista)
 
 ---
 
@@ -12,8 +12,9 @@ arquitetura, lições aprendidas embutidas e um instalador que adapta tudo
 ao seu projeto específico.
 
 **O kit NÃO é código.** É um conjunto de instruções em Markdown que o
-Claude Code lê e segue, gerando a estrutura do seu projeto a partir do PRD
-que você preencheu.
+Claude Code lê e segue. A instalação é **guiada por entrevista**: você não
+precisa preencher nada à mão — o Claude Code faz 15 perguntas, uma de cada
+vez, e gera o PRD e a estrutura do projeto a partir das suas respostas.
 
 ---
 
@@ -26,7 +27,9 @@ Antes de instalar, confirme que você tem:
 - [ ] **Git** instalado (`git --version`)
 - [ ] **Claude Code** instalado e autenticado (`claude --version`)
 - [ ] Uma pasta vazia (ou repositório novo) para o projeto
-- [ ] O PRD do seu projeto preenchido (ver Passo 2)
+
+> Você **não** precisa preencher o PRD antes de começar. A entrevista cuida
+> disso. (Se preferir, pode preenchê-lo de antemão — o instalador detecta.)
 
 ---
 
@@ -34,10 +37,10 @@ Antes de instalar, confirme que você tem:
 
 ```
 Passo 1 → Descompactar o kit na raiz do projeto novo
-Passo 2 → Preencher .ai-system/prd/PRD.md com os dados do seu projeto
-Passo 3 → Dizer ao Claude Code: "execute o INSTALL.md"
+Passo 2 → Dizer ao Claude Code: "instale o kit"
+Passo 3 → Responder à entrevista guiada (15 perguntas, uma por vez)
 Passo 4 → Revisar o bootstrap gerado e executar os comandos
-Passo 5 → Rodar /init do Claude Code para indexar o projeto
+Passo 5 → Rodar /init do Claude Code (com backup do CLAUDE.md)
 ```
 
 ---
@@ -53,104 +56,243 @@ meu-projeto/           ← raiz do projeto (pode estar vazia)
     ├── INSTALL.md     ← este arquivo
     ├── prd/
     │   ├── PRD-TEMPLATE.md
-    │   └── PRD.md     ← você vai criar este
+    │   └── PRD.md     ← gerado pela entrevista (não precisa criar à mão)
     ├── templates/
     │   ├── adr-template.md      ← templates já existentes do kit
     │   ├── sdd-*.md
-    │   └── project/             ← templates de instalação (usados pelo INSTALL)
-    │       ├── CLAUDE.md.template
-    │       ├── SYSTEM.md.template
-    │       ├── STACK.md.template
-    │       ├── ARCHITECTURE.md.template
-    │       └── README.md.template
-    └── agents/        ← definições dos agentes
+    │   ├── project/             ← templates de instalação (usados pelo INSTALL)
+    │   │   ├── CLAUDE.md.template
+    │   │   ├── SYSTEM.md.template
+    │   │   ├── STACK.md.template
+    │   │   ├── ARCHITECTURE.md.template
+    │   │   └── README.md.template
+    │   └── memory/              ← memória do kit (lições e erros conhecidos)
+    └── agents/        ← os 21 agentes (20 numerados + Osábio)
 ```
 
 ---
 
-## Passo 2 — Preencher o PRD
-
-1. Copie `.ai-system/prd/PRD-TEMPLATE.md` para `.ai-system/prd/PRD.md`
-2. Abra `PRD.md` e preencha todas as seções marcadas com `[PREENCHER]`
-3. Seções mínimas obrigatórias antes de instalar:
-   - Seção 1 (Identidade do Projeto) — completa
-   - Seção 3 (Stack Técnica) — pelo menos frontend, backend, banco
-   - Seção 5 (Módulos Principais) — pelo menos 3 módulos
-   - Seção 7 (Roles e Permissões) — pelo menos 2 roles
-
-> **Dica:** Não tente fazer o PRD perfeito antes de instalar.
-> Preencha o suficiente para gerar a estrutura. O PRD evolui com o projeto.
-
----
-
-## Passo 3 — Executar a instalação
+## Passo 2 — Iniciar a instalação guiada
 
 Com o Claude Code aberto na raiz do projeto, diga:
 
 ```
-execute o INSTALL.md
+instale o kit
 ```
 
 ou
 
 ```
-instale o kit de agentes seguindo o INSTALL.md
+execute o INSTALL.md
 ```
 
-O Claude Code vai seguir as instruções da próxima seção automaticamente.
+O Claude Code vai conduzir a entrevista descrita na próxima seção.
 
 ---
 
 ## ► INSTRUÇÕES DE EXECUÇÃO PARA O CLAUDE CODE
 
 > **Esta seção é para o Claude Code, não para o usuário.**
-> Quando o usuário disser "execute o INSTALL.md" ou "instale o kit",
-> siga EXATAMENTE estas etapas na ordem indicada.
+> Quando o usuário disser "instale o kit" ou "execute o INSTALL.md", siga
+> EXATAMENTE estas etapas, na ordem. Esta é uma **conversa guiada** — você
+> conduz a entrevista, não roda um script.
 
 ---
 
-### ETAPA 1 — Ler e validar o PRD
+### ETAPA 0 — Verificar se já existe PRD
 
-1.1 Verificar se `.ai-system/prd/PRD.md` existe.
-- Se não existir: informar o usuário, mostrar o comando para criar
-  (`cp .ai-system/prd/PRD-TEMPLATE.md .ai-system/prd/PRD.md`) e PARAR.
-
-1.2 Ler o arquivo `.ai-system/prd/PRD.md` completo.
-
-1.3 Validar seções mínimas (as que não podem estar como `[PREENCHER]`):
-- Seção 1: nome do projeto, descrição, domínio
-- Seção 3: frontend, backend, banco de dados
-- Seção 5: pelo menos 3 módulos listados
-- Seção 7: pelo menos 2 roles definidas
-
-1.4 Se validação falhar: listar exatamente quais campos estão faltando
-e PARAR. Não continuar com PRD incompleto.
-
-1.5 Se validação passar: extrair as variáveis abaixo do PRD e armazená-las
-para uso nas etapas seguintes:
+Pergunte exatamente:
 
 ```
-PROJETO_NOME          ← Seção 1
-PROJETO_DESCRICAO     ← Seção 1
-PROJETO_DOMINIO       ← Seção 1
-PROJETO_URL           ← Seção 1
-RESPONSAVEL           ← Seção 1
-STACK_FRONTEND        ← Seção 3
-STACK_BACKEND         ← Seção 3
-STACK_BANCO           ← Seção 3
-STACK_DEPLOY          ← Seção 3
-STACK_PACOTES         ← Seção 3 (gerenciador de pacotes)
-ARQUITETURA_PADRAO    ← Seção 4.1
-MODULOS               ← Seção 5 (lista)
-ROLES                 ← Seção 7 (lista)
-ROLE_PADRAO           ← Seção 7.1 (fallback)
+Você já preencheu o PRD do projeto? (S/N)
+```
+
+- **Se N** → vá para a ETAPA 1 (entrevista completa, 15 perguntas).
+- **Se S** → leia `.ai-system/prd/PRD.md`, identifique quais campos ainda
+  estão como `[PREENCHER]` ou vazios, e pergunte **somente esses** (no mesmo
+  formato da ETAPA 1, numerando "X de N restantes"). Depois siga para a ETAPA 2.
+
+---
+
+### ETAPA 1 — Entrevista guiada (15 perguntas)
+
+Regras da entrevista:
+- **Uma pergunta por vez.** Faça a pergunta, **aguarde a resposta**, só então
+  passe à próxima. Nunca despeje várias perguntas juntas.
+- Sempre mostre o progresso (`PERGUNTA N de 15`).
+- Sempre dê um **exemplo neutro** (domínio fictício — ex: app de tarefas,
+  delivery, academia). Nunca use dados de um projeto real.
+- Se a resposta vier vaga, peça um detalhe a mais antes de seguir.
+
+Use exatamente este formato para cada pergunta:
+
+```
+PERGUNTA N de 15 — [a pergunta]
+(preenche {{PLACEHOLDER}})
+Exemplo: [exemplo neutro]
+→ aguardar resposta
+```
+
+#### BLOCO A — Identidade (1–5)
+
+```
+PERGUNTA 1 de 15 — Qual o nome do projeto?
+(preenche {{PROJETO_NOME}})
+Exemplo: TaskFlow
+→ aguardar resposta
+```
+```
+PERGUNTA 2 de 15 — Descreva o produto em uma frase.
+(preenche {{PROJETO_DESCRICAO}})
+Exemplo: Plataforma de gestão de tarefas para equipes remotas
+→ aguardar resposta
+```
+```
+PERGUNTA 3 de 15 — Qual o domínio/setor do produto?
+(preenche {{PROJETO_DOMINIO}})
+Exemplo: Produtividade B2B
+→ aguardar resposta
+```
+```
+PERGUNTA 4 de 15 — Qual a URL de produção (ou do repositório)? Pode deixar em branco.
+(preenche {{PROJETO_URL}})
+Exemplo: https://taskflow.app
+→ aguardar resposta
+```
+```
+PERGUNTA 5 de 15 — Quem é o responsável técnico (nome + papel)?
+(preenche {{RESPONSAVEL}})
+Exemplo: Ana Souza — tech lead
+→ aguardar resposta
+```
+
+#### BLOCO B — Stack (6–10)
+
+```
+PERGUNTA 6 de 15 — Qual o frontend?
+(preenche {{STACK_FRONTEND}})
+Exemplo: React 18 + TypeScript + Vite + Tailwind
+→ aguardar resposta
+```
+```
+PERGUNTA 7 de 15 — Qual o backend / API?
+(preenche {{STACK_BACKEND}})
+Exemplo: Supabase (BaaS) — ou Node + NestJS
+→ aguardar resposta
+```
+```
+PERGUNTA 8 de 15 — Qual o banco de dados?
+(preenche {{STACK_BANCO}})
+Exemplo: PostgreSQL (Supabase)
+→ aguardar resposta
+```
+```
+PERGUNTA 9 de 15 — Onde será o deploy?
+(preenche {{STACK_DEPLOY}})
+Exemplo: Vercel
+→ aguardar resposta
+```
+```
+PERGUNTA 10 de 15 — Qual gerenciador de pacotes?
+(preenche {{STACK_PACOTES}})
+Exemplo: pnpm
+→ aguardar resposta
+```
+
+#### BLOCO C — Domínio (11–15)
+
+```
+PERGUNTA 11 de 15 — Quais os papéis/roles de usuário e o que cada um acessa?
+(preenche {{ROLES}})
+Exemplo: admin (tudo) · membro (próprias tarefas) · visitante (somente leitura)
+→ aguardar resposta
+```
+```
+PERGUNTA 12 de 15 — Quais os módulos / bounded contexts principais?
+(preenche {{MODULOS}})
+Exemplo: Autenticação, Tarefas, Equipes, Relatórios
+→ aguardar resposta
+```
+```
+PERGUNTA 13 de 15 — Quais as regras de negócio críticas (as invioláveis)?
+(preenche {{REGRAS_NEGOCIO}})
+Exemplo: usuário só vê tarefas do próprio workspace; só admin exclui workspace
+→ aguardar resposta
+```
+```
+PERGUNTA 14 de 15 — Quais restrições ou decisões já tomadas?
+(preenche {{RESTRICOES}})
+Exemplo: só pnpm; migrations manuais; sem SSR por ora
+→ aguardar resposta
+```
+```
+PERGUNTA 15 de 15 — Qual o padrão arquitetural?
+(preenche {{ARQUITETURA_PADRAO}})
+Exemplo: BaaS + Frontend only · Clean Architecture · Feature-based
+→ aguardar resposta
 ```
 
 ---
 
-### ETAPA 2 — Criar a estrutura de pastas
+### ETAPA 2 — Resumo e confirmação
 
-2.1 Com base em `ARQUITETURA_PADRAO`, criar a estrutura de pastas:
+Apresente **todas** as 15 respostas em um resumo organizado por bloco
+(Identidade / Stack / Domínio) e pergunte:
+
+```
+Confirma estas respostas? (S / ajustar)
+```
+
+- Se o usuário pedir ajuste, corrija o campo indicado e mostre o resumo de
+  novo. Repita até receber **S**.
+- Só avance com confirmação explícita.
+
+---
+
+### ETAPA 3 — Gerar o PRD preenchido
+
+Com as respostas confirmadas, gere `.ai-system/prd/PRD.md` a partir de
+`.ai-system/prd/PRD-TEMPLATE.md`, preenchendo as seções com as respostas da
+entrevista. Este arquivo é o **registro permanente** do projeto — confirme
+ao usuário que ele foi criado.
+
+---
+
+### ETAPA 4 — Gerar os arquivos raiz a partir dos templates
+
+Para cada template em `.ai-system/templates/project/`, gere o arquivo
+correspondente na raiz do projeto, substituindo os placeholders pelos
+valores coletados.
+
+> ⚠️ **Substituição por LISTA BRANCA (obrigatório).** O motor de
+> substituição só pode trocar placeholders **conhecidos** do kit:
+> `PROJETO_NOME`, `PROJETO_DESCRICAO`, `PROJETO_DOMINIO`, `PROJETO_URL`,
+> `RESPONSAVEL`, `STACK_FRONTEND`, `STACK_BACKEND`, `STACK_BANCO`,
+> `STACK_DEPLOY`, `STACK_PACOTES`, `ARQUITETURA_PADRAO`, `MODULOS`,
+> `ROLES`, `REGRAS_NEGOCIO`, `RESTRICOES`, `DATA_ATUAL`.
+> **NUNCA** "substituir tudo entre chaves duplas" genericamente — alguns
+> arquivos do kit contêm sintaxe nativa de terceiros que usa `{{ }}` e deve
+> ser preservada intacta. Exemplo real: o agente `09-infra-engineer` traz um
+> workflow do GitHub Actions com `${{ secrets.VERCEL_TOKEN }}` — uma
+> substituição cega quebraria o CI gerado. O que não estiver na lista
+> permanece literal.
+
+Gere, nesta ordem, na **raiz do projeto**:
+- `CLAUDE.md`  ← o mais crítico (lido pelo Claude Code em toda sessão)
+- `SYSTEM.md`
+- `STACK.md`
+- `ARCHITECTURE.md`
+- `README.md`
+
+Para listas (`MODULOS`, `ROLES`, `REGRAS_NEGOCIO`, `RESTRICOES`), formate as
+respostas como listas/tabelas em Markdown. Use a data de hoje em `DATA_ATUAL`.
+
+---
+
+### ETAPA 5 — Criar a estrutura de pastas
+
+Com base em `ARQUITETURA_PADRAO`, crie a estrutura de pastas e confirme cada
+etapa ao usuário.
 
 **Se BaaS + Frontend only:**
 ```
@@ -215,63 +357,18 @@ src/
 public/
 ```
 
-2.2 Substituir `[modulo-N]` pelos módulos reais da Seção 5 do PRD
-(usar kebab-case, ex: "Gestão de Tarefas" → `gestao-tarefas`).
-
-2.3 Criar um `.gitkeep` em cada pasta vazia para que o git as rastreie.
+Substitua `[modulo-N]` pelos módulos reais (kebab-case, ex: "Gestão de
+Tarefas" → `gestao-tarefas`). Crie um `.gitkeep` em cada pasta vazia.
 
 ---
 
-### ETAPA 3 — Gerar arquivos a partir dos templates
+### ETAPA 6 — Gerar o bootstrap
 
-Para cada template em `.ai-system/templates/project/`, gerar o arquivo
-correspondente na raiz do projeto, substituindo todos os placeholders
-pelos valores extraídos do PRD.
+**NÃO execute comandos de terminal diretamente.**
 
-> ⚠️ **Substituição por LISTA BRANCA (obrigatório).** O motor de
-> substituição só pode trocar placeholders **conhecidos** do kit
-> (`PROJETO_*`, `STACK_*`, `ROLES`, `RESPONSAVEL`, `DATA_ATUAL`, etc.).
-> **NUNCA** "substituir tudo entre chaves duplas" genericamente — alguns
-> arquivos do kit contêm sintaxe nativa de terceiros que usa `{{ }}` e
-> deve ser preservada intacta. Exemplo real: o agente `09-infra-engineer`
-> traz um workflow do GitHub Actions com `${{ secrets.VERCEL_TOKEN }}` —
-> uma substituição cega quebraria o CI gerado. Use uma lista explícita de
-> chaves; o que não estiver nela permanece literal.
-
-#### 3.1 Gerar `CLAUDE.md` (na raiz)
-
-Usar `.ai-system/templates/project/CLAUDE.md.template` como base.
-Substituir:
-- `{{PROJETO_NOME}}` → valor extraído
-- `{{PROJETO_DESCRICAO}}` → valor extraído
-- `{{STACK_FRONTEND}}` → valor extraído
-- `{{STACK_BACKEND}}` → valor extraído
-- `{{STACK_BANCO}}` → valor extraído
-- `{{STACK_PACOTES}}` → valor extraído
-- `{{MODULOS}}` → lista formatada em Markdown
-- `{{ROLES}}` → tabela formatada em Markdown
-- `{{REGRAS_NEGOCIO}}` → lista da Seção 6 do PRD
-- `{{RESTRICOES}}` → lista da Seção 9 do PRD
-- `{{DATA_ATUAL}}` → data de hoje
-
-> **Importante:** O `CLAUDE.md` gerado é o mais crítico. É lido
-> automaticamente pelo Claude Code em toda sessão. Deve estar completo.
-
-#### 3.2 Gerar `SYSTEM.md`, `STACK.md`, `ARCHITECTURE.md`, `README.md`
-
-Mesmo processo: usar template, substituir placeholders, salvar na raiz.
-
----
-
-### ETAPA 4 — Gerar o bootstrap
-
-**NÃO executar comandos de terminal diretamente.**
-
-Em vez disso, criar o arquivo `.ai-system/bootstrap.md` com todos os
-comandos necessários, organizados por seção, para o usuário revisar
-e executar manualmente.
-
-O bootstrap deve conter, adaptado à stack do PRD:
+Crie o arquivo `.ai-system/bootstrap.md` com todos os comandos necessários,
+organizados por seção, para o usuário revisar e executar manualmente,
+adaptado à stack coletada:
 
 ```markdown
 # Bootstrap — {{PROJETO_NOME}}
@@ -281,86 +378,63 @@ Revisar antes de executar. Executar na ordem indicada.
 ## 1. Git
 git init
 git branch -M main
-echo "# {{PROJETO_NOME}}" > README.md (já gerado pelo kit)
 
 ## 2. Package Manager
-[Se pnpm:]
-pnpm init
-[Se npm:]
-npm init -y
+[{{STACK_PACOTES}} init  — ou equivalente da stack]
 
 ## 3. Dependências principais
-[Listar os comandos pnpm add / npm install corretos para a stack do PRD]
-
-Exemplos para React + TypeScript + Vite + Tailwind + Supabase:
-pnpm add react react-dom
-pnpm add -D vite @vitejs/plugin-react typescript @types/react @types/react-dom
-pnpm add -D tailwindcss postcss autoprefixer
-pnpm add @supabase/supabase-js
-pnpm add -D vitest @testing-library/react @testing-library/jest-dom jsdom
+[Listar os comandos de instalação corretos para a stack do PRD]
 
 ## 4. Configuração inicial
-[Listar comandos de init específicos da stack, ex:]
-npx tailwindcss init -p
-[Para Supabase local, se aplicável:]
-npx supabase init
+[Comandos de init específicos da stack]
 
 ## 5. Variáveis de ambiente
-[Criar .env.example com as variáveis necessárias para a stack]
-Crie manualmente o arquivo .env.local com os valores reais.
-NUNCA commitar .env.local.
+[Criar .env.example com as variáveis necessárias]
+Crie manualmente o .env.local com os valores reais. NUNCA commitar .env.local.
 
 ## 6. .gitignore
-[Listar o conteúdo sugerido do .gitignore para a stack]
+[Conteúdo sugerido do .gitignore para a stack — cobrir .env*]
 
 ## 7. Primeiro commit
 git add .
 git commit -m "chore: init project from ai-system kit v2.0"
 
 ## Próximos passos (não automatizados)
-- Criar repositório no GitHub e fazer push
-- Configurar projeto no Supabase (se aplicável)
-- Configurar deploy no Vercel/Netlify (se aplicável)
+- Criar repositório no Git remoto e fazer push
+- Configurar serviços de backend/deploy (se aplicável)
 - Rodar /init no Claude Code
 ```
 
 > **Por que não executar automaticamente?**
-> Comandos de instalação de dependências podem demorar, falhar por
-> conflito de versão, ou instalar algo que você não queria.
-> Revisar antes de executar é uma regra de segurança do kit.
+> Comandos de instalação podem demorar, falhar por conflito de versão, ou
+> instalar algo que você não queria. Revisar antes de executar é uma regra
+> de segurança do kit (nível 1.5).
 
 ---
 
-### ETAPA 5 — Apresentar resumo
+### ETAPA 7 — Apresentar o resumo final
 
-Ao final, apresentar ao usuário:
+Ao final, apresente ao usuário:
 
 ```
 ✅ INSTALAÇÃO CONCLUÍDA
 
-Arquivos gerados:
-  CLAUDE.md              ← lido automaticamente pelo Claude Code
-  SYSTEM.md
-  STACK.md
-  ARCHITECTURE.md
-  README.md
+Gerados:
+  .ai-system/prd/PRD.md   ← registro do projeto (a partir da entrevista)
+  CLAUDE.md               ← lido automaticamente pelo Claude Code
+  SYSTEM.md · STACK.md · ARCHITECTURE.md · README.md
   .ai-system/bootstrap.md
 
 Estrutura de pastas criada:
   [listar as pastas criadas]
 
 PRÓXIMOS PASSOS (faça agora):
-
 1. Revise .ai-system/bootstrap.md
 2. Execute os comandos do bootstrap na ordem indicada
-3. Abra um novo terminal na pasta do projeto e rode:
-      claude
-   Dentro do Claude Code, execute:
-      /init
-   Isso vai indexar o projeto e confirmar que CLAUDE.md está ativo.
-
-4. Para começar o primeiro sprint, diga ao Claude Code:
-   "Agente 20, preciso planejar o Sprint 1 com base no PRD."
+3. Abra um terminal na pasta do projeto e rode:  claude
+   Dentro do Claude Code, faça backup e rode /init (ver Passo 5).
+4. Para começar o primeiro sprint, diga:
+   "Agente 20, planeje o Sprint 1 com base no PRD."
 ```
 
 ---
@@ -375,31 +449,20 @@ Verifique especialmente:
 - O `.gitignore` cobre todos os arquivos sensíveis?
 
 Depois de revisar, execute os comandos **na ordem listada**.
-
-Se algum comando falhar, resolva antes de continuar.
-Não pule etapas.
+Se algum comando falhar, resolva antes de continuar. Não pule etapas.
 
 ---
 
 ## Passo 5 — Inicializar o Claude Code
 
-Com o projeto com a estrutura criada e o bootstrap executado:
+Com a estrutura criada e o bootstrap executado:
 
 ```bash
 # Na raiz do projeto
 claude
 ```
 
-Dentro do Claude Code, execute o comando `/init`:
-
-```
-/init
-```
-
-O `/init` faz o Claude Code ler toda a estrutura do projeto, indexar
-os arquivos e confirmar que o `CLAUDE.md` na raiz está sendo lido
-corretamente. Isso garante que todas as sessões futuras vão começar
-com o contexto certo do projeto.
+Dentro do Claude Code, execute o comando `/init`.
 
 > **O que é o CLAUDE.md?**
 > É o arquivo de instruções do projeto para o Claude Code. Ele é lido
@@ -408,16 +471,13 @@ com o contexto certo do projeto.
 > Sem ele, o Claude não sabe nada sobre o seu projeto específico.
 
 > ⚠️ **ATENÇÃO — o `/init` pode sobrescrever o CLAUDE.md**
-> O comando `/init` do Claude Code gera seu próprio `CLAUDE.md` a partir
-> da análise do código, e isso pode **sobrescrever** o `CLAUDE.md` rico
-> que o kit gerou a partir do PRD.
+> O comando `/init` gera seu próprio `CLAUDE.md` a partir da análise do
+> código, e isso pode **sobrescrever** o `CLAUDE.md` rico que o kit gerou.
 >
 > **Recomendação:**
-> 1. Antes de rodar `/init`, faça uma cópia de segurança:
->    `cp CLAUDE.md CLAUDE.kit.md`
+> 1. Antes de rodar `/init`, faça backup: `cp CLAUDE.md CLAUDE.kit.md`
 > 2. Rode `/init`
-> 3. Compare os dois arquivos. Se o `/init` sobrescreveu com algo mais
->    pobre, restaure a versão do kit:
+> 3. Compare os dois. Se o `/init` empobreceu o arquivo, restaure:
 >    `cp CLAUDE.kit.md CLAUDE.md`
 > 4. Idealmente, faça um merge: mantenha a estrutura do kit e incorpore
 >    só o que o `/init` descobriu de útil sobre o código.
@@ -430,8 +490,8 @@ com o contexto certo do projeto.
 Após executar o bootstrap e rodar `/init`:
 
 1. **Revise o `CLAUDE.md`** gerado na raiz — ajuste o que não ficou certo
-2. **Crie o repositório no GitHub** e faça o primeiro push
-3. **Configure o projeto na infraestrutura** (Supabase, Vercel, etc.)
+2. **Crie o repositório remoto** e faça o primeiro push
+3. **Configure o projeto na infraestrutura** (backend, deploy, etc.)
 4. **Comece o Sprint 1** com o Agente 20:
    > "Agente 20, com base no PRD aprovado, me ajude a planejar o Sprint 1."
 5. **Mantenha o PRD atualizado** conforme o produto evolui
@@ -571,13 +631,17 @@ a severidade de cada achado.
 
 ## Troubleshooting
 
+### "O Claude não conduziu a entrevista"
+→ Confirme que o arquivo é o `.ai-system/INSTALL.md` deste kit
+→ Diga explicitamente: "instale o kit seguindo o INSTALL.md, etapa por etapa"
+
 ### "O Claude não está lendo o CLAUDE.md"
 → Verifique se o arquivo está na raiz do projeto (não dentro de pastas)
 → Rode `/init` novamente
 → Feche e abra o Claude Code
 
 ### "A estrutura de pastas não foi criada corretamente"
-→ Verifique se o PRD estava preenchido corretamente na Seção 4
+→ Verifique a resposta da pergunta 15 (padrão arquitetural)
 → Peça ao Claude Code: "recrie a estrutura de pastas conforme o PRD"
 
 ### "O bootstrap falhou em algum comando"
@@ -585,8 +649,8 @@ a severidade de cada achado.
 → Identifique o erro, corrija e reexecute a partir do ponto de falha
 
 ### "Quero usar uma stack diferente do que o kit sugere"
-→ Preencha a Seção 3 do PRD com a sua stack
-→ O kit vai adaptar os comandos do bootstrap automaticamente
+→ Responda a entrevista com a sua stack (perguntas 6 a 10)
+→ O kit adapta os comandos do bootstrap automaticamente
 
 ---
 
@@ -598,10 +662,7 @@ a severidade de cada achado.
 ### Sequência planejada
 
 ```
-1º  Instalação Guiada (Opção 3)   → fluxo interativo no INSTALL.md:
-                                     o Claude conduz o preenchimento do PRD
-                                     e a geração, passo a passo, em vez de
-                                     exigir o PRD 100% pronto de antemão.
+1º  Instalação Guiada (Opção 3)   → CONCLUÍDA (esta seção de entrevista).
 
 2º  Bloco 5 — Empacotamento        → VERSION.md (changelog do kit) +
                                      geração do zip LIMPO (blocos 1-4),
