@@ -1,4 +1,4 @@
-# Checklist Padrão — Todo Sprint ITEC-EAD
+# Checklist Padrão — Todo Sprint
 **Usar no início e fim de cada sprint**
 **Agente responsável: 20-project-manager**
 
@@ -9,9 +9,9 @@
 ```
 - [ ] /clear no Claude Code (contexto limpo)
 - [ ] Colar contexto: CLAUDE.md + SYSTEM.md + plano do sprint
-- [ ] Ler plano do sprint em .ai-system/specs/plano-execucao-sprints-j-o.md
+- [ ] Ler o plano do sprint atual em .ai-system/specs/ (ex: plano-do-sprint.md)
 - [ ] Confirmar pré-requisitos atendidos (migrations anteriores aplicadas)
-- [ ] pnpm test:run → todos passando antes de começar
+- [ ] {{STACK_PACOTES}} test:run → todos passando antes de começar
 - [ ] Verificar se há bugs críticos pendentes do sprint anterior
 ```
 
@@ -33,7 +33,7 @@
 ```
 - [ ] Service criado em src/services/
 - [ ] Exportado no src/services/index.ts
-- [ ] Nenhum supabase.from() em pages/ ou components/
+- [ ] Nenhum acesso direto ao banco (ex: supabase.from()) em pages/ ou components/ — sempre via service
 - [ ] TypeScript strict — sem `any` implícito
 - [ ] LIMIT em todas as queries de listagem
 - [ ] Commit: feat(service): [nome].service.ts — [descrição]
@@ -43,9 +43,9 @@
 ```
 - [ ] Componente/page criado com loading state (Skeleton ou Loader2)
 - [ ] Navegação via <Link> ou useNavigate — NUNCA <a href>
-- [ ] Role checks corretos (usar helpers do Dashboard.tsx)
+- [ ] Role checks corretos (usar os helpers de role do projeto)
 - [ ] Responsivo (mobile-first com Tailwind)
-- [ ] pnpm test:run após cada componente novo
+- [ ] {{STACK_PACOTES}} test:run após cada componente novo
 - [ ] Commit: feat(frontend): [nome] — [descrição]
 ```
 
@@ -53,9 +53,9 @@
 ```
 - [ ] Testes escritos junto com a implementação (não depois)
 - [ ] Casos-limite cobertos (valores exatos de fronteira)
-- [ ] Mocks configurados para APIs externas (Resend, Asaas)
+- [ ] Mocks configurados para APIs externas (ex: email, pagamento)
 - [ ] Cobertura mínima: 80% nos services novos
-- [ ] pnpm test:run → 100% passando
+- [ ] {{STACK_PACOTES}} test:run → 100% passando
 - [ ] Commit: test([escopo]): [descrição dos casos testados]
 ```
 
@@ -66,8 +66,8 @@
 ### Qualidade (executar NESTA ORDEM)
 
 ```
-1. [ ] pnpm test:run          → todos passando (número/número)
-2. [ ] pnpm build             → build limpo, zero erros TS
+1. [ ] {{STACK_PACOTES}} test:run   → todos passando (número/número)
+2. [ ] {{STACK_PACOTES}} build      → build limpo, zero erros de tipo
 3. [ ] Agente 14 (auditoria)  → auditoria rápida do sprint
 4. [ ] Agente 11 (segurança)  → RLS das tabelas novas auditado
 5. [ ] Agente 12 (review)     → code review services + pages
@@ -90,7 +90,7 @@
 - [ ] git add (arquivos específicos — não git add -A)
 - [ ] Commit semântico com descrição completa
 - [ ] git push origin main
-- [ ] Vercel deploy confirmado (verificar dashboard Vercel)
+- [ ] Deploy confirmado (verificar o dashboard do provedor, ex: Vercel)
 - [ ] Testar em produção: fluxo principal do sprint
 ```
 
@@ -131,13 +131,12 @@ git commit -m "feat(sprint-[letra]): [resumo em 1 linha]
 ## REFERÊNCIAS RÁPIDAS
 
 ```
-Plano de sprints:  .ai-system/specs/plano-execucao-sprints-j-o.md
-Análise de produto: .ai-system/specs/analise-produto-completa-2026.md
+Plano de sprints:    .ai-system/specs/ (plano do sprint atual)
+Análise de produto:  .ai-system/specs/ (análise de produto)
 Regras de qualidade: .ai-system/agents/20-project-manager/SKILL.md
-Auditoria atual:   .ai-system/audit/2026-05-dashboard-performance/report.md
+Auditoria atual:     .ai-system/audit/ (relatório mais recente)
 ```
 
 ---
 
-*ITEC-EAD · Checklist Padrão de Sprint · v1.0*
-*Criado: 2026-05-28 · Agente 20 — Gestor de Projeto*
+*Kit de Agentes Portátil v2.0 — Checklist Padrão de Sprint*

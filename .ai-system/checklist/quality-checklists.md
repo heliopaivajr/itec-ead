@@ -1,6 +1,6 @@
 # Checklists de Qualidade
-## ITEC-EAD · Sistema de Agentes IA
-**Mantido por:** agente-Osabio
+## Kit de Agentes Portátil v2.0
+**Mantido por:** agente-Osábio
 
 ---
 
@@ -82,7 +82,7 @@ SEGURANÇA
 
 QUALIDADE
 □ O prompt não é genérico demais (poderia ser de qualquer agente)?
-□ O prompt tem contexto específico do ITEC-EAD?
+□ O prompt tem contexto específico do projeto (não genérico demais)?
 □ O prompt tem terminologia consistente com o projeto?
 □ O prompt é reversível (posso melhorar incrementalmente)?
 ```
@@ -147,16 +147,16 @@ ANTES DE ALTERAR QUALQUER ARQUIVO DE AGENTE
 
 SE A MELHORIA ENVOLVE REGRA DE NEGÓCIO
 □ O Agente 19 (Analista de Produto) foi consultado?
-□ A regra de negócio faz sentido para o ITEC como instituição teológica?
-□ A secretaria consegue operar com essa mudança?
+□ A regra de negócio faz sentido para o domínio do projeto?
+□ A equipe operacional consegue operar com essa mudança?
 
 SE A MELHORIA ENVOLVE SEGURANÇA OU CÓDIGO CRÍTICO
-□ O Hélio aprovou explicitamente?
+□ O responsável aprovou explicitamente?
 □ Existe proposta documentada com diff antes/depois?
 □ Existe plano de rollback?
 
 APÓS APLICAR A MELHORIA
-□ A melhoria foi registrada em agent-improvement-history.md?
+□ A melhoria foi registrada no agent-maturity-map.md (Histórico de promoções)?
 □ O agent-maturity-map.md foi atualizado?
 □ Existe critério de validação para confirmar que funcionou?
 □ A lição foi registrada em lessons-learned.md?
@@ -166,13 +166,13 @@ APÓS APLICAR A MELHORIA
 
 ## Checklist 5 — Validação de Produto (uso pelo Agente 19)
 
-Use para verificar se uma nova funcionalidade faz sentido para o ITEC antes de implementar.
+Use para verificar se uma nova funcionalidade faz sentido para o domínio do projeto antes de implementar.
 
 ```
 COERÊNCIA INSTITUCIONAL
-□ A funcionalidade faz sentido para uma escola teológica?
-□ A linguagem da funcionalidade é adequada para o contexto cristão?
-□ A funcionalidade serve alguma das 5 jornadas (aluno, professor, secretaria, admin, superadmin)?
+□ A funcionalidade faz sentido para o domínio do projeto?
+□ A linguagem da funcionalidade é adequada ao contexto do domínio?
+□ A funcionalidade serve alguma das jornadas de persona definidas no PRD?
 □ Existe alguma necessidade real documentada para isso?
 
 NECESSIDADE REAL
@@ -183,8 +183,8 @@ NECESSIDADE REAL
 
 IMPACTO
 □ Quantos usuários serão beneficiados?
-□ A secretaria consegue usar sem treinamento?
-□ O aluno entende sem explicação?
+□ A equipe operacional consegue usar sem treinamento?
+□ O usuário final entende sem explicação?
 □ Isso reduz trabalho manual ou apenas adiciona complexidade?
 
 RISCOS
@@ -196,4 +196,4 @@ RISCOS
 
 ---
 
-*Mantido pelo agente-Osabio · ITEC-EAD · 2025*
+*Kit de Agentes Portátil v2.0 — mantido pelo agente-Osábio*

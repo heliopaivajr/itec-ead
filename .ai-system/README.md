@@ -1,186 +1,78 @@
-# .ai-system — Sistema de Agentes IA · ITEC-EAD
-**Hélio Paiva Jr. · ObraIA · Paulista/PE · 2025**  
-**Versão:** 3.0 — Com agente-Osabio (Supervisor de Evolução)
+# Kit de Agentes Portátil v2.0
 
----
+Um sistema de **21 agentes de IA + memória + templates** para desenvolver
+produtos digitais com engenharia de verdade — não "vibe coding". Portátil:
+instale em qualquer projeto novo.
 
-## O Que É Esta Pasta
+## O que é
 
-Sistema completo de agentes IA para o desenvolvimento do ITEC-EAD.
-Cada agente é um especialista com papel, regras e restrições definidas em seu `SKILL.md` ou arquivo `.md`.
+Markdown puro, sem dependências externas. O Claude Code lê estes arquivos e
+os segue. Inclui:
 
-**Regra fundamental:** Nenhum código antes de spec aprovada. Nenhum agente técnico ativado sem plano. Nenhuma evolução de agente sem controle.
+- **20 agentes especializados** (01–20) + o **agente-Osábio** (meta-agente)
+- **Memória do kit** — lições e erros conhecidos universais, já embutidos
+- **Templates de projeto** — CLAUDE / SYSTEM / STACK / ARCHITECTURE / README
+- **Instalador guiado por entrevista** (15 perguntas → gera o PRD e a estrutura)
 
----
+## Instalação
 
-## A Hierarquia do Sistema
+Veja **`INSTALL.md`**. Em resumo:
+
+1. Copie a pasta `.ai-system/` para a raiz do projeto novo
+2. Diga ao Claude Code: **"instale o kit"**
+3. Responda à entrevista (15 perguntas, uma por vez)
+4. Revise o `bootstrap.md` gerado, execute-o e rode `/init`
+
+## Os 21 agentes
+
+| Faixa | Agentes |
+|-------|---------|
+| Arquitetura | 01-architect · 02-domain-designer · 03-api-designer · 04-db-architect |
+| Implementação | 05-backend · 06-frontend · 07-auth · 08-billing · 09-infra |
+| Qualidade | 10-test · 11-security · 12-code-reviewer · 13-performance |
+| Auditoria | 14-auditor · 15-debt-analyst · 16-migration-planner · 17-lgpd |
+| Estratégia | 18-doc-writer · 19-product-analyst · 20-project-manager |
+| Meta | core/agente-Osábio (guardião da evolução e da memória) |
+
+## Hierarquia
 
 ```
-HÉLIO
-  └── Visão, decisão final, aprovação de mudanças críticas
-
-AGENTE 20 — Gestor de Projeto
-  └── Organiza execução, define ordem, aciona agentes
-
-agente-Osabio — Mentor / Supervisor
-  └── Melhora os agentes, registra erros, eleva maturidade
-
-AGENTE 19 — Analista de Produto
-  └── Entende o negócio, define requisitos funcionais
-
-AGENTES 01–18 — Técnicos
-  └── Implementam com precisão e dentro do escopo
+Responsável (decisão final)
+  └─ Agente 20 — Gestor de Projeto (organiza execução)
+       └─ agente-Osábio (evolui os agentes, mantém a memória)
+            └─ Agente 19 — Analista de Produto (entende o negócio)
+                 └─ Agentes 01–18 — Técnicos (implementam)
 ```
 
----
+## Filosofia
 
-## Os 21 Agentes — Referência Rápida
+- **SDD (Spec-Driven Development):** nenhum código antes de spec aprovada.
+- **8 Regras de Segurança embutidas** (REG-001 a REG-008) — ver `INSTALL.md`.
+- **Memória viva:** o Osábio destila cada sprint em lições e padrões de erro.
 
-### Camada de Supervisão e Estratégia
-
-| Agente | Nome | Função | Quando Usar |
-|--------|------|--------|-------------|
-| **Osabio** | agente-Osabio | Mentor · Supervisor de Evolução | Auditar agentes, registrar erros, propor melhorias, elevar maturidade |
-| **20** | project-manager | Gestor de Projeto / Coordenador | Como executar? Qual ordem? Quais agentes? |
-| **19** | product-analyst | Analista de Produto / Negócio | O que falta? Fluxo correto? Requisitos funcionais |
-
-### Arquitetura
-
-| # | Agente | Função | Quando Usar |
-|---|--------|--------|-------------|
-| 01 | architect | Arquiteto de Software | Decisões estruturais, ADRs |
-| 02 | domain-designer | Domain Designer DDD | Entidades, value objects, eventos |
-| 03 | api-designer | Designer de API REST | Contratos de endpoint |
-| 04 | db-architect | Arquiteto de Banco | Schema, migrations, RLS |
-
-### Desenvolvimento
-
-| # | Agente | Função | Quando Usar |
-|---|--------|--------|-------------|
-| 05 | backend-engineer | Engenheiro Backend | Services, use cases, integrações |
-| 06 | frontend-engineer | Engenheiro Frontend | Componentes React, pages, hooks |
-| 07 | auth-specialist | Especialista Auth | Login, roles, permissões |
-| 08 | billing-engineer | Engenheiro Billing | Mensalidades, pagamentos |
-| 09 | infra-engineer | Engenheiro de Infra | Deploy, CI/CD, env vars |
-
-### Qualidade
-
-| # | Agente | Função | Quando Usar |
-|---|--------|--------|-------------|
-| 10 | test-engineer | Engenheiro de Testes | Unit, integration, E2E |
-| 11 | security-auditor | Auditor de Segurança | RLS, secrets, OWASP |
-| 12 | code-reviewer | Revisor de Código | Review com score de qualidade |
-| 13 | performance-eng | Engenheiro Performance | N+1, queries lentas, bundle |
-
-### Auditoria
-
-| # | Agente | Função | Quando Usar |
-|---|--------|--------|-------------|
-| **14** ⭐ | auditor | Auditor de Codebase | **PRIMEIRO em projeto existente** |
-| 15 | debt-analyst | Analista Débito Técnico | Mapear problemas acumulados |
-| 16 | migration-planner | Planejador Migração | Mudanças arquiteturais seguras |
-| 17 | lgpd-auditor | Auditor LGPD | PII, consentimento, direitos |
-
-### Produto
-
-| # | Agente | Função | Quando Usar |
-|---|--------|--------|-------------|
-| 18 | doc-writer | Engenheiro Documentação | README, API docs, runbooks |
-
----
-
-## Comandos de Ativação Rápida
-
-```bash
-# Auditar os agentes (estado de maturidade, falhas, melhorias)
-Ative .ai-system/agents/core/agente-Osabio.md
-Modo: Auditoria
-
-# Registrar erro de um agente
-Ative .ai-system/agents/core/agente-Osabio.md
-Modo: Documentação
-Registre o erro: [descrição do erro, agente envolvido]
-
-# Propor melhoria em um agente
-Ative .ai-system/agents/core/agente-Osabio.md
-Modo: Proposta
-Agente a melhorar: [qual agente]
-Problema: [o que está errado]
-
-# Analisar se a plataforma está completa
-Ative .ai-system/agents/19-product-analyst/SKILL.md
-
-# Organizar execução de uma demanda
-Ative .ai-system/agents/20-project-manager/SKILL.md
-
-# Auditar o projeto (código)
-Ative .ai-system/agents/14-auditor/SKILL.md e execute o protocolo completo
-
-# Nova feature
-Abra .ai-system/templates/sdd-new-feature.md e siga o protocolo SDD
-```
-
----
-
-## Estrutura da Pasta
+## Estrutura
 
 ```
 .ai-system/
-├── CLAUDE.md
-├── SYSTEM.md
-├── STACK.md
-├── ARCHITECTURE.md
-├── README.md                              ← este arquivo
-│
-├── agents/
-│   ├── core/
-│   │   └── agente-Osabio.md              ← NOVO — mentor e supervisor
-│   ├── 01-architect/SKILL.md
-│   ├── 02-domain-designer/SKILL.md
-│   ├── 03-api-designer/SKILL.md
-│   ├── 04-db-architect/SKILL.md
-│   ├── 05-backend-engineer/SKILL.md
-│   ├── 06-frontend-engineer/SKILL.md
-│   ├── 07-auth-specialist/SKILL.md
-│   ├── 08-billing-engineer/SKILL.md
-│   ├── 09-infra-engineer/SKILL.md
-│   ├── 10-test-engineer/SKILL.md
-│   ├── 11-security-auditor/SKILL.md
-│   ├── 12-code-reviewer/SKILL.md
-│   ├── 13-performance-eng/SKILL.md
-│   ├── 14-auditor/SKILL.md
-│   ├── 15-debt-analyst/SKILL.md
-│   ├── 16-migration-planner/SKILL.md
-│   ├── 17-lgpd-auditor/SKILL.md
-│   ├── 18-doc-writer/SKILL.md
-│   ├── 19-product-analyst/SKILL.md
-│   └── 20-project-manager/SKILL.md
-│
-├── memory/                                ← NOVO — memória técnica
-│   ├── agent-maturity-map.md             ← nível de cada agente
-│   ├── known-errors.md                   ← erros registrados
-│   ├── lessons-learned.md                ← lições e histórico de melhorias
-│   └── agent-feedback-log.md             ← feedbacks sobre os agentes
-│
-├── checklists/                            ← NOVO — qualidade
-│   └── quality-checklists.md             ← checklist agente, prompt, skill, produto
-│
-├── docs/                                  ← NOVO — regras e fluxos
-│   └── agent-safety-rules.md             ← regras de segurança + fluxos de orquestração
-│
+├── INSTALL.md              ← instalador guiado (entrevista)
+├── README.md               ← este arquivo
+├── VERSION.md              ← changelog do kit
+├── prd/PRD-TEMPLATE.md     ← template de PRD
+├── agents/                 ← 20 agentes + core/agente-Osábio
 ├── templates/
-│   ├── sdd-new-feature.md
-│   ├── sdd-bug-fix.md
-│   ├── sdd-refactor.md
-│   ├── adr-template.md
-│   └── audit-report.md
-│
-├── specs/
-├── adr/
-├── audit/
-└── runbooks/
+│   ├── project/            ← 5 templates (CLAUDE/SYSTEM/STACK/ARCH/README)
+│   ├── memory/             ← memória do kit (lições, erros, maturidade)
+│   ├── adr-template.md · audit-report.md · checklist-sprint.md
+│   └── sdd-*.md            ← templates de spec
+├── runbooks/               ← deploy.md · rollback.md
+├── checklist/              ← quality-checklists.md
+├── adr/ · specs/ · audit/  ← vazias (o projeto preenche)
+└── docs/                   ← (opcional)
 ```
 
----
+## Versão
 
-*ITEC-EAD · Sistema de Agentes IA · v3.0 · 2025*
+Ver **`VERSION.md`**.
+
+---
+*Kit de Agentes Portátil v2.0 — desenvolvido a partir de lições aprendidas em produção*

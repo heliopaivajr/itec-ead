@@ -4,6 +4,8 @@
 > **Quando usar:** Quando um deploy causou erros em produção e precisa ser revertido.
 > **Tempo de execução:** 5-10 minutos
 > **Objetivo:** Voltar ao estado estável anterior o mais rápido possível.
+>
+> (Comandos abaixo usam Vercel/Supabase como exemplo — adapte à sua stack.)
 
 ---
 
@@ -32,22 +34,15 @@ O Vercel guarda os últimos deploys. Rollback imediato:
 
 ---
 
-## 🗄️ ROLLBACK DE MIGRATION DE BANCO (se aplicável)
+## 🗄️ ROLLBACK DE MIGRATION DE BANCO (se aplicável) — MANUAL (ver REG-001)
 
-```bash
-# ATENÇÃO: Só executar se a migration causou o problema
-# e se o rollback foi documentado antes do deploy
+> Só execute se a migration causou o problema e se o rollback foi
+> documentado antes do deploy.
 
-# 1. Verificar migration aplicada
-npx supabase migration list
-
-# 2. Executar SQL de rollback
-# (deve estar em: .ai-system/specs/[data]-[feature]/db-rollback.sql)
-psql [PRODUCTION_DB_URL] < .ai-system/specs/[data]-[feature]/db-rollback.sql
-
-# 3. Verificar que o banco voltou ao estado anterior
-npx supabase db diff
-```
+1. Abra o SQL Editor do painel do banco (role de serviço)
+2. Cole e execute o SQL de rollback (versionado junto à migration,
+   ex: `.ai-system/specs/[data]-[feature]/db-rollback.sql`)
+3. Verifique que o banco voltou ao estado anterior com uma query real
 
 > **ATENÇÃO:** Rollback de migration com dados já inseridos pode causar perda de dados.
 > Avaliar o impacto antes de executar. Em caso de dúvida, chamar o Agente 16 (migration-planner).
@@ -65,4 +60,4 @@ npx supabase db diff
 ```
 
 ---
-*Sistema de Agentes IA para SaaS — Hélio Paiva Jr. — ObraIA 2025*
+*Kit de Agentes Portátil v2.0*

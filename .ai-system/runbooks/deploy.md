@@ -4,6 +4,8 @@
 > **Quando usar:** Sempre antes de fazer qualquer deploy em produção.
 > **Tempo estimado:** 15-30 minutos
 > **Responsável:** Desenvolvedor principal + revisão do Agente 09
+>
+> (Comandos abaixo usam pnpm/Vercel/Supabase como exemplo — adapte à sua stack.)
 
 ---
 
@@ -67,13 +69,13 @@ git push origin main
 - Tempo esperado: 2-5 minutos
 ```
 
-### 4. Executar migration (se necessário)
-```bash
-# Só após deploy bem sucedido
-npx supabase db push --db-url [PRODUCTION_DB_URL]
-# Verificar que migration foi aplicada:
-npx supabase db diff
-```
+### 4. Aplicar migration (se necessário) — MANUAL (ver REG-001)
+
+Migrations NÃO são aplicadas por CLI. Após o deploy:
+1. Abra o SQL Editor do painel do banco (role de serviço)
+2. Cole e execute o SQL da migration
+3. Verifique o resultado com uma query real
+   (ex: `SELECT` em `pg_policies` / `pg_tables`)
 
 ---
 
@@ -101,4 +103,4 @@ Verificar a cada 30 minutos:
 ```
 
 ---
-*Sistema de Agentes IA para SaaS — Hélio Paiva Jr. — ObraIA 2025*
+*Kit de Agentes Portátil v2.0*
