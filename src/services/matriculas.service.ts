@@ -30,7 +30,7 @@ export async function getMatriculas(
 
   let query = supabase
     .from('matriculas')
-    .select('*, profile:profiles(full_name, email)', { count: 'exact' })
+    .select('*, profile:profiles!matriculas_aluno_id_fkey(full_name, email)', { count: 'exact' })
     .order('created_at', { ascending: false })
     .range(from, to);
 
@@ -38,7 +38,10 @@ export async function getMatriculas(
 
   const { data, count, error } = await query;
 
-  if (error) return { data: [], total: 0 };
+  if (error) {
+    console.error('getMatriculas error:', error);
+    return { data: [], total: 0 };
+  }
   return { data: (data as Matricula[]) ?? [], total: count ?? 0 };
 }
 
