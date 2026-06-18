@@ -1,9 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useNavigate, Link } from 'react-router-dom';
 import { Eye, EyeOff, Loader2, ShieldCheck, Building2, BookOpen, GraduationCap, ArrowLeft } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { signInWithPassword, signOut, getSession } from '@/services/auth.service';
+import { signInWithPassword, getSession } from '@/services/auth.service';
 // TODO: reabilitar signInWithGoogle quando migrar para Supabase Pro
 import { getProfile } from '@/services/profile.service';
 
@@ -44,6 +44,13 @@ export default function Login() {
     supabase.auth.getSession().catch(() => {});
   }, []);
 
+  // Timers do fluxo de login — limpos no unmount (e também no finally do submit)
+  const timersRef = useRef<{ demorado?: ReturnType<typeof setTimeout>; hard?: ReturnType<typeof setTimeout> }>({});
+  useEffect(() => () => {
+    clearTimeout(timersRef.current.demorado);
+    clearTimeout(timersRef.current.hard);
+  }, []);
+
   const fillDemo = (user: typeof DEMO_USERS[0]) => {
     if (!user.email) {
       toast({ title: 'Conta não configurada', description: `Crie um usuário "${user.label}" via DevSetup ou pelo Supabase.`, variant: 'destructive' });
@@ -59,31 +66,66 @@ export default function Login() {
     setLoading(true);
     setLoginDemorado(false);
 
+    // FIX 5: tolera cold start sem travar para sempre.
+    let timedOut = false;
+    const timers = timersRef.current;
     // Após 5s sem resposta, mostrar aviso de servidor iniciando
-    const timerDemorado = setTimeout(() => setLoginDemorado(true), 5000);
+    timers.demorado = setTimeout(() => setLoginDemorado(true), 5000);
+    // Hard-timeout: se o backend demorar demais, LIBERA o botão e avisa
+    // (não deixa "Autenticando..." preso). NÃO impede navegar se o login
+    // tiver sucesso depois — apenas destrava a UI.
+    timers.hard = setTimeout(() => {
+      timedOut = true;
+      setLoading(false);
+      setLoginDemorado(false);
+      toast({
+        title: 'Conexão lenta',
+        description: 'O servidor demorou para responder. Verifique sua conexão e tente novamente.',
+        variant: 'destructive',
+      });
+    }, 20000);
 
     try {
       const result = await signInWithPassword(email, password);
-      if (result.error) throw new Error(result.error);
 
-      const session = await getSession();
-      const user = session?.user;
-      if (user) {
-        const profile = await getProfile(user.id, user.email ?? '', user.user_metadata);
-
-        if (remember) {
-          localStorage.setItem('user', JSON.stringify({ id: user.id, email: user.email, role: profile.role, name: profile.full_name }));
-        }
-
-        toast({ title: `Bem-vindo, ${profile.full_name || 'Usuário'}!`, description: 'Login realizado com sucesso.' });
-        navigate('/dashboard');
+      // Falha real de credencial/auth → mostra erro (NÃO faz signOut).
+      if (result.error) {
+        if (!timedOut) toast({ title: 'Erro no login', description: result.error, variant: 'destructive' });
+        return;
       }
+
+      // Sucesso: persistir "lembrar" é best-effort e em BACKGROUND — nunca
+      // bloqueia a navegação nem desloga se getProfile demorar/falhar.
+      if (remember) {
+        void (async () => {
+          try {
+            const session = await getSession();
+            const user = session?.user;
+            if (user) {
+              const profile = await getProfile(user.id, user.email ?? '', user.user_metadata);
+              localStorage.setItem('user', JSON.stringify({
+                id: user.id, email: user.email, role: profile.role, name: profile.full_name,
+              }));
+            }
+          } catch {
+            /* "lembrar" é opcional — ignora falha/lentidão */
+          }
+        })();
+      }
+
+      // Mesmo que o hard-timeout já tenha disparado: se o login teve SUCESSO,
+      // navegamos para o /dashboard (o ProtectedRoute valida role/perfil).
+      // Assim o usuário autenticado nunca fica parado no login.
+      if (!timedOut) toast({ title: 'Login realizado com sucesso!' });
+      navigate('/dashboard');
     } catch (err: any) {
-      toast({ title: 'Erro no login', description: err.message, variant: 'destructive' });
-      await signOut();
+      if (!timedOut) {
+        toast({ title: 'Erro no login', description: err?.message ?? 'Não foi possível entrar.', variant: 'destructive' });
+      }
     } finally {
-      clearTimeout(timerDemorado);
-      setLoading(false);
+      clearTimeout(timers.demorado);
+      clearTimeout(timers.hard);
+      if (!timedOut) setLoading(false);
       setLoginDemorado(false);
     }
   };
