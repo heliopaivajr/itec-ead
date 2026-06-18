@@ -8,6 +8,7 @@ export interface Matricula {
   observacao?: string;
   created_at: string;
   profile?: { full_name: string; email?: string };
+  curso_label?: string;
 }
 
 export interface ServiceResult {
@@ -42,7 +43,32 @@ export async function getMatriculas(
     console.error('getMatriculas error:', error);
     return { data: [], total: 0 };
   }
-  return { data: (data as Matricula[]) ?? [], total: count ?? 0 };
+
+  const matriculas = (data as Matricula[]) ?? [];
+
+  // Lookup separado de cursos (não há FK matriculas.curso_id -> cursos.id;
+  // curso_id é TEXT e cursos.id é UUID). Merge em memória — LICAO-026.
+  const cursoIds = [...new Set(matriculas.map(m => m.curso_id).filter(Boolean))];
+
+  if (cursoIds.length > 0) {
+    const { data: cursosData, error: cursosError } = await supabase
+      .from('cursos')
+      .select('id, codigo, nome')
+      .in('id', cursoIds);
+
+    if (cursosError) {
+      console.error('getMatriculas cursos lookup error:', cursosError);
+    } else {
+      const cursosMap = new Map<string, string>(
+        (cursosData ?? []).map(c => [String(c.id), `${c.codigo} — ${c.nome}`])
+      );
+      matriculas.forEach(m => {
+        m.curso_label = cursosMap.get(String(m.curso_id)) ?? undefined;
+      });
+    }
+  }
+
+  return { data: matriculas, total: count ?? 0 };
 }
 
 // Matrículas do próprio aluno — usado em MeusCursos.tsx
