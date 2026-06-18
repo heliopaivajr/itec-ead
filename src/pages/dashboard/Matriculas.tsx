@@ -22,6 +22,7 @@ const COURSE_LABELS: Record<string, string> = {
   'teologia-livre': 'Teologia Livre',
   'seteb': 'SETEB',
   'ministerial-mulheres': 'Ministerial p/ Mulheres',
+  'dfc8eda9-ce75-4869-945a-39c80e4c649b': 'GRAD-TEO — Graduação em Teologia',
 };
 
 const TABS = [
