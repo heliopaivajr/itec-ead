@@ -28,6 +28,7 @@ const COURSE_LABELS: Record<string, string> = {
   'teologia-livre': 'Teologia Livre',
   'seteb': 'SETEB',
   'ministerial-mulheres': 'Ministerial',
+  'dfc8eda9-ce75-4869-945a-39c80e4c649b': 'GRAD-TEO — Graduação em Teologia',
 };
 
 function KpiSkeleton() {
@@ -200,7 +201,7 @@ function AdminView({ name }: { name: string }) {
               <tbody>
                 {matriculasRecentes.map(m => (
                   <tr key={m.id} className="border-t border-border hover:bg-muted/10">
-                    <td className="px-5 py-2.5 font-medium text-foreground">{COURSE_LABELS[m.curso_id] ?? m.curso_id ?? '—'}</td>
+                    <td className="px-5 py-2.5 font-medium text-foreground">{m.curso_label ?? COURSE_LABELS[m.curso_id] ?? m.curso_id ?? '—'}</td>
                     <td className="px-5 py-2.5"><StatusBadge status={m.status ?? 'pendente'} /></td>
                     <td className="px-5 py-2.5 text-muted-foreground">{new Date(m.created_at).toLocaleDateString('pt-BR')}</td>
                   </tr>
