@@ -164,7 +164,7 @@ export async function updateStatusMatricula(
 ): Promise<ServiceResult> {
   const { error } = await supabase
     .from('matriculas')
-    .update({ status, observacao: observacao || null })
+    .update({ status, observacoes: observacao || null })
     .eq('id', matriculaId);
 
   if (error) return { error: error.message };
