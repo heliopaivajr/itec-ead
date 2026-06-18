@@ -22,6 +22,7 @@ export interface MatriculaRecente {
   curso_id: string;
   status: string;
   created_at: string;
+  curso_label?: string;
   [key: string]: any;
 }
 
@@ -96,7 +97,32 @@ export async function getMatriculasRecentes(limit = 5): Promise<MatriculaRecente
     .select('*')
     .order('created_at', { ascending: false })
     .limit(limit);
-  return (data as MatriculaRecente[]) ?? [];
+
+  const matriculas = (data as MatriculaRecente[]) ?? [];
+
+  // Lookup separado de cursos (não há FK matriculas.curso_id -> cursos.id;
+  // curso_id é TEXT e cursos.id é UUID). Merge em memória — LICAO-026.
+  const cursoIds = [...new Set(matriculas.map(m => m.curso_id).filter(Boolean))];
+
+  if (cursoIds.length > 0) {
+    const { data: cursosData, error: cursosError } = await supabase
+      .from('cursos')
+      .select('id, codigo, nome')
+      .in('id', cursoIds);
+
+    if (cursosError) {
+      console.error('getMatriculasRecentes cursos lookup error:', cursosError);
+    } else {
+      const cursosMap = new Map<string, string>(
+        (cursosData ?? []).map(c => [String(c.id), `${c.codigo} — ${c.nome}`])
+      );
+      matriculas.forEach(m => {
+        m.curso_label = cursosMap.get(String(m.curso_id)) ?? undefined;
+      });
+    }
+  }
+
+  return matriculas;
 }
 
 // Leads agrupados por curso — agregação em JS (intencional, não migrar para SQL ainda)
