@@ -25,9 +25,9 @@ const COURSE_LABELS: Record<string, string> = {
 
 const TABS = [
   { key: 'pendente',  label: 'Pendentes' },
-  { key: 'ativo',     label: 'Ativas' },
-  { key: 'trancado',  label: 'Trancadas' },
-  { key: 'concluido', label: 'Concluídas' },
+  { key: 'ativa',     label: 'Ativas' },
+  { key: 'trancada',  label: 'Trancadas' },
+  { key: 'concluida', label: 'Concluídas' },
 ];
 
 const LIMIT = 20;
@@ -72,7 +72,7 @@ export default function Matriculas() {
     if (error) {
       toast({ title: 'Erro', description: error, variant: 'destructive' });
     } else {
-      if (novoStatus === 'ativo' && alunoId) {
+      if (novoStatus === 'ativa' && alunoId) {
         const { error: roleError } = await updateRole(alunoId, 'aluno');
         if (roleError) {
           toast({ title: 'Matrícula aprovada, mas erro ao liberar acesso', description: roleError, variant: 'destructive' });
@@ -187,13 +187,13 @@ export default function Matriculas() {
                         {m.status === 'pendente' && (
                           <>
                             <button
-                              onClick={() => updateStatus(m.id, 'ativo', m.aluno_id)}
+                              onClick={() => updateStatus(m.id, 'ativa', m.aluno_id)}
                               disabled={processing === m.id}
                               className="h-7 w-7 rounded-lg bg-green-500/10 border border-green-500/30 flex items-center justify-center hover:bg-green-500/20 transition-all text-green-500">
                               {processing === m.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
                             </button>
                             <button
-                              onClick={() => updateStatus(m.id, 'trancado')}
+                              onClick={() => updateStatus(m.id, 'trancada')}
                               disabled={processing === m.id}
                               className="h-7 w-7 rounded-lg bg-red-500/10 border border-red-500/30 flex items-center justify-center hover:bg-red-500/20 transition-all text-red-500">
                               <X className="h-3.5 w-3.5" />
@@ -272,11 +272,11 @@ export default function Matriculas() {
             <div className="flex gap-2 pt-1">
               {detalhes.status === 'pendente' && (
                 <>
-                  <Button onClick={() => updateStatus(detalhes.id, 'ativo', detalhes.aluno_id)}
+                  <Button onClick={() => updateStatus(detalhes.id, 'ativa', detalhes.aluno_id)}
                     disabled={!!processing} className="flex-1 bg-green-600 hover:bg-green-700 text-white gap-2">
                     <Check className="h-4 w-4" /> Aprovar
                   </Button>
-                  <Button onClick={() => updateStatus(detalhes.id, 'trancado')}
+                  <Button onClick={() => updateStatus(detalhes.id, 'trancada')}
                     disabled={!!processing} variant="destructive" className="flex-1 gap-2">
                     <X className="h-4 w-4" /> Recusar
                   </Button>
