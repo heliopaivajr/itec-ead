@@ -15,6 +15,7 @@ interface Matricula {
   observacao?: string;
   created_at: string;
   profile?: { full_name: string; email?: string };
+  curso_label?: string;
 }
 
 const COURSE_LABELS: Record<string, string> = {
@@ -175,7 +176,7 @@ export default function Matriculas() {
                         </div>
                       </div>
                     </td>
-                    <td className="px-4 py-3 text-sm text-foreground">{COURSE_LABELS[m.curso_id] ?? m.curso_id ?? '—'}</td>
+                    <td className="px-4 py-3 text-sm text-foreground">{m.curso_label ?? COURSE_LABELS[m.curso_id] ?? m.curso_id ?? '—'}</td>
                     <td className="px-4 py-3"><StatusBadge status={m.status} /></td>
                     <td className="px-4 py-3 text-xs text-muted-foreground">{new Date(m.created_at).toLocaleDateString('pt-BR')}</td>
                     <td className="px-4 py-3">
@@ -246,7 +247,7 @@ export default function Matriculas() {
               </div>
               <div className="flex justify-between py-2 border-b border-border">
                 <span className="text-muted-foreground">Curso</span>
-                <span className="text-foreground">{COURSE_LABELS[detalhes.curso_id] ?? detalhes.curso_id ?? '—'}</span>
+                <span className="text-foreground">{detalhes.curso_label ?? COURSE_LABELS[detalhes.curso_id] ?? detalhes.curso_id ?? '—'}</span>
               </div>
               <div className="flex justify-between py-2 border-b border-border">
                 <span className="text-muted-foreground">Status</span>
