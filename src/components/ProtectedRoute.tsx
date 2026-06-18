@@ -16,12 +16,13 @@ type Estado = 'carregando' | 'autorizado' | 'pendente' | 'sem-sessao' | 'bloquea
 export default function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const [estado, setEstado] = useState<Estado>('carregando');
 
-  // Timeout de segurança: 10s — evita loading infinito se refresh falhar
-  // BUG-UI-003: reduzido de 30s para 10s
+  // Timeout apenas OBSERVACIONAL — nunca altera o fluxo (evita falso logout
+  // em cold start). Se a validação real demorar, ela ainda resolve sozinha
+  // via getSession/onAuthStateChange; não redirecionamos por demora.
   useEffect(() => {
     if (estado !== 'carregando') return;
     const timer = setTimeout(() => {
-      setEstado(prev => prev === 'carregando' ? 'sem-sessao' : prev);
+      console.warn('[ProtectedRoute] validação de acesso > 10s (backend lento?).');
     }, 10000);
     return () => clearTimeout(timer);
   }, [estado]);
