@@ -9,19 +9,23 @@ export const ROLES_COM_ACESSO: string[] = [
 ];
 
 // pendente   → /aguardando (conta criada, aguarda aprovação)
-// sem-sessao → /login
-// bloqueado  → /login (role desconhecido — falha segura)
-type Estado = 'carregando' | 'autorizado' | 'pendente' | 'sem-sessao' | 'bloqueado';
+// sem-sessao → /login   (somente quando NÃO há sessão de fato, ou SIGNED_OUT)
+// bloqueado  → /login   (role desconhecido — falha segura)
+// demorado   → backend lento/cold start: continua tentando, com opção "Tentar novamente"
+//              (NUNCA redireciona — tolera Supabase Free lento sem falso logout)
+type Estado = 'carregando' | 'demorado' | 'autorizado' | 'pendente' | 'sem-sessao' | 'bloqueado';
 
 export default function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const [estado, setEstado] = useState<Estado>('carregando');
+  // Incrementar força a reexecução da verificação (botão "Tentar novamente")
+  const [tentativa, setTentativa] = useState(0);
 
-  // Timeout de segurança: 10s — evita loading infinito se refresh falhar
-  // BUG-UI-003: reduzido de 30s para 10s
+  // FIX 1: o timeout NÃO desloga. Após 10s ainda carregando, apenas troca a UI
+  // para "demorado" (continua aguardando a verificação real). Sem redirect.
   useEffect(() => {
     if (estado !== 'carregando') return;
     const timer = setTimeout(() => {
-      setEstado(prev => prev === 'carregando' ? 'sem-sessao' : prev);
+      setEstado(prev => (prev === 'carregando' ? 'demorado' : prev));
     }, 10000);
     return () => clearTimeout(timer);
   }, [estado]);
@@ -32,6 +36,7 @@ export default function ProtectedRoute({ children }: { children: React.ReactNode
 
     async function verificar(session: Session | null) {
       if (!session) {
+        // Sessão null de fato → login
         if (montado) setEstado('sem-sessao');
         return;
       }
@@ -46,59 +51,38 @@ export default function ProtectedRoute({ children }: { children: React.ReactNode
       }
     }
 
-    function iniciar() {
-      // 1. Registrar listener PRIMEIRO — captura INITIAL_SESSION e SIGNED_IN do PKCE callback
-      const { data } = supabase.auth.onAuthStateChange(async (event, session) => {
-        if (!montado) return;
-        if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'INITIAL_SESSION') {
-          await verificar(session);
-        }
-        if (event === 'SIGNED_OUT') {
-          if (montado) setEstado('sem-sessao');
-        }
-      });
-      subscription = data.subscription;
+    // 1. Listener primeiro — captura INITIAL_SESSION, SIGNED_IN e TOKEN_REFRESHED.
+    //    FIX 2: confiamos no autoRefreshToken do client; o refresh chega aqui
+    //    como TOKEN_REFRESHED. Não há refresh manual concorrente.
+    const { data } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (!montado) return;
+      if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'INITIAL_SESSION') {
+        await verificar(session);
+      } else if (event === 'SIGNED_OUT') {
+        setEstado('sem-sessao');
+      }
+    });
+    subscription = data.subscription;
 
-      // 2. Verificar sessão já existente (ex: usuário que voltou à aba)
-      // BUG-UI-003: correção para evitar loading infinito com token expirado
-      supabase.auth.getSession().then(async ({ data: { session } }) => {
-        if (!montado) return;
-
-        // Session null → redirecionar IMEDIATAMENTE
-        if (!session) {
-          setEstado('sem-sessao');
-          return;
-        }
-
-        // Verificar se token expirou
-        const now = Math.floor(Date.now() / 1000);
-        const expiresAt = session.expires_at || 0;
-
-        if (expiresAt < now) {
-          // Token expirado → forçar refresh explícito
-          const { data: refreshData, error } = await supabase.auth.refreshSession();
-
-          if (!montado) return;
-
-          if (error || !refreshData.session) {
-            // Refresh falhou → redirecionar para login
-            setEstado('sem-sessao');
-          } else {
-            // Refresh OK → verificar com sessão renovada
-            await verificar(refreshData.session);
-          }
-        } else {
-          // Token válido → verificar normalmente
-          await verificar(session);
-        }
-      });
-    }
-
-    // Inicia verificação de autenticação
-    iniciar();
+    // 2. Hidratação inicial via getSession (NÃO faz refresh manual — FIX 2).
+    //    Se a sessão existir mas o token estiver expirado, o autoRefreshToken
+    //    renova em background e dispara TOKEN_REFRESHED (tratado acima).
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!montado) return;
+      if (!session) {
+        setEstado('sem-sessao');
+        return;
+      }
+      verificar(session);
+    });
 
     return () => { montado = false; subscription?.unsubscribe(); };
-  }, []);
+  }, [tentativa]);
+
+  const tentarNovamente = () => {
+    setEstado('carregando');
+    setTentativa(t => t + 1);
+  };
 
   if (estado === 'carregando') {
     return (
@@ -106,6 +90,28 @@ export default function ProtectedRoute({ children }: { children: React.ReactNode
         <div className="flex flex-col items-center gap-3 text-muted-foreground animate-pulse">
           <img src="/logo_itec.png" alt="ITEC" className="h-12 w-auto opacity-60" />
           <span className="text-sm">Validando acesso...</span>
+        </div>
+      </div>
+    );
+  }
+
+  // FIX 1: estado "demorado" — backend lento. Continua validando em segundo plano
+  // (se a verificação responder, vai para autorizado sozinho). NUNCA redireciona.
+  if (estado === 'demorado') {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4 text-muted-foreground text-center px-6">
+          <img src="/logo_itec.png" alt="ITEC" className="h-12 w-auto opacity-60" />
+          <div className="space-y-1">
+            <p className="text-sm font-medium text-foreground">Ainda validando seu acesso...</p>
+            <p className="text-xs">O servidor pode estar iniciando. Isso pode levar alguns segundos.</p>
+          </div>
+          <button
+            onClick={tentarNovamente}
+            className="rounded-lg border border-border bg-card px-4 py-2 text-sm font-medium text-foreground hover:border-primary/40 hover:text-primary transition-all"
+          >
+            Tentar novamente
+          </button>
         </div>
       </div>
     );
