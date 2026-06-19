@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import {
   Book, User, Users, Tv, CalendarDays,
   FileText, CreditCard, HelpCircle, Bell,
@@ -13,7 +13,7 @@ import {
 } from '@/components/ui/sidebar';
 import { Button } from '@/components/ui/button';
 import { NavLink, Link, Outlet, useNavigate } from 'react-router-dom';
-import { useProfile } from '@/hooks/use-profile';
+import { useAuth } from '@/contexts/AuthProvider';
 import type { Profile, UserRole } from '@/hooks/use-profile';
 import { signOut } from '@/services/auth.service';
 import { ThemeSwitcher } from '@/components/ThemeSwitcher';
@@ -137,18 +137,17 @@ const menuByRole: Record<string, { icon: React.ElementType; label: string; href:
 
 const Dashboard = () => {
   const navigate = useNavigate();
-  const { profile, loading } = useProfile();
-
-  useEffect(() => {
-    if (!loading && !profile) navigate('/login');
-  }, [profile, loading, navigate]);
+  // Auth é gerido pelo AuthProvider; o ProtectedRoute já garante 'authenticated'
+  // antes de montar o Dashboard. Aqui apenas consumimos o profile — NÃO
+  // redirecionamos para /login por conta própria (evita bounce concorrente).
+  const { profile } = useAuth();
 
   const handleLogout = async () => {
     await signOut();
     navigate('/');
   };
 
-  if (loading || !profile) return (
+  if (!profile) return (
     <div className="min-h-screen bg-background flex items-center justify-center">
       <div className="flex flex-col items-center gap-3 text-muted-foreground animate-pulse">
         <img src="/logo_itec.png" alt="ITEC" className="h-12 w-auto opacity-60" />
