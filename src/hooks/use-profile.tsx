@@ -1,7 +1,4 @@
-import { useEffect, useState } from 'react';
-import { supabase } from '@/lib/supabase';
-import { getProfile } from '@/services/profile.service';
-import { signOut as authSignOut } from '@/services/auth.service';
+import { useAuth } from '@/contexts/AuthProvider';
 
 export type UserRole = 'pendente' | 'aluno' | 'professor' | 'administracao' | 'financeiro' | 'admin' | 'superadmin';
 
@@ -29,36 +26,18 @@ export interface Profile {
   observacoes_internas?: string;
 }
 
+// Wrapper de compatibilidade sobre o AuthProvider (fonte ÚNICA da verdade).
+// Mantém a API antiga { profile, setProfile, loading, logout } para não quebrar
+// imports existentes. NÃO faz getSession/onAuthStateChange/getProfile próprios.
 export function useProfile() {
-  const [profile, setProfile] = useState<Profile | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  const logout = async () => {
-    await authSignOut();
-    setProfile(null);
+  const { profile, status, signOut } = useAuth();
+  return {
+    profile,
+    loading: status === 'loading',
+    // setProfile vira no-op: o profile é gerido pelo AuthProvider.
+    // (API morta hoje — mantida apenas por compatibilidade de assinatura.)
+    setProfile: (_p: Profile | null) => { /* no-op */ },
+    // logout delega para a fonte única.
+    logout: signOut,
   };
-
-  useEffect(() => {
-    async function load() {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.user) {
-        setProfile(null);
-        setLoading(false);
-        return;
-      }
-
-      const userEmail = session.user.email ?? '';
-
-      setProfile(await getProfile(session.user.id, userEmail, session.user.user_metadata));
-
-      setLoading(false);
-    }
-
-    load();
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(() => load());
-    return () => subscription.unsubscribe();
-  }, []);
-
-  return { profile, setProfile, loading, logout };
 }
