@@ -68,6 +68,7 @@ const R06_HistoricoAcademico  = lazy(() => import("./components/dashboard/relato
 const RelatorioEmBreve        = lazy(() => import("./components/dashboard/relatorios/RelatorioEmBreve"));
 import ProtectedRoute from '@/components/ProtectedRoute';
 import RoleGuard from '@/components/auth/RoleGuard';
+import { AuthProvider } from '@/contexts/AuthProvider';
 
 const queryClient = new QueryClient();
 
@@ -87,6 +88,7 @@ const App = () => (
         <Toaster />
         <Sonner />
         <BrowserRouter>
+          <AuthProvider>
           <Suspense fallback={<PageFallback />}>
           <Routes>
             {/* Public */}
@@ -188,6 +190,7 @@ const App = () => (
             <Route path="*" element={<NotFound />} />
           </Routes>
           </Suspense>
+          </AuthProvider>
         </BrowserRouter>
       </TooltipProvider>
     </ThemeProvider>
