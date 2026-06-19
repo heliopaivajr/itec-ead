@@ -9,16 +9,32 @@ export const ROLES_COM_ACESSO: string[] = [
 ];
 
 // pendente   → /aguardando (conta criada, aguarda aprovação)
-// sem-sessao → /login
-// bloqueado  → /login (role desconhecido — falha segura)
-type Estado = 'carregando' | 'autorizado' | 'pendente' | 'sem-sessao' | 'bloqueado';
+// sem-sessao → /login   (sessão null de fato, refresh falho ou SIGNED_OUT)
+// bloqueado  → /login   (role desconhecido — falha segura)
+// erro       → backend travado/lento: estado RECUPERÁVEL com ações (Tentar
+//              novamente / Ir para login). NUNCA redireciona sozinho.
+type Estado = 'carregando' | 'autorizado' | 'pendente' | 'sem-sessao' | 'bloqueado' | 'erro';
+
+// Embrulha uma promise num timeout: se não resolver em `ms`, rejeita.
+// Evita que getSession()/refreshSession() travados (lock/cold start) prendam a UI.
+function comTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const t = setTimeout(() => reject(new Error('auth-timeout')), ms);
+    promise.then(
+      v => { clearTimeout(t); resolve(v); },
+      e => { clearTimeout(t); reject(e); },
+    );
+  });
+}
+
+const AUTH_TIMEOUT_MS = 15000;
 
 export default function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const [estado, setEstado] = useState<Estado>('carregando');
+  // Incrementar reexecuta o efeito de verificação (botão "Tentar novamente").
+  const [tentativa, setTentativa] = useState(0);
 
-  // Timeout apenas OBSERVACIONAL — nunca altera o fluxo (evita falso logout
-  // em cold start). Se a validação real demorar, ela ainda resolve sozinha
-  // via getSession/onAuthStateChange; não redirecionamos por demora.
+  // Log observacional aos 10s — NÃO altera o fluxo (sem redirect).
   useEffect(() => {
     if (estado !== 'carregando') return;
     const timer = setTimeout(() => {
@@ -48,7 +64,7 @@ export default function ProtectedRoute({ children }: { children: React.ReactNode
     }
 
     function iniciar() {
-      // 1. Registrar listener PRIMEIRO — captura INITIAL_SESSION e SIGNED_IN do PKCE callback
+      // 1. Listener primeiro — captura INITIAL_SESSION e SIGNED_IN do PKCE callback.
       const { data } = supabase.auth.onAuthStateChange(async (event, session) => {
         if (!montado) return;
         if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'INITIAL_SESSION') {
@@ -60,46 +76,63 @@ export default function ProtectedRoute({ children }: { children: React.ReactNode
       });
       subscription = data.subscription;
 
-      // 2. Verificar sessão já existente (ex: usuário que voltou à aba)
-      // BUG-UI-003: correção para evitar loading infinito com token expirado
-      supabase.auth.getSession().then(async ({ data: { session } }) => {
-        if (!montado) return;
-
-        // Session null → redirecionar IMEDIATAMENTE
-        if (!session) {
-          setEstado('sem-sessao');
-          return;
-        }
-
-        // Verificar se token expirou
-        const now = Math.floor(Date.now() / 1000);
-        const expiresAt = session.expires_at || 0;
-
-        if (expiresAt < now) {
-          // Token expirado → forçar refresh explícito
-          const { data: refreshData, error } = await supabase.auth.refreshSession();
-
+      // 2. Hidratação inicial — com TIMEOUT para não prender a UI se
+      //    getSession()/refreshSession() travarem (lock interno / cold start).
+      (async () => {
+        try {
+          const { data: { session } } = await comTimeout(supabase.auth.getSession(), AUTH_TIMEOUT_MS);
           if (!montado) return;
 
-          if (error || !refreshData.session) {
-            // Refresh falhou → redirecionar para login
+          // Session null de fato → login.
+          if (!session) {
             setEstado('sem-sessao');
-          } else {
-            // Refresh OK → verificar com sessão renovada
-            await verificar(refreshData.session);
+            return;
           }
-        } else {
-          // Token válido → verificar normalmente
-          await verificar(session);
+
+          // Token expirado → refresh explícito (também com timeout).
+          const now = Math.floor(Date.now() / 1000);
+          if ((session.expires_at || 0) < now) {
+            const { data: refreshData, error } =
+              await comTimeout(supabase.auth.refreshSession(), AUTH_TIMEOUT_MS);
+            if (!montado) return;
+            if (error || !refreshData.session) {
+              setEstado('sem-sessao');
+            } else {
+              await verificar(refreshData.session);
+            }
+          } else {
+            await verificar(session);
+          }
+        } catch {
+          // Timeout/erro de rede em getSession/refresh → estado RECUPERÁVEL.
+          // NUNCA redireciona automaticamente; o usuário decide pela UI.
+          if (montado) setEstado(prev => (prev === 'carregando' ? 'erro' : prev));
         }
-      });
+      })();
     }
 
-    // Inicia verificação de autenticação
     iniciar();
 
     return () => { montado = false; subscription?.unsubscribe(); };
-  }, []);
+  }, [tentativa]);
+
+  // "Tentar novamente": volta a 'carregando' e reexecuta o efeito inteiro
+  // (novo onAuthStateChange + novo getSession/verificação de verdade).
+  const tentarNovamente = () => {
+    setEstado('carregando');
+    setTentativa(t => t + 1);
+  };
+
+  // "Ir para login": limpa a sessão (best-effort, com timeout p/ não travar)
+  // e redireciona — saída garantida sem precisar de F5.
+  const irParaLogin = async () => {
+    try {
+      await comTimeout(supabase.auth.signOut(), 5000);
+    } catch {
+      /* se signOut travar/falhar, seguimos para o login mesmo assim */
+    }
+    setEstado('sem-sessao');
+  };
 
   if (estado === 'carregando') {
     return (
@@ -107,6 +140,36 @@ export default function ProtectedRoute({ children }: { children: React.ReactNode
         <div className="flex flex-col items-center gap-3 text-muted-foreground animate-pulse">
           <img src="/logo_itec.png" alt="ITEC" className="h-12 w-auto opacity-60" />
           <span className="text-sm">Validando acesso...</span>
+        </div>
+      </div>
+    );
+  }
+
+  // Estado recuperável — backend travou/demorou demais. Sem redirect automático:
+  // o usuário tem duas saídas claras, sem F5.
+  if (estado === 'erro') {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4 text-muted-foreground text-center px-6 max-w-sm">
+          <img src="/logo_itec.png" alt="ITEC" className="h-12 w-auto opacity-60" />
+          <div className="space-y-1">
+            <p className="text-sm font-medium text-foreground">Não conseguimos validar seu acesso</p>
+            <p className="text-xs">O servidor demorou para responder (pode estar iniciando). Você pode tentar de novo ou ir para o login.</p>
+          </div>
+          <div className="flex gap-2">
+            <button
+              onClick={tentarNovamente}
+              className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-all"
+            >
+              Tentar novamente
+            </button>
+            <button
+              onClick={irParaLogin}
+              className="rounded-lg border border-border bg-card px-4 py-2 text-sm font-medium text-foreground hover:border-primary/40 hover:text-primary transition-all"
+            >
+              Ir para login
+            </button>
+          </div>
         </div>
       </div>
     );
