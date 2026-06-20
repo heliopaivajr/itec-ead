@@ -228,8 +228,8 @@ Objetivo: aluno vindo de outra instituição **não paga** a cadeira e **transfe
 | Sprint | Spec | Auditoria prévia | Migration .sql | Implementação | Testes | RLS/Seg | PR/merge | Osábio | Status |
 |--------|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:------:|
 | Bloco 0 | — | ✅ | — | — | — | — | — | ✅ | **✅ FECHADO** |
-| R0 | ✅ | ✅ | ✅ | — | ✅ | — | 🔵 | ✅ | **✅ FECHADO** (PR aberto; migração aguarda run do Hélio) |
-| R0.5 | ✅ | ✅ | ✅ | 🔵 | ⬜ | ⬜ | ⬜ | ⬜ | 🔵 em andamento (R0.5.1 ✅ migração 048; adapter CursosAdmin→v2 em curso) |
+| R0 | ✅ | ✅ | ✅ | — | ✅ | — | ✅ | ✅ | **✅ FECHADO** (PR #13 merged; migração 047 aguarda run do Hélio) |
+| R0.5 | ✅ | ✅ | ✅ | ✅ | ✅ | ⬜ | ✅ | ⬜ | 🔵 em andamento (R0.5.1 ✅ migração 048 · R0.5.2 ✅ adapter CursosAdmin v2 + polimento, PR #14 merged · R0.5.3 🔵 próximo: manuais/buckets + `cursos.manual_aluno_url`) |
 | R1 | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ |
 | R2 | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ |
 | R3 | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ |
