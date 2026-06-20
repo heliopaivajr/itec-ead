@@ -1,11 +1,44 @@
 # Roadmap de Sprints — ITEC-EAD
-Data: 2026-06-02
+Data: 2026-06-02 · Atualizado: 2026-06-19
 Aprovado por: Hélio Paiva Jr.
 Status: Em execução
 
+> ⚠️ **FONTE DA VERDADE DA FASE ATUAL (2026-06-19):** `.ai-system/memory/PLANO-MESTRE-v2_1.md`
+> O Plano Mestre v2.1 (Núcleo Acadêmico + Gestão de Matrículas) reordena o roadmap para
+> **popular antes de visualizar**. A nova trilha **R0 → R0.5 → R1 → R2 → R3 → R4** roda ANTES
+> dos blocos legados (B4/B7/B8/B9). Os sprints L/M/N/O/P abaixo permanecem como histórico/contexto.
+> Regra de ouro: **um sprint por vez**, cada sprint = SDD completa
+> (spec → aprovação → auditoria → execução → testes → validação → PR/merge → Osábio → atualizar Tracker).
+
 ---
 
-## Visão Geral
+## Trilha Atual — Núcleo Acadêmico (Plano Mestre v2.1)
+
+> Reorder (ADR): sistema em produção + dados retroativos 2025 → **popular antes de visualizar**.
+> Migrations SÓ por `.sql` que o Hélio executa no SQL Editor (ERR-INFRA-001). `NOTIFY pgrst 'reload schema'` após todo ALTER.
+
+| Sprint | Objetivo | Schema (.sql do Hélio) | DoD-chave | Status |
+|--------|----------|------------------------|-----------|:------:|
+| **R0 — Reconciliação** | Manter código v2 compacto como padrão; re-mapear 24 pré-req (Manual→v2) e re-apontar FK p/ `disciplinas_v2`; depreciar legada na R0.5 | `20260619_047_r0_reconciliacao_prerequisitos.sql` (UNIQUE codigo idempotente; UPDATE de-para; re-FK) | 46/46 alinhados; pré-req resolvem em v2 | **✅ FECHADO** (PR aberto; migração aguarda run do Hélio) |
+| **R0.5 — Gestão de Currículo** | CRUD total de cadeiras (código/CH/área/tipo) + pré/co-req + upload manual da cadeira + manual do aluno · **inclui migrar `cursos.service.ts`/`src/data/disciplinas.ts` p/ disciplinas_v2 (ERR-DEBT-002)** | buckets Storage + RLS; `cursos.manual_aluno_url` | Coordenador edita tudo; manuais sobem/baixam c/ RLS | 🔵 próximo |
+| **R1 — Schema retroativo + status** | Campos retroativos + dimensões de status + nº matrícula (`ITEC25T001`) | ALTER matriculas (numero_matricula, status_financeiro/acesso/documentacao, CHECK funil); ALTER matriculas_disciplina (faltas, frequencia_percentual, observacao, convalidacao_*) | schema pronto; NOTIFY pgrst | ⬜ |
+| **R2 — Lançamento Retroativo** | Secretaria encaixa aluno×cadeira: nota(s)+média, faltas, situação, professor, observação, convalidação (dados 2025) | — (usa R1) | 1 aluno lançado ponta-a-ponta | ⬜ |
+| **R3 — Ficha 360 + Dashboards + RLS** | Visões aluno/professor/secretaria; policies de `notas_aluno` + Storage; dashboards apresentáveis | RLS notas_aluno (aluno/professor/staff) | cada persona vê só o seu; telas navy/dourado | ⬜ |
+| **R4 — Dashboard de Matrículas** | Bloco 1 do v2.0, já com dados reais | — | 7 áreas da tela; cards corretos | ⬜ |
+| **B4 · B7 · B8 · B9** | Chamada ao vivo 2026 · Escolha de disciplinas (aluno) · Financeiro Asaas · Relatórios | conforme v2.0 | conforme v2.0 | ⬜ |
+
+### Decisões travadas (lock-in v2.1)
+- **D1 — Status `matriculas` = feminino** (`pendente·ativa·inativa·trancada·evadida·concluida·suspensa`). Expansão do funil é **aditiva**.
+- **D2 — Notas:** `notas_aluno` = parciais; `matriculas_disciplina.nota` = final (média simples padrão OU ponderada por `avaliacoes.peso`). **Aprovação: média ≥ 7,0 E presença ≥ 75%.**
+- **D3 — Códigos:** `disciplinas_v2.codigo` = código do Manual; re-apontar pré-requisitos; depreciar legada.
+- **Nº matrícula:** `ITEC25T001` (`ITEC` + ano 2 díg + `T` + 3 díg sequenciais).
+- **Convenção código v2:** `ÁREA(1)+ANO(1)+ABREV(3)` — ver `lessons-learned.md` LICAO-037.
+
+> Detalhes completos, matriz das 46 cadeiras, pré-requisitos, personas e Sprint Tracker (§7) → `.ai-system/memory/PLANO-MESTRE-v2_1.md`.
+
+---
+
+## Visão Geral (sprints L/M/N/O/P — histórico)
 
 | Sprint | Nome | Foco | Obrigatório Agosto? |
 |--------|------|------|---------------------|

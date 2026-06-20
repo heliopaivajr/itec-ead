@@ -819,4 +819,152 @@ NUNCA inferir nomes de policies — sempre verificar no banco via `pg_policies`.
 
 ---
 
+## ACHADOS DO BLOCO 0 (Plano Mestre v2.1 — diagnóstico 2026-06-19)
+
+> Estado real dos dados confirmado no fechamento do Bloco 0. Fonte: `.ai-system/memory/PLANO-MESTRE-v2_1.md` §2.
+> Volumetria: cursos 1 · turmas 3 (TEO-2025-1=24, TEO-2026-1=7, TEO-2026-2=0) · modulos 6 · disciplinas_v2 46 · disciplinas(legada) 46 · prerequisitos 24 · professores 10 (8 ativos) · matriculas 31 (ativa 28/trancada 2/evadida 1).
+
+---
+
+## ERR-DATA-F1 — `matriculas_disciplina` = 0 linhas (31 alunos "ativo sem disciplina")
+
+**Data:** 2026-06-19
+**Tipo de erro:** dados ausentes / dívida de migração de dados
+**Gravidade:** alta
+**Descrição:** Há 31 matrículas (28 ativas) mas a tabela `matriculas_disciplina` está vazia — nenhum aluno tem cadeira/nota/falta registrada.
+**Impacto:** Histórico acadêmico, dashboards e relatórios ficam vazios para todos os alunos atuais.
+**Correção planejada:** Sprint **R2 (Lançamento Retroativo)** — secretaria encaixa aluno×cadeira com nota, faltas, situação, professor e observação (dados 2025).
+**Status:** aberto — endereçado em R2
+
+---
+
+## ERR-DATA-F2 — `contratos_professor` = 0 e `solicitacoes_disciplina` = 0 (nenhum professor vinculado)
+
+**Data:** 2026-06-19
+**Tipo de erro:** dados ausentes
+**Gravidade:** média
+**Descrição:** Apesar de 10 professores cadastrados (8 ativos), não há contratos nem solicitações professor↔disciplina↔turma. Nenhum docente está vinculado a cadeira/turma.
+**Impacto:** Não é possível atribuir notas/frequência por professor; reforça a decisão da migration 037 §2 (restrição de professor por contrato) estar ADIADA.
+**Correção planejada:** Vincular professores na entrada retroativa (R2).
+**Status:** aberto — endereçado em R2
+
+---
+
+## ERR-DATA-F3 — `notas_aluno` sem policy RLS (deny-all); `avaliacoes` só SELECT
+
+**Data:** 2026-06-19
+**Tipo de erro:** segurança / RLS incompleta
+**Gravidade:** alta
+**Descrição:** `notas_aluno` tem RLS ativo mas **sem policies** → deny-all (ninguém lê/escreve via API). `avaliacoes` só tem policy de SELECT.
+**Impacto:** Lançamento e leitura de notas pela UI não funcionam até criar policies (aluno vê as próprias; professor as da sua disciplina; staff tudo).
+**Correção planejada:** Sprint **R3** — criar policies de `notas_aluno` (aluno/professor/staff) seguindo LICAO-026 (query separada + merge, nunca join aninhado).
+**Status:** aberto — endereçado em R3
+
+---
+
+## ERR-DATA-F4 — `matriculas` sem policy "aluno vê a própria" (só `is_staff()`)
+
+**Data:** 2026-06-19
+**Tipo de erro:** segurança / RLS incompleta
+**Gravidade:** média
+**Descrição:** `matriculas` só permite acesso via `is_staff()`. O aluno não consegue ver a própria matrícula.
+**Impacto:** Portal do aluno (Ficha 360 / dashboard) não exibe a matrícula do próprio usuário.
+**Correção planejada:** Sprint **R3** — adicionar policy "aluno vê própria matrícula" (`aluno_id = auth.uid()`).
+**Status:** aberto — endereçado em R3
+
+---
+
+## ERR-DATA-F5 — `matriculas.curso_id` é TEXT sem FK
+
+**Data:** 2026-06-19
+**Tipo de erro:** dívida técnica / integridade referencial
+**Gravidade:** baixa
+**Descrição:** `matriculas.curso_id` é `TEXT` sem foreign key para `cursos` (dívida técnica #5). O vínculo correto de turma usa `turma_id`.
+**Impacto:** Risco de inconsistência de curso; sem integridade referencial garantida.
+**Correção planejada:** Dívida técnica futura (não bloqueante para os sprints R0–R4).
+**Status:** aberto — backlog técnico
+
+---
+
+## ERR-DATA-F6 — `disciplinas_v2.codigo` ≠ Manual (a legada é que bate com o Manual)
+
+**Data:** 2026-06-19
+**Tipo de erro:** divergência de dados / reconciliação
+**Gravidade:** alta
+**Descrição:** Os códigos em `disciplinas_v2` divergem do Manual ITEC; a tabela **legada** `disciplinas` é a que contém os códigos do Manual. Além disso, `prerequisitos_disciplinas` referencia a legada, não `disciplinas_v2`.
+**Impacto:** Pré-requisitos não resolvem em `disciplinas_v2`; divergência de código entre sistema e documento oficial.
+**Correção planejada:** Sprint **R0 (Reconciliação)** — padronizar `disciplinas_v2.codigo` = Manual, re-apontar 24 pré-req para v2, depreciar legada. Ver LICAO-037.
+**Status:** aberto — endereçado em R0 (próximo)
+
+---
+
+## ERR-LEGADO-001 — Trigger recursivo `trg_sync_user_roles`
+
+**Data registrada:** 2026-06-19 (erro histórico)
+**Tipo de erro:** banco / recursão de trigger
+**Gravidade:** alta
+**Descrição:** Trigger `trg_sync_user_roles` entrou em recursão ao sincronizar `profiles` ↔ `user_roles` (a escrita disparada pela própria sincronização re-disparava o trigger).
+**Como evitar no futuro:** Triggers de sincronização devem ter guarda anti-recursão (ex.: checar se o valor mudou de fato / `pg_trigger_depth()` / flag de sessão) antes de re-escrever. Relacionado a ADR-006 (cache de user_roles anti-recursão RLS) e LICAO-007.
+**Status:** registrado (histórico) — verificar estado real no banco antes de qualquer mexida em `user_roles`/`profiles`.
+
+---
+
+## ERR-LEGADO-002 — Embed ambíguo PGRST201 (relacionamento múltiplo no PostgREST)
+
+**Data registrada:** 2026-06-19 (erro histórico)
+**Tipo de erro:** Supabase/PostgREST — query
+**Gravidade:** média
+**Descrição:** PostgREST retornou **PGRST201** ("more than one relationship was found") ao fazer embed/join: há mais de uma FK possível entre as tabelas, e o embed ficou ambíguo.
+**Como evitar no futuro:** Desambiguar o embed nomeando a FK explicitamente (`...select('*, profiles!matriculas_aluno_id_fkey(...)')`). Quando ambas as tabelas têm RLS, preferir **query separada + merge** (LICAO-026) em vez de embed. Manter `as unknown as X[]` como padrão de tipagem do join (PADRAO-001).
+**Status:** registrado (histórico)
+
+---
+
+## ERR-LEGADO-003 — Enum/CHECK de status com gênero misturado (feminino × masculino)
+
+**Data registrada:** 2026-06-19 (erro histórico)
+**Tipo de erro:** regra de negócio / consistência de schema
+**Gravidade:** média
+**Descrição:** Confusão recorrente entre gênero dos valores de status: `matriculas.status` é **feminino** (`ativa`, `trancada`...) enquanto `matriculas_disciplina.status` usa masculino (`cursando`, `aprovado`, `reprovado`, `convalidado`...). Specs assumiram o gênero errado.
+**Como evitar no futuro:** Conferir o CHECK real de CADA tabela antes de especificar valores (LICAO-035 / D1). `matriculas` = feminino; `matriculas_disciplina` = masculino. Expansões de status são sempre **aditivas**.
+**Status:** registrado (histórico) — trava de D1
+
+---
+
+## ERR-DEBT-002 — `cursos.service.ts` ainda usa a tabela LEGADA `disciplinas` (migrar na R0.5)
+
+> ⚠️ Solicitado como "ERR-DEBT-001", mas esse ID já está em uso (código morto em Alunos.tsx). Registrado como **ERR-DEBT-002**.
+
+**Data:** 2026-06-20
+**Sprint:** R0 (Reconciliação) — débito empurrado para R0.5 (Opção B)
+**Tipo de erro:** dívida técnica / divergência de fonte da verdade
+**Gravidade:** média (alta após a migração 047 rodar)
+
+**Descrição:**
+A migração `20260619_047_r0_reconciliacao_prerequisitos.sql` reconcilia o **banco** (`prerequisitos_disciplinas` passa a apontar para `disciplinas_v2` com códigos v2 compactos, ex.: `B1ATG`). Mas o **código-fonte** continua acoplado à tabela legada e aos códigos-hífen:
+- [src/services/cursos.service.ts:34](src/services/cursos.service.ts#L34) `getDisciplinas()` → `from('disciplinas')` (LEGADA)
+- [src/services/cursos.service.ts:59](src/services/cursos.service.ts#L59) `updateDisciplina()` → `from('disciplinas').update().eq('codigo', ...)` (LEGADA)
+- [src/data/disciplinas.ts](src/data/disciplinas.ts) — matriz seed + 24 pré-req com **códigos-hífen** (`B1-ANT01`), **usada em RUNTIME**:
+  - [CursosAdmin.tsx:338-339](src/pages/dashboard/CursosAdmin.tsx#L338) fallback `localDisciplinas`/`localPrerequisitos` quando a tabela retorna 0 linhas
+  - [CursosAdmin.tsx:87](src/pages/dashboard/CursosAdmin.tsx#L87) `disciplinaByCode()` em `PrereqChip` (sempre)
+
+**Impacto / risco pós-migração 047:**
+Depois que a migração rodar, `prerequisitos_disciplinas` terá códigos v2 (`B1ATG`), enquanto `CursosAdmin` lê disciplinas da legada/local com códigos-hífen (`B1-ANT01`). `disciplinaByCode(v2)` contra o array local hífen → `undefined` (cores/labels de pré-req podem degradar). Não quebra o build (vite/esbuild não faz type-check), mas é divergência visual/lógica.
+
+**Decisão (Opção A — fechamento mínimo seguro):**
+NÃO migrar `cursos.service.ts` agora. A tabela legada `disciplinas` permanece intacta (a migração 047 **não a deleta**), então a leitura atual continua funcionando e os testes de `cursos.service.test.ts` seguem passando (6/6 ✅).
+
+**Como evitar/quitar no futuro (Opção B — R0.5):**
+Migrar `getDisciplinas`/`updateDisciplina` para `disciplinas_v2`; substituir/remover `src/data/disciplinas.ts` como fonte de runtime (manter só tipos/labels ou eliminar); atualizar `cursos.service.test.ts` para códigos v2; só então depreciar/derrubar a tabela legada `disciplinas`.
+
+**Prompt precisa melhorar?** Não
+**Skill precisa melhorar?** Não
+**Checklist precisa melhorar?** Sim — R0.5 deve incluir "trocar fonte de runtime de disciplinas para disciplinas_v2".
+**Documento precisa melhorar?** Não
+
+**Status:** aberto — endereçado em R0.5
+**Aprovado pelo Hélio:** Não (aguarda decisão Opção B)
+
+---
+
 *Mantido pelo agente-Osabio · ITEC-EAD · 2025*
