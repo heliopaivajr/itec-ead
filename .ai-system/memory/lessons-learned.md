@@ -829,7 +829,28 @@ Adicionar ao SKILL.md do Agente 14 etapa obrigatória ANTES de classificar qualq
 **Justificativa:** O código v2 compacto já é o padrão de `disciplinas_v2`; convertê-lo para os códigos-hífen seria retrabalho destrutivo. O Manual é a referência de conteúdo (de-para), não o formato de código do sistema.
 **Agentes impactados:** 04-db-architect, 02-spec, 14-auditoria
 **Como aplicar no futuro:** Matriz oficial das 46 cadeiras + pré-requisitos + de-para em `.ai-system/memory/disciplinas_v2-referencia.md`. Não inventar códigos — seguir a convenção v2 e a matriz.
-**Status:** registrada (remap executado via migração 047 — aguardando run do Hélio)
+**Status:** ✅ aplicada (migração 047 APLICADA e validada 24/24/24 — ver `migracoes-aplicadas.md`)
+
+---
+
+## LICAO-038 — Regra de commit: doc/memória vai direto no main; código/migração sempre por PR
+
+**Data:** 2026-06-20
+**Contexto:** Fechamento do R0.5 — decisão do Hélio sobre o fluxo git.
+**Decisão tomada (regra de ouro):**
+- **Doc / memória** (`.ai-system/**`, `*.md`, Tracker §7, lessons/known-errors, `migracoes-aplicadas.md`): **commit direto no `main`**, sem PR.
+- **Código / migração** (`src/**`, `supabase/migrations/**`, qualquer `.ts/.tsx/.sql`): **SEMPRE por branch + PR**, merge é decisão do Hélio. Migração só roda via SQL Editor (ERR-INFRA-001).
+**Justificativa:** ticks de tracker e notas de memória não justificam o overhead de PR; já código/migração exige revisão e aprovação humana.
+**Como aplicar no futuro:** Antes de commitar, classificar o diff. Se houver QUALQUER arquivo de código/migração no diff → branch + PR (não misturar doc no mesmo PR é ok, mas nunca commitar código direto no main). Diff 100% doc → main direto.
+**Relacionado:** [[migracoes-aplicadas]] (fonte da verdade de migração), ERR-INFRA-001.
+**Status:** registrada (regra ativa)
+
+---
+
+## NOTA — Estado real do banco não é verificável por MCP
+
+**Data:** 2026-06-20
+O Supabase MCP conectado **não enxerga o projeto ITEC** (conta diferente; só BIBLIA/Formacao_n8n/EBD, todos INACTIVE). Portanto **nunca** afirmar que uma migração está "pendente"/"aplicada" com base no MCP. **Fonte da verdade:** `.ai-system/memory/migracoes-aplicadas.md` (atualizado pelo Hélio quando roda no SQL Editor).
 
 ---
 
