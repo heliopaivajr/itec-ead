@@ -229,7 +229,7 @@ Objetivo: aluno vindo de outra instituição **não paga** a cadeira e **transfe
 |--------|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:------:|
 | Bloco 0 | — | ✅ | — | — | — | — | — | ✅ | **✅ FECHADO** |
 | R0 | ✅ | ✅ | ✅ | — | ✅ | — | 🔵 | ✅ | **✅ FECHADO** (PR aberto; migração aguarda run do Hélio) |
-| R0.5 | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | 🔵 próximo |
+| R0.5 | ✅ | ✅ | ✅ | 🔵 | ⬜ | ⬜ | ⬜ | ⬜ | 🔵 em andamento (R0.5.1 ✅ migração 048; adapter CursosAdmin→v2 em curso) |
 | R1 | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ |
 | R2 | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ |
 | R3 | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ |
