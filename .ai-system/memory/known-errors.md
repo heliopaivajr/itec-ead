@@ -962,8 +962,16 @@ Migrar `getDisciplinas`/`updateDisciplina` para `disciplinas_v2`; substituir/rem
 **Checklist precisa melhorar?** Sim — R0.5 deve incluir "trocar fonte de runtime de disciplinas para disciplinas_v2".
 **Documento precisa melhorar?** Não
 
-**Status:** aberto — endereçado em R0.5
-**Aprovado pelo Hélio:** Não (aguarda decisão Opção B)
+**✅ QUITADO em 2026-06-20 (R0.5, branch `feat/r0-5-gestao-curriculo`):**
+- `cursos.service.ts` virou adapter sobre `disciplinas_v2`/`modulos`/`prerequisitos_v2` (chave por `id`; merge de `modulos.ordem` via query separada — LICAO-026).
+- `CursosAdmin.tsx` migrado para o vocabulário v2; removidos o fallback `localDisciplinas/localPrerequisitos`, o banner "Tabela não encontrada" e o `!usingLocal`.
+- `src/data/disciplinas.ts` **deletado** (estava órfão — `grep @/data/disciplinas` = 0 em runtime).
+- `cursos.service.test.ts` reescrito para códigos/tabelas v2 (7/7 ✅).
+- Migração `20260620_048_r0_5_consolida_curriculo_v2.sql` consolida o currículo v2 (coluna `ativo`, CHECK `recomendado`, repopular `prerequisitos_v2`).
+- ⚠️ Resta (R0.5 continuação): a tabela LEGADA `disciplinas` + `prerequisitos_disciplinas` ainda existem no banco; depreciar/derrubar após o run das migrações 047/048.
+
+**Status:** corrigido (QUITADO)
+**Aprovado pelo Hélio:** Sim (R0.5 aprovado)
 
 ---
 

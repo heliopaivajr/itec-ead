@@ -77,7 +77,6 @@ interface DbPrerequisito {
 
 interface EditForm {
   nome: string;
-  carga_horaria: number;
   horas_presencial: number;
   horas_ead: number;
   tipo: TipoDisciplina;
@@ -129,7 +128,6 @@ interface EditModalProps {
 function EditModal({ disciplina, prereqs, allDisciplinas, onClose, onSaved }: EditModalProps) {
   const [form, setForm] = useState<EditForm>({
     nome: disciplina?.nome ?? '',
-    carga_horaria: disciplina?.carga_horaria ?? 0,
     horas_presencial: disciplina?.horas_presencial ?? 0,
     horas_ead: disciplina?.horas_ead ?? 0,
     tipo: disciplina?.tipo ?? 'obrigatoria',
@@ -155,7 +153,6 @@ function EditModal({ disciplina, prereqs, allDisciplinas, onClose, onSaved }: Ed
 
     const { error: updateErr } = await updateDisciplina(disciplina.id, {
       nome: form.nome,
-      carga_horaria: form.carga_horaria,
       horas_presencial: form.horas_presencial,
       horas_ead: form.horas_ead,
       tipo: form.tipo,
@@ -208,9 +205,9 @@ function EditModal({ disciplina, prereqs, allDisciplinas, onClose, onSaved }: Ed
           <div className="grid grid-cols-3 gap-3">
             <div className="space-y-1.5">
               <Label className="text-sm text-foreground">Total (h)</Label>
-              <Input type="number" value={form.carga_horaria} min={0}
-                onChange={e => setForm(f => ({ ...f, carga_horaria: +e.target.value }))}
-                className="bg-background border-border text-foreground" />
+              <Input type="number" value={form.horas_presencial + form.horas_ead} readOnly tabIndex={-1}
+                title="Calculado automaticamente (Presencial + EAD)"
+                className="bg-muted/40 border-border text-muted-foreground cursor-not-allowed" />
             </div>
             <div className="space-y-1.5">
               <Label className="text-sm text-foreground">Presencial (h)</Label>
@@ -379,11 +376,12 @@ export default function CursosAdmin() {
   // Lookup codigo→nome para tooltips de pré-requisito (a partir da lista carregada)
   const nomeByCodigo = new Map(disciplinasDb.map(d => [d.codigo, d.nome]));
 
-  // Stats — no vocabulário v2, "não-eletiva" (regular + obrigatoria) = grade obrigatória
+  // Stats (vocabulário v2): regular = grade fixa; eletiva + obrigatoria = trilha eletiva
+  // (Manual: 10 eletivas, com Hebraico I marcada como 'obrigatoria').
   const total = disciplinasDb.length;
-  const obrigatorias = disciplinasDb.filter(d => d.tipo !== 'eletiva').length;
-  const eletivas = disciplinasDb.filter(d => d.tipo === 'eletiva').length;
-  const totalHoras = disciplinasDb.filter(d => d.tipo !== 'eletiva').reduce((s, d) => s + d.carga_horaria, 0);
+  const regulares = disciplinasDb.filter(d => d.tipo === 'regular').length;
+  const eletivas = disciplinasDb.filter(d => d.tipo === 'eletiva' || d.tipo === 'obrigatoria').length;
+  const horasRegulares = disciplinasDb.filter(d => d.tipo === 'regular').reduce((s, d) => s + d.carga_horaria, 0);
 
   return (
     <div className="p-6 space-y-6">
@@ -399,9 +397,9 @@ export default function CursosAdmin() {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         {[
           { label: 'Total de Disciplinas', value: total,       color: 'text-primary' },
-          { label: 'Obrigatórias',          value: obrigatorias, color: 'text-foreground' },
+          { label: 'Regulares',             value: regulares,  color: 'text-foreground' },
           { label: 'Eletivas',              value: eletivas,   color: 'text-yellow-500' },
-          { label: 'Horas Obrigatórias',    value: `${totalHoras}h`, color: 'text-green-400' },
+          { label: 'Horas Regulares',       value: `${horasRegulares}h`, color: 'text-green-400' },
         ].map(s => (
           <div key={s.label} className="bg-card border border-border rounded-xl p-4">
             <p className="text-xs text-muted-foreground">{s.label}</p>
@@ -447,7 +445,7 @@ export default function CursosAdmin() {
             const rows = byModulo(m);
             if (rows.length === 0 && search) return null;
             const isOpen = openModulos.has(m);
-            const modHoras = rows.filter(d => d.tipo === 'obrigatoria').reduce((s, d) => s + d.carga_horaria, 0);
+            const modHoras = rows.filter(d => d.tipo === 'regular').reduce((s, d) => s + d.carga_horaria, 0);
 
             return (
               <div key={m} className="bg-card border border-border rounded-xl overflow-hidden">
@@ -461,7 +459,7 @@ export default function CursosAdmin() {
                       <p className="font-semibold text-foreground text-sm">{MODULO_PERIODO[m]}</p>
                       <p className="text-xs text-muted-foreground mt-0.5">
                         {rows.length} disciplinas
-                        {modHoras > 0 && ` · ${modHoras}h obrigatórias`}
+                        {modHoras > 0 && ` · ${modHoras}h regulares`}
                       </p>
                     </div>
                   </div>
