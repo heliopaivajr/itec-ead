@@ -1,7 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import {
-  ChevronDown, ChevronRight, Edit2, BookOpen, Clock, Search, X, Save, Loader2,
+  ChevronDown, ChevronRight, Edit2, Clock, Search, X, Save, Loader2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -17,37 +17,57 @@ import {
   getPrerequisitos as fetchPrerequisitos,
   updateDisciplina,
   syncPrerequisitos,
-} from '@/services/cursos.service';
-import type { DashboardContext } from '../Dashboard';
-import {
-  disciplinas as localDisciplinas,
-  prerequisitos as localPrerequisitos,
-  disciplinaByCode,
-  AREA_COLOR,
-  AREA_LABEL,
-  TIPO_COLOR,
-  TIPO_LABEL,
-  MODULO_PERIODO,
   type Disciplina,
   type TipoDisciplina,
   type AreaDisciplina,
   type TipoPrerequisito,
-} from '@/data/disciplinas';
+} from '@/services/cursos.service';
+import type { DashboardContext } from '../Dashboard';
+
+// ─── Constantes de apresentação (vocabulário v2) ──────────────
+
+const AREA_LABEL: Record<AreaDisciplina, string> = {
+  B: 'Bíblico',
+  T: 'Teológico',
+  P: 'Prático',
+};
+
+const AREA_COLOR: Record<AreaDisciplina, string> = {
+  B: 'bg-blue-500/15 text-blue-400 border-blue-500/30',
+  T: 'bg-purple-500/15 text-purple-400 border-purple-500/30',
+  P: 'bg-green-500/15 text-green-400 border-green-500/30',
+};
+
+const TIPO_LABEL: Record<TipoDisciplina, string> = {
+  regular: 'Regular',
+  eletiva: 'Eletiva',
+  obrigatoria: 'Obrigatória',
+};
+
+const TIPO_COLOR: Record<TipoDisciplina, string> = {
+  regular: 'bg-foreground/10 text-foreground/70 border-foreground/20',
+  eletiva: 'bg-yellow-500/15 text-yellow-500 border-yellow-500/30',
+  obrigatoria: 'bg-orange-500/15 text-orange-400 border-orange-500/30',
+};
+
+const MODULO_PERIODO: Record<number, string> = {
+  1: '1º Módulo — Fev–Jun (1º Ano)',
+  2: '2º Módulo — Ago–Dez (1º Ano)',
+  3: '3º Módulo — Fev–Jun (2º Ano)',
+  4: '4º Módulo — Ago–Dez (2º Ano)',
+  5: '5º Módulo — Fev–Jun (3º Ano)',
+  6: '6º Módulo — Ago–Dez (3º Ano)',
+};
+
+const PREREQ_LABEL: Record<TipoPrerequisito, string> = {
+  prerequisito: 'Pré-requisito',
+  corequisito: 'Correquisito',
+  recomendado: 'Recomendado',
+};
 
 // ─── Types ────────────────────────────────────────────────────
 
-interface DbDisciplina {
-  codigo: string;
-  nome: string;
-  modulo: number;
-  ano: number;
-  carga_horaria: number;
-  horas_presencial: number;
-  horas_ead: number;
-  tipo: TipoDisciplina;
-  area: AreaDisciplina;
-  ativo: boolean;
-}
+type DbDisciplina = Disciplina;
 
 interface DbPrerequisito {
   disciplina_codigo: string;
@@ -83,17 +103,15 @@ function AreaBadge({ area }: { area: AreaDisciplina }) {
   );
 }
 
-function PrereqChip({ codigo, tipo }: { codigo: string; tipo: TipoPrerequisito }) {
-  const d = disciplinaByCode(codigo);
-  const label = d ? codigo : codigo;
+function PrereqChip({ codigo, tipo, nome }: { codigo: string; tipo: TipoPrerequisito; nome?: string }) {
   const color =
-    tipo === 'formal'      ? 'bg-red-500/10 text-red-400 border-red-500/30' :
-    tipo === 'corequisito' ? 'bg-orange-500/10 text-orange-400 border-orange-500/30' :
-                             'bg-muted/50 text-muted-foreground border-border';
+    tipo === 'prerequisito' ? 'bg-red-500/10 text-red-400 border-red-500/30' :
+    tipo === 'corequisito'  ? 'bg-orange-500/10 text-orange-400 border-orange-500/30' :
+                              'bg-muted/50 text-muted-foreground border-border';
   return (
-    <span className={`text-[10px] px-1.5 py-0.5 rounded border ${color}`} title={d?.nome ?? codigo}>
-      {label}
-      {tipo === 'formal' && <span className="ml-1 opacity-60">*</span>}
+    <span className={`text-[10px] px-1.5 py-0.5 rounded border ${color}`} title={nome ?? codigo}>
+      {codigo}
+      {tipo === 'prerequisito' && <span className="ml-1 opacity-60">*</span>}
     </span>
   );
 }
@@ -123,7 +141,7 @@ function EditModal({ disciplina, prereqs, allDisciplinas, onClose, onSaved }: Ed
 
   // Pre-requisite state
   const [localPrereqs, setLocalPrereqs] = useState<DbPrerequisito[]>(prereqs);
-  const [addingPrereq, setAddingPrereq] = useState<{ codigo: string; tipo: TipoPrerequisito }>({ codigo: '', tipo: 'formal' });
+  const [addingPrereq, setAddingPrereq] = useState<{ codigo: string; tipo: TipoPrerequisito }>({ codigo: '', tipo: 'prerequisito' });
 
   if (!disciplina) return null;
 
@@ -135,7 +153,7 @@ function EditModal({ disciplina, prereqs, allDisciplinas, onClose, onSaved }: Ed
     setSaving(true);
     setError('');
 
-    const { error: updateErr } = await updateDisciplina(disciplina.codigo, {
+    const { error: updateErr } = await updateDisciplina(disciplina.id, {
       nome: form.nome,
       carga_horaria: form.carga_horaria,
       horas_presencial: form.horas_presencial,
@@ -161,7 +179,7 @@ function EditModal({ disciplina, prereqs, allDisciplinas, onClose, onSaved }: Ed
       prerequisito_codigo: addingPrereq.codigo,
       tipo: addingPrereq.tipo,
     }]);
-    setAddingPrereq({ codigo: '', tipo: 'formal' });
+    setAddingPrereq({ codigo: '', tipo: 'prerequisito' });
   };
 
   const removePrereq = (codigo: string) => {
@@ -217,9 +235,9 @@ function EditModal({ disciplina, prereqs, allDisciplinas, onClose, onSaved }: Ed
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent className="bg-card border-border">
-                  <SelectItem value="obrigatoria">Obrigatória</SelectItem>
+                  <SelectItem value="regular">Regular</SelectItem>
                   <SelectItem value="eletiva">Eletiva</SelectItem>
-                  <SelectItem value="eletiva_obrigatoria">Eletiva Obrigatória</SelectItem>
+                  <SelectItem value="obrigatoria">Obrigatória</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -256,11 +274,11 @@ function EditModal({ disciplina, prereqs, allDisciplinas, onClose, onSaved }: Ed
                 localPrereqs.map(p => (
                   <span key={p.prerequisito_codigo}
                     className={`flex items-center gap-1 text-xs px-2 py-0.5 rounded border
-                      ${p.tipo === 'formal' ? 'bg-red-500/10 text-red-400 border-red-500/30' :
+                      ${p.tipo === 'prerequisito' ? 'bg-red-500/10 text-red-400 border-red-500/30' :
                         p.tipo === 'corequisito' ? 'bg-orange-500/10 text-orange-400 border-orange-500/30' :
                         'bg-muted/50 text-muted-foreground border-border'}`}>
                     {p.prerequisito_codigo}
-                    <span className="text-[10px] opacity-60">({p.tipo})</span>
+                    <span className="text-[10px] opacity-60">({PREREQ_LABEL[p.tipo]})</span>
                     <button onClick={() => removePrereq(p.prerequisito_codigo)}
                       className="ml-0.5 hover:opacity-100 opacity-50 transition-opacity">
                       <X className="h-2.5 w-2.5" />
@@ -289,7 +307,7 @@ function EditModal({ disciplina, prereqs, allDisciplinas, onClose, onSaved }: Ed
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent className="bg-card border-border">
-                  <SelectItem value="formal">Formal</SelectItem>
+                  <SelectItem value="prerequisito">Pré-requisito</SelectItem>
                   <SelectItem value="recomendado">Recomendado</SelectItem>
                   <SelectItem value="corequisito">Correquisito</SelectItem>
                 </SelectContent>
@@ -324,7 +342,6 @@ export default function CursosAdmin() {
   const [disciplinasDb, setDisciplinasDb] = useState<DbDisciplina[]>([]);
   const [prereqsDb, setPrereqsDb] = useState<DbPrerequisito[]>([]);
   const [loading, setLoading] = useState(true);
-  const [usingLocal, setUsingLocal] = useState(false);
   const [search, setSearch] = useState('');
   const [openModulos, setOpenModulos] = useState<Set<number>>(new Set([1, 2, 3, 4, 5, 6]));
   const [editing, setEditing] = useState<DbDisciplina | null>(null);
@@ -332,17 +349,8 @@ export default function CursosAdmin() {
   const load = async () => {
     setLoading(true);
     const [discs, preqs] = await Promise.all([fetchDisciplinas(), fetchPrerequisitos()]);
-
-    if (discs.length === 0) {
-      // Table not yet migrated — fall back to local data
-      setDisciplinasDb(localDisciplinas as unknown as DbDisciplina[]);
-      setPrereqsDb(localPrerequisitos as DbPrerequisito[]);
-      setUsingLocal(true);
-    } else {
-      setDisciplinasDb(discs as DbDisciplina[]);
-      setPrereqsDb(preqs as DbPrerequisito[]);
-      setUsingLocal(false);
-    }
+    setDisciplinasDb(discs);
+    setPrereqsDb(preqs);
     setLoading(false);
   };
 
@@ -368,11 +376,14 @@ export default function CursosAdmin() {
   const prereqsFor = (codigo: string) =>
     prereqsDb.filter(p => p.disciplina_codigo === codigo);
 
-  // Stats
+  // Lookup codigo→nome para tooltips de pré-requisito (a partir da lista carregada)
+  const nomeByCodigo = new Map(disciplinasDb.map(d => [d.codigo, d.nome]));
+
+  // Stats — no vocabulário v2, "não-eletiva" (regular + obrigatoria) = grade obrigatória
   const total = disciplinasDb.length;
-  const obrigatorias = disciplinasDb.filter(d => d.tipo === 'obrigatoria').length;
-  const eletivas = disciplinasDb.filter(d => d.tipo !== 'obrigatoria').length;
-  const totalHoras = disciplinasDb.filter(d => d.tipo === 'obrigatoria').reduce((s, d) => s + d.carga_horaria, 0);
+  const obrigatorias = disciplinasDb.filter(d => d.tipo !== 'eletiva').length;
+  const eletivas = disciplinasDb.filter(d => d.tipo === 'eletiva').length;
+  const totalHoras = disciplinasDb.filter(d => d.tipo !== 'eletiva').reduce((s, d) => s + d.carga_horaria, 0);
 
   return (
     <div className="p-6 space-y-6">
@@ -383,20 +394,6 @@ export default function CursosAdmin() {
           Teologia Livre — 6 módulos · 3 anos · {total} disciplinas
         </p>
       </div>
-
-      {/* Banner quando usando dados locais */}
-      {usingLocal && (
-        <div className="flex items-start gap-3 rounded-xl border border-yellow-500/30 bg-yellow-500/5 p-4">
-          <BookOpen className="h-4 w-4 text-yellow-500 mt-0.5 shrink-0" />
-          <div>
-            <p className="text-sm font-medium text-yellow-500">Tabela não encontrada no Supabase</p>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              Execute <code className="font-mono bg-muted/50 px-1 rounded">migration_004_disciplinas.sql</code> no Supabase SQL Editor para ativar a edição.
-              Os dados abaixo são somente-leitura do arquivo local.
-            </p>
-          </div>
-        </div>
-      )}
 
       {/* Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
@@ -429,7 +426,7 @@ export default function CursosAdmin() {
       {/* Legend */}
       <div className="flex flex-wrap gap-3 text-xs text-muted-foreground">
         <span className="flex items-center gap-1.5">
-          <span className="h-2 w-2 rounded-full bg-red-400/70" /> Pré-req. formal (bloqueante)
+          <span className="h-2 w-2 rounded-full bg-red-400/70" /> Pré-requisito (bloqueante)
         </span>
         <span className="flex items-center gap-1.5">
           <span className="h-2 w-2 rounded-full bg-muted-foreground/50" /> Pré-req. recomendado
@@ -509,20 +506,18 @@ export default function CursosAdmin() {
                                 <span className="flex items-center gap-1 ml-1">
                                   <span className="text-[10px] text-muted-foreground mr-0.5">pré:</span>
                                   {dPrereqs.map(p => (
-                                    <PrereqChip key={p.prerequisito_codigo} codigo={p.prerequisito_codigo} tipo={p.tipo} />
+                                    <PrereqChip key={p.prerequisito_codigo} codigo={p.prerequisito_codigo} tipo={p.tipo} nome={nomeByCodigo.get(p.prerequisito_codigo)} />
                                   ))}
                                 </span>
                               )}
                             </div>
                           </div>
                           {/* Edit button */}
-                          {!usingLocal && (
-                            <button
-                              onClick={() => setEditing(d)}
-                              className="opacity-0 group-hover:opacity-100 transition-opacity p-1.5 rounded-lg hover:bg-primary/10 text-muted-foreground hover:text-primary shrink-0">
-                              <Edit2 className="h-3.5 w-3.5" />
-                            </button>
-                          )}
+                          <button
+                            onClick={() => setEditing(d)}
+                            className="opacity-0 group-hover:opacity-100 transition-opacity p-1.5 rounded-lg hover:bg-primary/10 text-muted-foreground hover:text-primary shrink-0">
+                            <Edit2 className="h-3.5 w-3.5" />
+                          </button>
                         </div>
                       );
                     })}
