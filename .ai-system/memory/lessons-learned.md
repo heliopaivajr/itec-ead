@@ -783,4 +783,54 @@ Adicionar ao SKILL.md do Agente 14 etapa obrigatória ANTES de classificar qualq
 
 ---
 
+## LICAO-035 — D1: status de `matriculas` é FEMININO (migração de funil é aditiva)
+
+**Data:** 2026-06-19
+**Contexto:** Plano Mestre v2.1 — fechamento do Bloco 0 (schema real confirmado).
+**Problema:** Havia dúvida sobre o gênero dos valores do CHECK de `matriculas.status` (masculino vs feminino). Migrar gênero quebraria dados existentes.
+**Decisão tomada (D1):** O CHECK real já é **feminino**: `pendente · ativa · inativa · trancada · evadida · concluida · suspensa`. A expansão do funil é **ADITIVA** (sem migrar gênero): adicionar `pre_matricula · aguardando_documentos · aguardando_pagamento · aguardando_aprovacao · cancelada`.
+**Justificativa:** O banco é a fonte da verdade. Migrar gênero seria retrabalho destrutivo sem ganho. Expandir o CHECK preserva os 31 registros existentes.
+**Agentes impactados:** 04-db-architect, 02-spec, 05-backend-engineer
+**Como aplicar no futuro:** Ao especificar qualquer status de `matriculas`, usar SEMPRE o gênero feminino. Verificar o CHECK real no banco (`information_schema`/`pg_constraint`) antes de adicionar valores. NUNCA propor migração de gênero.
+**Status:** registrada (trava para sprint R1)
+
+---
+
+## LICAO-036 — D2: regra de notas e aprovação (parciais × final, corte 7,0, presença 75%)
+
+**Data:** 2026-06-19
+**Contexto:** Plano Mestre v2.1 — definição do modelo de avaliação.
+**Decisão tomada (D2):**
+- `notas_aluno` = **notas parciais** (por `avaliacoes`, ponderadas por `avaliacoes.peso`).
+- `matriculas_disciplina.nota` = **nota final**.
+- Cálculo da final: **média simples (padrão)** OU **ponderada** por `peso` — configurável por cadeira/turma.
+- **Aprovação:** média ≥ **7,0** **E** presença ≥ **75%**. Presença < 75% → `reprovado_falta` automático.
+- Retroativo 2025: consolidado em `faltas`/`frequencia_percentual` em `matriculas_disciplina` (sem chamada por data). Chamada por data (Bloco 4) só para turmas ao vivo 2026.
+**Justificativa:** Separa o registro granular (parciais) do resultado oficial (final), permite flexibilidade por turma e alinha com a regra institucional do Manual ITEC (7,0 / 75%, idêntica à `.ai-system/CLAUDE.md`).
+**Agentes impactados:** 04-db-architect, 05-backend-engineer, 06-frontend
+**Como aplicar no futuro:** Nota de corte 7,0 e frequência 75% são **regra institucional inviolável** — não alterar sem aprovação da Direção. Toda tela/serviço de notas deve respeitar o `reprovado_falta` automático.
+**Status:** registrada (trava para sprints R1/R2)
+
+---
+
+## LICAO-037 — D3 + convenção de código v2: padrão do sistema é o código v2 COMPACTO (`ÁREA+ANO+ABREV3`); re-mapear pré-req para v2
+
+> ✏️ **CORRIGIDA em 2026-06-20 (fechamento do R0).** A redação original dizia "padronizar `disciplinas_v2.codigo` = código do Manual" — direção **invertida**. A migração R0 (047) faz o oposto: **mantém o código v2 compacto** e converte os pré-requisitos (que estavam em código-hífen do Manual) **para v2**. O sistema NÃO adota os códigos-hífen do Manual.
+
+**Data:** 2026-06-19 (corrigida 2026-06-20)
+**Contexto:** Plano Mestre v2.1 — reconciliação do currículo com o Manual ITEC (rev.02/25), 46 cadeiras.
+**Problema:** `prerequisitos_disciplinas` guardava códigos-hífen do Manual (`B1-ANT01`) com FK para a tabela **legada** `disciplinas` — não resolvia em `disciplinas_v2` (que usa códigos compactos `B1ATG`).
+**Decisão tomada (D3, corrigida):** Manter o **código v2 compacto** (`B1ATG`, `T2SOT`, `P3HO2`) como **padrão do sistema** em `disciplinas_v2`. **Re-mapear os 24 pré-requisitos** de código-hífen do Manual → código v2 e re-apontar a FK de `prerequisitos_disciplinas` para `disciplinas_v2(codigo)`. **NÃO** trocar os códigos v2 pelos códigos-hífen do Manual. Depreciar a legada `disciplinas` depois (R0.5). (Execução do remap = sprint **R0**, migração `20260619_047_r0_reconciliacao_prerequisitos.sql`.)
+**De-para (Manual → v2):** mantido em `.ai-system/memory/disciplinas_v2-referencia.md` (coluna `cód_manual` × `cód_v2`) e na própria migração 047.
+**Convenção do código v2** (para o Coordenador criar/revisar cadeiras): `ÁREA(1) + ANO(1) + ABREV(3)` = 5 caracteres, maiúsculas, único, sem hífen.
+- Área: **B**=Bíblica · **T**=Teológica · **P**=Prática · Ano: 1·2·3 · Abrev: 3 letras.
+- Sequência troca a última letra por número: `HEB→HE2`, `ACO→AC2`, `HOM→HO2`.
+- Ex.: `B1ATG`, `T2SOT`, `P3HO2`. **O código é só rótulo** — as FKs usam `id`; mudar a área NÃO obriga mudar o código.
+**Justificativa:** O código v2 compacto já é o padrão de `disciplinas_v2`; convertê-lo para os códigos-hífen seria retrabalho destrutivo. O Manual é a referência de conteúdo (de-para), não o formato de código do sistema.
+**Agentes impactados:** 04-db-architect, 02-spec, 14-auditoria
+**Como aplicar no futuro:** Matriz oficial das 46 cadeiras + pré-requisitos + de-para em `.ai-system/memory/disciplinas_v2-referencia.md`. Não inventar códigos — seguir a convenção v2 e a matriz.
+**Status:** registrada (remap executado via migração 047 — aguardando run do Hélio)
+
+---
+
 *Mantido pelo agente-Osabio · ITEC-EAD · 2025*
