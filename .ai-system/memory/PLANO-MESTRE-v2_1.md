@@ -229,7 +229,7 @@ Objetivo: aluno vindo de outra instituição **não paga** a cadeira e **transfe
 |--------|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:------:|
 | Bloco 0 | — | ✅ | — | — | — | — | — | ✅ | **✅ FECHADO** |
 | R0 | ✅ | ✅ | ✅ | — | ✅ | — | ✅ | ✅ | **✅ FECHADO** (PR #13 merged; migração 047 **APLICADA** e validada 24/24/24) |
-| R0.5 | ✅ | ✅ | ✅ | ✅ | ✅ | ⬜ | ✅ | ⬜ | 🔵 em andamento — R0.5.1 ✅ migração 048 **APLICADA** (13 prereq + 11 recomendado) · R0.5.2 ✅ adapter CursosAdmin v2 + polimento (PR #14 merged) · R0.5.3 🔵 próximo: **CRUD do Coordenador** · R0.5.4 ⬜: **Manuais** (buckets + `cursos.manual_aluno_url`) |
+| R0.5 | ✅ | ✅ | ✅ | ✅ | ✅ | ⬜ | ✅ | ⬜ | 🔵 em andamento — R0.5.1 ✅ migração 048 **APLICADA** (13 prereq + 11 recomendado) · R0.5.2 ✅ adapter CursosAdmin v2 + polimento (PR #14 merged) · R0.5.3 ✅ **CRUD do Coordenador** (PR #15 merged) · R0.5.4 🔵 próximo: **Manuais** (buckets + `cursos.manual_aluno_url`) |
 | R1 | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ |
 | R2 | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ |
 | R3 | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ |
