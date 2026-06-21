@@ -1,7 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { supabase } from '@/lib/supabase';
-import { getDisciplinas, syncPrerequisitos } from '@/services/cursos.service';
-import type { Prerequisito } from '@/services/cursos.service';
+import {
+  getDisciplinas, syncPrerequisitos,
+  createDisciplina, updateDisciplina, desativarDisciplina,
+} from '@/services/cursos.service';
+import type { Prerequisito, DisciplinaInput } from '@/services/cursos.service';
 
 // getDisciplinas faz 2 queries separadas (LICAO-026):
 // 1. from('disciplinas_v2').select(...).limit()
@@ -207,6 +210,82 @@ describe('cursos.service', () => {
       expect(result.error).toBe('Disciplina não encontrada.');
       // from(): apenas resolve = 1
       expect(supabase.from).toHaveBeenCalledTimes(1);
+    });
+  });
+});
+
+// ─── CRUD do Coordenador (R0.5.3) ─────────────────────────────
+
+const novaDisc: DisciplinaInput = {
+  codigo: 'B1NEW', nome: 'Nova Cadeira', area: 'B', ano_curso: 1, modulo_id: 'm1',
+  horas_presencial: 30, horas_ead: 10, creditos: 4, tipo: 'regular', ativo: true,
+};
+
+// from('disciplinas_v2').insert(...) → { error }
+function mockInsert(result: { error: any }) {
+  vi.mocked(supabase.from).mockReset();
+  vi.mocked(supabase.from).mockReturnValue({
+    insert: vi.fn().mockResolvedValue(result),
+  } as any);
+}
+
+// from('disciplinas_v2').update(...).eq(...) → { error }
+function mockUpdateEq(result: { error: any }) {
+  vi.mocked(supabase.from).mockReset();
+  vi.mocked(supabase.from).mockReturnValue({
+    update: vi.fn().mockReturnValue({ eq: vi.fn().mockResolvedValue(result) }),
+  } as any);
+}
+
+describe('cursos.service — CRUD do Coordenador', () => {
+  describe('createDisciplina', () => {
+    it('cria com sucesso e retorna error=null', async () => {
+      mockInsert({ error: null });
+      const result = await createDisciplina(novaDisc);
+      expect(result.error).toBeNull();
+      expect(supabase.from).toHaveBeenCalledWith('disciplinas_v2');
+    });
+
+    it('traduz código duplicado (23505) em mensagem clara', async () => {
+      mockInsert({ error: { code: '23505', message: 'duplicate key value' } });
+      const result = await createDisciplina(novaDisc);
+      expect(result.error).toBe('Já existe uma disciplina com o código "B1NEW".');
+    });
+
+    it('propaga outros erros', async () => {
+      mockInsert({ error: { code: '42501', message: 'permission denied' } });
+      const result = await createDisciplina(novaDisc);
+      expect(result.error).toBe('permission denied');
+    });
+  });
+
+  describe('updateDisciplina (expandido)', () => {
+    it('atualiza por id e retorna error=null', async () => {
+      mockUpdateEq({ error: null });
+      const result = await updateDisciplina('id-1', { codigo: 'B1UPD', area: 'T', ano_curso: 2, creditos: 6 });
+      expect(result.error).toBeNull();
+      expect(supabase.from).toHaveBeenCalledWith('disciplinas_v2');
+    });
+
+    it('traduz código duplicado (23505) em mensagem clara', async () => {
+      mockUpdateEq({ error: { code: '23505', message: 'duplicate key value' } });
+      const result = await updateDisciplina('id-1', { codigo: 'B1ATG' });
+      expect(result.error).toBe('Já existe uma disciplina com o código "B1ATG".');
+    });
+  });
+
+  describe('desativarDisciplina', () => {
+    it('faz soft delete (ativo=false) e retorna error=null', async () => {
+      mockUpdateEq({ error: null });
+      const result = await desativarDisciplina('id-1');
+      expect(result.error).toBeNull();
+      expect(supabase.from).toHaveBeenCalledWith('disciplinas_v2');
+    });
+
+    it('propaga erro do banco', async () => {
+      mockUpdateEq({ error: { message: 'rls blocked' } });
+      const result = await desativarDisciplina('id-1');
+      expect(result.error).toBe('rls blocked');
     });
   });
 });

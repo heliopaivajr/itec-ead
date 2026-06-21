@@ -19,6 +19,7 @@ export interface Disciplina {
   codigo: string;
   nome: string;
   modulo: number;            // = modulos.ordem
+  modulo_id: string;         // FK real → modulos.id (para o dropdown de edição)
   ano: number;               // = disciplinas_v2.ano_curso
   carga_horaria: number;     // = presencial + ead (derivado; v2 não guarda total)
   horas_presencial: number;  // = carga_horaria_presencial
@@ -39,9 +40,30 @@ export interface ServiceResult {
   error: string | null;
 }
 
-export type DisciplinaUpdate = Partial<Pick<Disciplina,
-  'nome' | 'carga_horaria' | 'horas_presencial' | 'horas_ead' | 'tipo' | 'area' | 'ativo'
->>;
+// Módulo (para dropdown de cadastro/edição).
+// Nome distinto de academico.service.Modulo para não colidir no barrel index.ts.
+export interface ModuloOpcao {
+  id: string;
+  ordem: number;
+  nome: string;
+}
+
+// Entrada de criação/edição — mapeia direto para as colunas de disciplinas_v2.
+// Usa modulo_id (UUID do dropdown), não o número de ordem.
+export interface DisciplinaInput {
+  codigo: string;
+  nome: string;
+  area: AreaDisciplina;
+  ano_curso: number;
+  modulo_id: string;
+  horas_presencial: number;
+  horas_ead: number;
+  creditos: number;
+  tipo: TipoDisciplina;
+  ativo: boolean;
+}
+
+export type DisciplinaUpdate = Partial<DisciplinaInput>;
 
 // ── linhas brutas do banco ───────────────────────────────────
 interface DisciplinaV2Row {
@@ -84,6 +106,7 @@ export async function getDisciplinas(): Promise<Disciplina[]> {
     codigo: d.codigo,
     nome: d.nome,
     modulo: ordemById.get(d.modulo_id) ?? 0,
+    modulo_id: d.modulo_id,
     ano: d.ano_curso,
     horas_presencial: d.carga_horaria_presencial,
     horas_ead: d.carga_horaria_ead,
@@ -124,23 +147,79 @@ export async function getPrerequisitos(): Promise<Prerequisito[]> {
     .filter(p => p.disciplina_codigo && p.prerequisito_codigo);
 }
 
-// Atualização parcial de disciplina — grava em disciplinas_v2, chave por id
+// Listagem de módulos do curso — para dropdown de cadastro/edição (query separada)
+export async function getModulos(): Promise<ModuloOpcao[]> {
+  const { data, error } = await supabase
+    .from('modulos')
+    .select('id, ordem, nome')
+    .order('ordem', { ascending: true })
+    .limit(50);
+  if (error || !data) return [];
+  return data as ModuloOpcao[];
+}
+
+// Traduz DisciplinaInput (parcial) → colunas reais de disciplinas_v2
+function toV2Patch(dados: Partial<DisciplinaInput>): Record<string, unknown> {
+  const patch: Record<string, unknown> = {};
+  if (dados.codigo !== undefined)           patch.codigo = dados.codigo;
+  if (dados.nome !== undefined)             patch.nome = dados.nome;
+  if (dados.area !== undefined)             patch.area = dados.area;
+  if (dados.ano_curso !== undefined)        patch.ano_curso = dados.ano_curso;
+  if (dados.modulo_id !== undefined)        patch.modulo_id = dados.modulo_id;
+  if (dados.horas_presencial !== undefined) patch.carga_horaria_presencial = dados.horas_presencial;
+  if (dados.horas_ead !== undefined)        patch.carga_horaria_ead = dados.horas_ead;
+  if (dados.creditos !== undefined)         patch.creditos = dados.creditos;
+  if (dados.tipo !== undefined)             patch.tipo = dados.tipo;
+  if (dados.ativo !== undefined)            patch.ativo = dados.ativo;
+  // carga_horaria (total) é derivada — disciplinas_v2 não possui coluna de total.
+  return patch;
+}
+
+// Erro de código duplicado (UNIQUE em disciplinas_v2.codigo)
+function isCodigoDuplicado(error: { code?: string } | null): boolean {
+  return error?.code === '23505';
+}
+
+// Criação de disciplina — INSERT em disciplinas_v2 (ativo=true por padrão)
+export async function createDisciplina(dados: DisciplinaInput): Promise<ServiceResult> {
+  const { error } = await supabase
+    .from('disciplinas_v2')
+    .insert({ ...toV2Patch(dados), ativo: dados.ativo ?? true });
+
+  if (error) {
+    if (isCodigoDuplicado(error)) {
+      return { error: `Já existe uma disciplina com o código "${dados.codigo}".` };
+    }
+    return { error: error.message };
+  }
+  return { error: null };
+}
+
+// Atualização de disciplina — grava em disciplinas_v2, chave por id.
+// Aceita TODAS as colunas editáveis (código, área, ano, módulo, CH, créditos, tipo, ativo).
 export async function updateDisciplina(
   id: string,
   dados: DisciplinaUpdate
 ): Promise<ServiceResult> {
-  const patch: Record<string, unknown> = {};
-  if (dados.nome !== undefined)             patch.nome = dados.nome;
-  if (dados.horas_presencial !== undefined) patch.carga_horaria_presencial = dados.horas_presencial;
-  if (dados.horas_ead !== undefined)        patch.carga_horaria_ead = dados.horas_ead;
-  if (dados.tipo !== undefined)             patch.tipo = dados.tipo;
-  if (dados.area !== undefined)             patch.area = dados.area;
-  if (dados.ativo !== undefined)            patch.ativo = dados.ativo;
-  // carga_horaria (total) é derivada — disciplinas_v2 não possui coluna de total.
-
   const { error } = await supabase
     .from('disciplinas_v2')
-    .update(patch)
+    .update(toV2Patch(dados))
+    .eq('id', id);
+
+  if (error) {
+    if (isCodigoDuplicado(error)) {
+      return { error: `Já existe uma disciplina com o código "${dados.codigo}".` };
+    }
+    return { error: error.message };
+  }
+  return { error: null };
+}
+
+// Soft delete — desativa a disciplina (NUNCA hard delete; preserva histórico)
+export async function desativarDisciplina(id: string): Promise<ServiceResult> {
+  const { error } = await supabase
+    .from('disciplinas_v2')
+    .update({ ativo: false })
     .eq('id', id);
 
   if (error) return { error: error.message };
