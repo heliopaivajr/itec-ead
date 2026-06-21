@@ -33,7 +33,7 @@ const roleLabel: Record<string, string> = {
   professor:     'Professor',
   administracao: 'Secretaria',
   financeiro:    'Financeiro',
-  admin:         'Diretoria',
+  admin:         'Coordenador',
   superadmin:    'SuperAdmin',
 };
 

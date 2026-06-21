@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import {
-  ChevronDown, ChevronRight, Edit2, Clock, Search, X, Save, Loader2,
+  ChevronDown, ChevronRight, Edit2, Clock, Search, X, Save, Loader2, Plus, Power, RotateCcw,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -15,9 +15,14 @@ import {
 import {
   getDisciplinas as fetchDisciplinas,
   getPrerequisitos as fetchPrerequisitos,
+  getModulos as fetchModulos,
+  createDisciplina,
   updateDisciplina,
+  desativarDisciplina,
   syncPrerequisitos,
   type Disciplina,
+  type ModuloOpcao,
+  type DisciplinaInput,
   type TipoDisciplina,
   type AreaDisciplina,
   type TipoPrerequisito,
@@ -75,14 +80,7 @@ interface DbPrerequisito {
   tipo: TipoPrerequisito;
 }
 
-interface EditForm {
-  nome: string;
-  horas_presencial: number;
-  horas_ead: number;
-  tipo: TipoDisciplina;
-  area: AreaDisciplina;
-  ativo: boolean;
-}
+type DiscForm = DisciplinaInput;
 
 // ─── Small sub-components ─────────────────────────────────────
 
@@ -115,55 +113,67 @@ function PrereqChip({ codigo, tipo, nome }: { codigo: string; tipo: TipoPrerequi
   );
 }
 
-// ─── Edit Modal ───────────────────────────────────────────────
+// ─── Modal de Disciplina (criar OU editar) ────────────────────
 
-interface EditModalProps {
+interface DiscModalProps {
+  // disciplina = null → modo CRIAR; senão → modo EDITAR
   disciplina: DbDisciplina | null;
+  modulos: ModuloOpcao[];
   prereqs: DbPrerequisito[];
   allDisciplinas: DbDisciplina[];
   onClose: () => void;
   onSaved: () => void;
 }
 
-function EditModal({ disciplina, prereqs, allDisciplinas, onClose, onSaved }: EditModalProps) {
-  const [form, setForm] = useState<EditForm>({
+function DiscModal({ disciplina, modulos, prereqs, allDisciplinas, onClose, onSaved }: DiscModalProps) {
+  const isCreate = disciplina === null;
+  const moduloPadrao = modulos[0]?.id ?? '';
+
+  const [form, setForm] = useState<DiscForm>({
+    codigo: disciplina?.codigo ?? '',
     nome: disciplina?.nome ?? '',
+    area: disciplina?.area ?? 'B',
+    ano_curso: disciplina?.ano ?? 1,
+    modulo_id: disciplina?.modulo_id ?? moduloPadrao,
     horas_presencial: disciplina?.horas_presencial ?? 0,
     horas_ead: disciplina?.horas_ead ?? 0,
-    tipo: disciplina?.tipo ?? 'obrigatoria',
-    area: disciplina?.area ?? 'B',
+    creditos: disciplina?.creditos ?? 0,
+    tipo: disciplina?.tipo ?? 'regular',
     ativo: disciplina?.ativo ?? true,
   });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
-  // Pre-requisite state
+  // Pré-requisitos (somente em modo edição)
   const [localPrereqs, setLocalPrereqs] = useState<DbPrerequisito[]>(prereqs);
   const [addingPrereq, setAddingPrereq] = useState<{ codigo: string; tipo: TipoPrerequisito }>({ codigo: '', tipo: 'prerequisito' });
 
-  if (!disciplina) return null;
+  const codigoUpper = form.codigo.trim().toUpperCase();
+  const codigoValido = /^[A-Z0-9]{5}$/.test(codigoUpper);
 
   const availableForPrereq = allDisciplinas.filter(
-    d => d.codigo !== disciplina.codigo && !localPrereqs.find(p => p.prerequisito_codigo === d.codigo)
+    d => d.codigo !== codigoUpper && !localPrereqs.find(p => p.prerequisito_codigo === d.codigo)
   );
 
   const handleSave = async () => {
-    setSaving(true);
     setError('');
+    if (!codigoValido) { setError('Código inválido. Use 5 caracteres maiúsculos (ÁREA+ANO+ABREV), ex.: B1ATG.'); return; }
+    if (!form.nome.trim()) { setError('Informe o nome da disciplina.'); return; }
+    if (!form.modulo_id) { setError('Selecione o módulo.'); return; }
 
-    const { error: updateErr } = await updateDisciplina(disciplina.id, {
-      nome: form.nome,
-      horas_presencial: form.horas_presencial,
-      horas_ead: form.horas_ead,
-      tipo: form.tipo,
-      area: form.area,
-      ativo: form.ativo,
-    });
+    setSaving(true);
+    const payload: DiscForm = { ...form, codigo: codigoUpper };
 
-    if (updateErr) { setError(updateErr); setSaving(false); return; }
+    if (isCreate) {
+      const { error: createErr } = await createDisciplina(payload);
+      if (createErr) { setError(createErr); setSaving(false); return; }
+    } else {
+      const { error: updateErr } = await updateDisciplina(disciplina!.id, payload);
+      if (updateErr) { setError(updateErr); setSaving(false); return; }
 
-    const { error: syncErr } = await syncPrerequisitos(disciplina.codigo, localPrereqs);
-    if (syncErr) { setError(syncErr); setSaving(false); return; }
+      const { error: syncErr } = await syncPrerequisitos(codigoUpper, localPrereqs);
+      if (syncErr) { setError(syncErr); setSaving(false); return; }
+    }
 
     setSaving(false);
     onSaved();
@@ -172,7 +182,7 @@ function EditModal({ disciplina, prereqs, allDisciplinas, onClose, onSaved }: Ed
   const addPrereq = () => {
     if (!addingPrereq.codigo) return;
     setLocalPrereqs(prev => [...prev, {
-      disciplina_codigo: disciplina.codigo,
+      disciplina_codigo: codigoUpper,
       prerequisito_codigo: addingPrereq.codigo,
       tipo: addingPrereq.tipo,
     }]);
@@ -185,65 +195,41 @@ function EditModal({ disciplina, prereqs, allDisciplinas, onClose, onSaved }: Ed
 
   return (
     <Dialog open onOpenChange={onClose}>
-      <DialogContent className="max-w-lg bg-card border-border">
+      <DialogContent className="max-w-lg bg-card border-border max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="font-merriweather text-foreground">
-            Editar Disciplina
-            <span className="ml-2 text-sm font-mono text-primary font-normal">{disciplina.codigo}</span>
+            {isCreate ? 'Nova Disciplina' : 'Editar Disciplina'}
+            {!isCreate && <span className="ml-2 text-sm font-mono text-primary font-normal">{disciplina!.codigo}</span>}
           </DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4 py-2">
-          {/* Nome */}
-          <div className="space-y-1.5">
-            <Label htmlFor="nome" className="text-sm text-foreground">Nome</Label>
-            <Input id="nome" value={form.nome} onChange={e => setForm(f => ({ ...f, nome: e.target.value }))}
-              className="bg-background border-border text-foreground" />
-          </div>
-
-          {/* Horas */}
+          {/* Código + Nome */}
           <div className="grid grid-cols-3 gap-3">
             <div className="space-y-1.5">
-              <Label className="text-sm text-foreground">Total (h)</Label>
-              <Input type="number" value={form.horas_presencial + form.horas_ead} readOnly tabIndex={-1}
-                title="Calculado automaticamente (Presencial + EAD)"
-                className="bg-muted/40 border-border text-muted-foreground cursor-not-allowed" />
+              <Label htmlFor="codigo" className="text-sm text-foreground">Código</Label>
+              <Input id="codigo" value={form.codigo} maxLength={5}
+                onChange={e => setForm(f => ({ ...f, codigo: e.target.value.toUpperCase() }))}
+                placeholder="B1ATG"
+                title="Convenção: ÁREA(B/T/P) + ANO(1-3) + ABREV (3) — 5 caracteres maiúsculos"
+                className="bg-background border-border text-foreground font-mono uppercase" />
             </div>
-            <div className="space-y-1.5">
-              <Label className="text-sm text-foreground">Presencial (h)</Label>
-              <Input type="number" value={form.horas_presencial} min={0}
-                onChange={e => setForm(f => ({ ...f, horas_presencial: +e.target.value }))}
-                className="bg-background border-border text-foreground" />
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-sm text-foreground">EAD (h)</Label>
-              <Input type="number" value={form.horas_ead} min={0}
-                onChange={e => setForm(f => ({ ...f, horas_ead: +e.target.value }))}
+            <div className="space-y-1.5 col-span-2">
+              <Label htmlFor="nome" className="text-sm text-foreground">Nome</Label>
+              <Input id="nome" value={form.nome} onChange={e => setForm(f => ({ ...f, nome: e.target.value }))}
                 className="bg-background border-border text-foreground" />
             </div>
           </div>
+          <p className="text-[10px] text-muted-foreground -mt-2">
+            Código: <span className="font-mono">ÁREA(B/T/P)+ANO(1–3)+ABREV(3)</span>, 5 caracteres maiúsculos, único. Ex.: <span className="font-mono">B1ATG</span>.
+          </p>
 
-          {/* Tipo e Área */}
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <Label className="text-sm text-foreground">Tipo</Label>
-              <Select value={form.tipo} onValueChange={v => setForm(f => ({ ...f, tipo: v as TipoDisciplina }))}>
-                <SelectTrigger className="bg-background border-border text-foreground">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent className="bg-card border-border">
-                  <SelectItem value="regular">Regular</SelectItem>
-                  <SelectItem value="eletiva">Eletiva</SelectItem>
-                  <SelectItem value="obrigatoria">Obrigatória</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+          {/* Área · Ano · Módulo */}
+          <div className="grid grid-cols-3 gap-3">
             <div className="space-y-1.5">
               <Label className="text-sm text-foreground">Área</Label>
               <Select value={form.area} onValueChange={v => setForm(f => ({ ...f, area: v as AreaDisciplina }))}>
-                <SelectTrigger className="bg-background border-border text-foreground">
-                  <SelectValue />
-                </SelectTrigger>
+                <SelectTrigger className="bg-background border-border text-foreground"><SelectValue /></SelectTrigger>
                 <SelectContent className="bg-card border-border">
                   <SelectItem value="B">Bíblico</SelectItem>
                   <SelectItem value="T">Teológico</SelectItem>
@@ -251,70 +237,132 @@ function EditModal({ disciplina, prereqs, allDisciplinas, onClose, onSaved }: Ed
                 </SelectContent>
               </Select>
             </div>
-          </div>
-
-          {/* Ativo */}
-          <div className="flex items-center gap-2">
-            <input type="checkbox" id="ativo" checked={form.ativo}
-              onChange={e => setForm(f => ({ ...f, ativo: e.target.checked }))}
-              className="h-4 w-4 rounded border-border accent-primary" />
-            <Label htmlFor="ativo" className="text-sm text-foreground cursor-pointer">Disciplina ativa</Label>
-          </div>
-
-          {/* Pré-requisitos */}
-          <div className="space-y-2">
-            <Label className="text-sm text-foreground">Pré-requisitos</Label>
-            <div className="flex flex-wrap gap-1.5 min-h-[28px] p-2 rounded-md bg-background border border-border">
-              {localPrereqs.length === 0 ? (
-                <span className="text-xs text-muted-foreground">Nenhum pré-requisito</span>
-              ) : (
-                localPrereqs.map(p => (
-                  <span key={p.prerequisito_codigo}
-                    className={`flex items-center gap-1 text-xs px-2 py-0.5 rounded border
-                      ${p.tipo === 'prerequisito' ? 'bg-red-500/10 text-red-400 border-red-500/30' :
-                        p.tipo === 'corequisito' ? 'bg-orange-500/10 text-orange-400 border-orange-500/30' :
-                        'bg-muted/50 text-muted-foreground border-border'}`}>
-                    {p.prerequisito_codigo}
-                    <span className="text-[10px] opacity-60">({PREREQ_LABEL[p.tipo]})</span>
-                    <button onClick={() => removePrereq(p.prerequisito_codigo)}
-                      className="ml-0.5 hover:opacity-100 opacity-50 transition-opacity">
-                      <X className="h-2.5 w-2.5" />
-                    </button>
-                  </span>
-                ))
-              )}
+            <div className="space-y-1.5">
+              <Label className="text-sm text-foreground">Ano</Label>
+              <Select value={String(form.ano_curso)} onValueChange={v => setForm(f => ({ ...f, ano_curso: +v }))}>
+                <SelectTrigger className="bg-background border-border text-foreground"><SelectValue /></SelectTrigger>
+                <SelectContent className="bg-card border-border">
+                  <SelectItem value="1">1º Ano</SelectItem>
+                  <SelectItem value="2">2º Ano</SelectItem>
+                  <SelectItem value="3">3º Ano</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
-            {/* Add row */}
-            <div className="flex gap-2">
-              <Select value={addingPrereq.codigo} onValueChange={v => setAddingPrereq(a => ({ ...a, codigo: v }))}>
-                <SelectTrigger className="bg-background border-border text-foreground text-xs flex-1">
-                  <SelectValue placeholder="Selecionar disciplina..." />
-                </SelectTrigger>
-                <SelectContent className="bg-card border-border max-h-48">
-                  {availableForPrereq.map(d => (
-                    <SelectItem key={d.codigo} value={d.codigo} className="text-xs">
-                      <span className="font-mono text-primary">{d.codigo}</span>
-                      <span className="ml-2 text-muted-foreground">{d.nome.length > 35 ? d.nome.slice(0, 35) + '…' : d.nome}</span>
-                    </SelectItem>
+            <div className="space-y-1.5">
+              <Label className="text-sm text-foreground">Módulo</Label>
+              <Select value={form.modulo_id} onValueChange={v => setForm(f => ({ ...f, modulo_id: v }))}>
+                <SelectTrigger className="bg-background border-border text-foreground"><SelectValue placeholder="Módulo..." /></SelectTrigger>
+                <SelectContent className="bg-card border-border">
+                  {modulos.map(m => (
+                    <SelectItem key={m.id} value={m.id}>{m.ordem}º — {m.nome}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
-              <Select value={addingPrereq.tipo} onValueChange={v => setAddingPrereq(a => ({ ...a, tipo: v as TipoPrerequisito }))}>
-                <SelectTrigger className="bg-background border-border text-foreground text-xs w-32">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent className="bg-card border-border">
-                  <SelectItem value="prerequisito">Pré-requisito</SelectItem>
-                  <SelectItem value="recomendado">Recomendado</SelectItem>
-                  <SelectItem value="corequisito">Correquisito</SelectItem>
-                </SelectContent>
-              </Select>
-              <Button size="sm" variant="outline" onClick={addPrereq} disabled={!addingPrereq.codigo}
-                className="border-border text-foreground hover:text-primary shrink-0">
-                + Adicionar
-              </Button>
             </div>
           </div>
+
+          {/* Horas + Créditos */}
+          <div className="grid grid-cols-4 gap-3">
+            <div className="space-y-1.5">
+              <Label className="text-sm text-foreground">Total (h)</Label>
+              <Input type="number" value={form.horas_presencial + form.horas_ead} readOnly tabIndex={-1}
+                title="Calculado automaticamente (Presencial + EAD)"
+                className="bg-muted/40 border-border text-muted-foreground cursor-not-allowed" />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-sm text-foreground">Presencial</Label>
+              <Input type="number" value={form.horas_presencial} min={0}
+                onChange={e => setForm(f => ({ ...f, horas_presencial: +e.target.value }))}
+                className="bg-background border-border text-foreground" />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-sm text-foreground">EAD</Label>
+              <Input type="number" value={form.horas_ead} min={0}
+                onChange={e => setForm(f => ({ ...f, horas_ead: +e.target.value }))}
+                className="bg-background border-border text-foreground" />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-sm text-foreground">Créditos</Label>
+              <Input type="number" value={form.creditos} min={0}
+                onChange={e => setForm(f => ({ ...f, creditos: +e.target.value }))}
+                className="bg-background border-border text-foreground" />
+            </div>
+          </div>
+
+          {/* Tipo + Ativo */}
+          <div className="grid grid-cols-2 gap-3 items-end">
+            <div className="space-y-1.5">
+              <Label className="text-sm text-foreground">Tipo</Label>
+              <Select value={form.tipo} onValueChange={v => setForm(f => ({ ...f, tipo: v as TipoDisciplina }))}>
+                <SelectTrigger className="bg-background border-border text-foreground"><SelectValue /></SelectTrigger>
+                <SelectContent className="bg-card border-border">
+                  <SelectItem value="regular">Regular</SelectItem>
+                  <SelectItem value="eletiva">Eletiva</SelectItem>
+                  <SelectItem value="obrigatoria">Obrigatória</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex items-center gap-2 pb-2">
+              <input type="checkbox" id="ativo" checked={form.ativo}
+                onChange={e => setForm(f => ({ ...f, ativo: e.target.checked }))}
+                className="h-4 w-4 rounded border-border accent-primary" />
+              <Label htmlFor="ativo" className="text-sm text-foreground cursor-pointer">Disciplina ativa</Label>
+            </div>
+          </div>
+
+          {/* Pré-requisitos (somente edição) */}
+          {!isCreate && (
+            <div className="space-y-2">
+              <Label className="text-sm text-foreground">Pré-requisitos</Label>
+              <div className="flex flex-wrap gap-1.5 min-h-[28px] p-2 rounded-md bg-background border border-border">
+                {localPrereqs.length === 0 ? (
+                  <span className="text-xs text-muted-foreground">Nenhum pré-requisito</span>
+                ) : (
+                  localPrereqs.map(p => (
+                    <span key={p.prerequisito_codigo}
+                      className={`flex items-center gap-1 text-xs px-2 py-0.5 rounded border
+                        ${p.tipo === 'prerequisito' ? 'bg-red-500/10 text-red-400 border-red-500/30' :
+                          p.tipo === 'corequisito' ? 'bg-orange-500/10 text-orange-400 border-orange-500/30' :
+                          'bg-muted/50 text-muted-foreground border-border'}`}>
+                      {p.prerequisito_codigo}
+                      <span className="text-[10px] opacity-60">({PREREQ_LABEL[p.tipo]})</span>
+                      <button onClick={() => removePrereq(p.prerequisito_codigo)}
+                        className="ml-0.5 hover:opacity-100 opacity-50 transition-opacity">
+                        <X className="h-2.5 w-2.5" />
+                      </button>
+                    </span>
+                  ))
+                )}
+              </div>
+              <div className="flex gap-2">
+                <Select value={addingPrereq.codigo} onValueChange={v => setAddingPrereq(a => ({ ...a, codigo: v }))}>
+                  <SelectTrigger className="bg-background border-border text-foreground text-xs flex-1">
+                    <SelectValue placeholder="Selecionar disciplina..." />
+                  </SelectTrigger>
+                  <SelectContent className="bg-card border-border max-h-48">
+                    {availableForPrereq.map(d => (
+                      <SelectItem key={d.codigo} value={d.codigo} className="text-xs">
+                        <span className="font-mono text-primary">{d.codigo}</span>
+                        <span className="ml-2 text-muted-foreground">{d.nome.length > 35 ? d.nome.slice(0, 35) + '…' : d.nome}</span>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Select value={addingPrereq.tipo} onValueChange={v => setAddingPrereq(a => ({ ...a, tipo: v as TipoPrerequisito }))}>
+                  <SelectTrigger className="bg-background border-border text-foreground text-xs w-32"><SelectValue /></SelectTrigger>
+                  <SelectContent className="bg-card border-border">
+                    <SelectItem value="prerequisito">Pré-requisito</SelectItem>
+                    <SelectItem value="recomendado">Recomendado</SelectItem>
+                    <SelectItem value="corequisito">Correquisito</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Button size="sm" variant="outline" onClick={addPrereq} disabled={!addingPrereq.codigo}
+                  className="border-border text-foreground hover:text-primary shrink-0">
+                  + Adicionar
+                </Button>
+              </div>
+            </div>
+          )}
 
           {error && <p className="text-xs text-red-400">{error}</p>}
         </div>
@@ -323,7 +371,7 @@ function EditModal({ disciplina, prereqs, allDisciplinas, onClose, onSaved }: Ed
           <Button variant="ghost" onClick={onClose} className="text-muted-foreground">Cancelar</Button>
           <Button onClick={handleSave} disabled={saving} className="bg-primary text-primary-foreground hover:bg-primary/90">
             {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
-            Salvar
+            {isCreate ? 'Criar' : 'Salvar'}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -338,16 +386,19 @@ export default function CursosAdmin() {
 
   const [disciplinasDb, setDisciplinasDb] = useState<DbDisciplina[]>([]);
   const [prereqsDb, setPrereqsDb] = useState<DbPrerequisito[]>([]);
+  const [modulos, setModulos] = useState<ModuloOpcao[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [openModulos, setOpenModulos] = useState<Set<number>>(new Set([1, 2, 3, 4, 5, 6]));
   const [editing, setEditing] = useState<DbDisciplina | null>(null);
+  const [creating, setCreating] = useState(false);
 
   const load = async () => {
     setLoading(true);
-    const [discs, preqs] = await Promise.all([fetchDisciplinas(), fetchPrerequisitos()]);
+    const [discs, preqs, mods] = await Promise.all([fetchDisciplinas(), fetchPrerequisitos(), fetchModulos()]);
     setDisciplinasDb(discs);
     setPrereqsDb(preqs);
+    setModulos(mods);
     setLoading(false);
   };
 
@@ -359,6 +410,19 @@ export default function CursosAdmin() {
       next.has(m) ? next.delete(m) : next.add(m);
       return next;
     });
+  };
+
+  const handleDesativar = async (d: DbDisciplina) => {
+    if (!window.confirm(`Desativar a disciplina "${d.codigo} — ${d.nome}"?\n\nEla deixa de aparecer como ativa, mas o histórico é preservado (soft delete).`)) return;
+    const { error } = await desativarDisciplina(d.id);
+    if (error) { window.alert('Erro ao desativar: ' + error); return; }
+    load();
+  };
+
+  const handleReativar = async (d: DbDisciplina) => {
+    const { error } = await updateDisciplina(d.id, { ativo: true });
+    if (error) { window.alert('Erro ao reativar: ' + error); return; }
+    load();
   };
 
   const filtered = search.trim()
@@ -386,11 +450,17 @@ export default function CursosAdmin() {
   return (
     <div className="p-6 space-y-6">
       {/* Header */}
-      <div>
-        <h1 className="text-2xl font-merriweather font-bold text-primary">Grade Curricular</h1>
-        <p className="text-muted-foreground mt-1">
-          Teologia Livre — 6 módulos · 3 anos · {total} disciplinas
-        </p>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-merriweather font-bold text-primary">Grade Curricular</h1>
+          <p className="text-muted-foreground mt-1">
+            Teologia Livre — 6 módulos · 3 anos · {total} disciplinas
+          </p>
+        </div>
+        <Button onClick={() => setCreating(true)} disabled={modulos.length === 0}
+          className="bg-primary text-primary-foreground hover:bg-primary/90 shrink-0">
+          <Plus className="h-4 w-4 mr-2" /> Nova Disciplina
+        </Button>
       </div>
 
       {/* Stats */}
@@ -510,12 +580,30 @@ export default function CursosAdmin() {
                               )}
                             </div>
                           </div>
-                          {/* Edit button */}
-                          <button
-                            onClick={() => setEditing(d)}
-                            className="opacity-0 group-hover:opacity-100 transition-opacity p-1.5 rounded-lg hover:bg-primary/10 text-muted-foreground hover:text-primary shrink-0">
-                            <Edit2 className="h-3.5 w-3.5" />
-                          </button>
+                          {/* Ações */}
+                          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                            <button
+                              onClick={() => setEditing(d)}
+                              title="Editar"
+                              className="p-1.5 rounded-lg hover:bg-primary/10 text-muted-foreground hover:text-primary">
+                              <Edit2 className="h-3.5 w-3.5" />
+                            </button>
+                            {inactive ? (
+                              <button
+                                onClick={() => handleReativar(d)}
+                                title="Reativar"
+                                className="p-1.5 rounded-lg hover:bg-green-500/10 text-muted-foreground hover:text-green-400">
+                                <RotateCcw className="h-3.5 w-3.5" />
+                              </button>
+                            ) : (
+                              <button
+                                onClick={() => handleDesativar(d)}
+                                title="Desativar"
+                                className="p-1.5 rounded-lg hover:bg-red-500/10 text-muted-foreground hover:text-red-400">
+                                <Power className="h-3.5 w-3.5" />
+                              </button>
+                            )}
+                          </div>
                         </div>
                       );
                     })}
@@ -527,14 +615,15 @@ export default function CursosAdmin() {
         </div>
       )}
 
-      {/* Edit modal */}
-      {editing && (
-        <EditModal
+      {/* Modal criar/editar */}
+      {(creating || editing) && (
+        <DiscModal
           disciplina={editing}
-          prereqs={prereqsFor(editing.codigo)}
+          modulos={modulos}
+          prereqs={editing ? prereqsFor(editing.codigo) : []}
           allDisciplinas={disciplinasDb}
-          onClose={() => setEditing(null)}
-          onSaved={() => { setEditing(null); load(); }}
+          onClose={() => { setEditing(null); setCreating(false); }}
+          onSaved={() => { setEditing(null); setCreating(false); load(); }}
         />
       )}
     </div>
