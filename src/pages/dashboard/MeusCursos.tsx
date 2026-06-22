@@ -1,13 +1,14 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import {
-  BookOpen, Clock, Download, ExternalLink,
+  BookOpen, Clock, ExternalLink,
   ChevronDown, ChevronUp, FileText, BarChart2,
   AlertTriangle, RefreshCw, GraduationCap,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { AlertaFrequencia } from '@/components/dashboard/AlertaFrequencia';
+import MateriaisAlunoLista from '@/components/dashboard/MateriaisAlunoLista';
 import { useMeusCursos } from '@/hooks/useMeusCursos';
 import type { DashboardContext } from '../Dashboard';
 import type { DisciplinaComProgresso } from '@/hooks/useMeusCursos';
@@ -156,19 +157,8 @@ function CardDisciplina({ item }: { item: DisciplinaComProgresso }) {
           <span>{disciplina.carga_horaria_presencial}h presencial · {disciplina.carga_horaria_ead}h EAD</span>
         </div>
 
-        {/* Ações */}
-        <div className="flex gap-2 pt-1">
-          {disciplina.manual_url && (
-            <a
-              href={disciplina.manual_url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-1 text-xs text-primary hover:underline"
-            >
-              <Download className="h-3 w-3" /> Manual
-            </a>
-          )}
-        </div>
+        {/* Materiais para download (substitui o link de manual legado) */}
+        <MateriaisAlunoLista disciplinaId={disciplina.id} />
       </div>
     </div>
   );

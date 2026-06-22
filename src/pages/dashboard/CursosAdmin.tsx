@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import {
-  ChevronDown, ChevronRight, Edit2, Clock, Search, X, Save, Loader2, Plus, Power, RotateCcw,
+  ChevronDown, ChevronRight, Edit2, Clock, Search, X, Save, Loader2, Plus, Power, RotateCcw, FolderOpen,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -27,6 +27,7 @@ import {
   type AreaDisciplina,
   type TipoPrerequisito,
 } from '@/services/cursos.service';
+import MateriaisDisciplinaModal from '@/components/dashboard/MateriaisDisciplinaModal';
 import type { DashboardContext } from '../Dashboard';
 
 // ─── Constantes de apresentação (vocabulário v2) ──────────────
@@ -392,6 +393,7 @@ export default function CursosAdmin() {
   const [openModulos, setOpenModulos] = useState<Set<number>>(new Set([1, 2, 3, 4, 5, 6]));
   const [editing, setEditing] = useState<DbDisciplina | null>(null);
   const [creating, setCreating] = useState(false);
+  const [materiaisDisc, setMateriaisDisc] = useState<DbDisciplina | null>(null);
 
   const load = async () => {
     setLoading(true);
@@ -583,6 +585,12 @@ export default function CursosAdmin() {
                           {/* Ações */}
                           <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
                             <button
+                              onClick={() => setMateriaisDisc(d)}
+                              title="Materiais"
+                              className="p-1.5 rounded-lg hover:bg-primary/10 text-muted-foreground hover:text-primary">
+                              <FolderOpen className="h-3.5 w-3.5" />
+                            </button>
+                            <button
                               onClick={() => setEditing(d)}
                               title="Editar"
                               className="p-1.5 rounded-lg hover:bg-primary/10 text-muted-foreground hover:text-primary">
@@ -624,6 +632,14 @@ export default function CursosAdmin() {
           allDisciplinas={disciplinasDb}
           onClose={() => { setEditing(null); setCreating(false); }}
           onSaved={() => { setEditing(null); setCreating(false); load(); }}
+        />
+      )}
+
+      {/* Modal de materiais da disciplina */}
+      {materiaisDisc && (
+        <MateriaisDisciplinaModal
+          disciplina={{ id: materiaisDisc.id, codigo: materiaisDisc.codigo, nome: materiaisDisc.nome }}
+          onClose={() => setMateriaisDisc(null)}
         />
       )}
     </div>

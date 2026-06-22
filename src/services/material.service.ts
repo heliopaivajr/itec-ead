@@ -85,31 +85,10 @@ export async function getPercentualProgresso(
   return Math.min(percentual, 100);
 }
 
-// Upload do manual da disciplina para o Supabase Storage
-export async function uploadManualDisciplina(
-  disciplinaId: string,
-  arquivo: File
-): Promise<{ url: string | null; error: string | null }> {
-  const path = `manuais/${disciplinaId}/${arquivo.name}`;
-
-  const { error: uploadError } = await supabase.storage
-    .from('materiais-disciplinas')
-    .upload(path, arquivo, { upsert: true });
-
-  if (uploadError) return { url: null, error: uploadError.message };
-
-  const { data } = supabase.storage
-    .from('materiais-disciplinas')
-    .getPublicUrl(path);
-
-  // Atualiza o campo manual_url na disciplina
-  await supabase
-    .from('disciplinas_v2')
-    .update({ manual_url: data.publicUrl, status_manual: 'disponivel' })
-    .eq('id', disciplinaId);
-
-  return { url: data.publicUrl, error: null };
-}
+// (removido R0.5.4/M.3) uploadManualDisciplina — fluxo antigo de "manual" via bucket
+// PÚBLICO 'materiais-disciplinas' + disciplinas_v2.manual_url. Substituído pelo serviço
+// materiais.service.ts (tabela materiais_disciplina + bucket privado 'materiais-disciplina'
+// com aprovação e signed URL). Não havia chamadores em runtime.
 
 // Batch: materiais e progresso para múltiplas disciplinas (2 queries)
 export async function getMateriaiseProgressoBatch(
