@@ -422,6 +422,18 @@ Razões:
 
 ---
 
+## MATERIAIS DA DISCIPLINA
+
+### Materiais — upgrade Opção B: signed URL via Edge Function (bucket 100% fechado)
+**Descrição**: Hoje (R0.5.4, migração 049) o bucket `materiais-disciplina` é privado e o SELECT em `storage.objects` é liberado a qualquer `authenticated` (a granularidade de acesso por matrícula/disciplina fica na tabela `materiais_disciplina` via `aluno_ve_disciplina()`, não no objeto). A **Opção B** fecha o bucket por completo: o download passa por uma **Edge Function** que valida o acesso do usuário (aluno matriculado no curso da disciplina / staff / professor da cadeira) e devolve uma **signed URL** temporária. Assim nenhum `authenticated` lê o objeto direto.
+**Benefício**: acesso ao arquivo físico fica alinhado 1:1 com a regra de negócio (não só ao registro), eliminando o vetor de "authenticated lê qualquer objeto do bucket".
+**Dependências**: Edge Function (Supabase) + `createSignedUrl`; reusar a cadeia `matriculas.turma_id → turmas.curso_id → modulos.curso_id → disciplinas_v2` (ver `aluno_ve_disciplina`) e `contratos_professor` para professor da cadeira.
+**Prioridade**: Média
+**Versão alvo**: V2 (pós-agosto 2026)
+**Status**: Planejado
+
+---
+
 ## COMO USAR ESTE BACKLOG
 
 1. **Novas ideias**: Adicionar no final da categoria correspondente
