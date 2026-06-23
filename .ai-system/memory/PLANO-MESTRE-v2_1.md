@@ -230,7 +230,7 @@ Objetivo: aluno vindo de outra instituição **não paga** a cadeira e **transfe
 | Bloco 0 | — | ✅ | — | — | — | — | — | ✅ | **✅ FECHADO** |
 | R0 | ✅ | ✅ | ✅ | — | ✅ | — | ✅ | ✅ | **✅ FECHADO** (PR #13 merged; migração 047 **APLICADA** e validada 24/24/24) |
 | R0.5 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | **✅ CONCLUÍDO** — R0.5.1 ✅ migração 048 · R0.5.2 ✅ adapter CursosAdmin v2 (PR #14) · R0.5.3 ✅ CRUD do Coordenador (PR #15) · Materiais da Disciplina ✅ (migração 049, PR #16) · Manual do Aluno ✅ (migração 050, PR #17). Próximo da trilha: **R1** |
-| R1 | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | 🔵 próximo (Schema retroativo + status: nº matrícula, status_financeiro/acesso/documentacao, CHECK funil; faltas/frequencia_percentual/convalidacao_* em matriculas_disciplina) |
+| R1 | ✅ | ✅ | ✅ | 🔵 | ⬜ | — | ⬜ | ⬜ | 🔵 em andamento — schema retroativo ✅ (migração 051 APLICADA: numero_matricula + funil aditivo + gerar_numero_matricula + faltas/frequencia_percentual/observacao/convalidacao_*). Próximo: **R1.2** (alinhar interface `Matricula` TS ao schema real) |
 | R2 | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ |
 | R3 | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ |
 | R4 | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ |
