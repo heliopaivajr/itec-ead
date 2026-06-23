@@ -432,6 +432,19 @@ Razões:
 **Versão alvo**: V2 (pós-agosto 2026)
 **Status**: Planejado
 
+### Consolidar barra de progresso do aluno com `materiais_disciplina`
+**Descrição**: Hoje coexistem dois conceitos de "materiais": o **novo** `materiais_disciplina` (R0.5.4/PR #16 — aprovação, bucket privado, signed URL) e o **antigo** `materiais` + `progresso_aluno` (`material.service.ts`), que ainda alimenta a barra "Materiais XX% · N arquivos" no card do aluno (`useMeusCursos`). Unificar: migrar o rastreamento de progresso para `materiais_disciplina` (visualização/download) e aposentar a tabela `materiais` legada.
+**Benefício**: fonte única de materiais; elimina duplicidade de modelo.
+**Prioridade**: Média
+**Versão alvo**: V2 (pós-agosto 2026)
+**Status**: Planejado
+
+### Script: migrar `disciplinas_v2.manual_url` legados → `materiais_disciplina`
+**Descrição**: A coluna `disciplinas_v2.manual_url` (preenchida pelo fluxo antigo `uploadManualDisciplina`, já removido) não é mais exibida. Script opcional para varrer cadeiras com `manual_url` não-nulo e criar um registro em `materiais_disciplina` (origem `link` ou re-upload), depois limpar a coluna. Provável impacto nulo (a função antiga não tinha UI), mas garante que nada fique órfão.
+**Prioridade**: Baixa
+**Versão alvo**: V2 (pós-agosto 2026)
+**Status**: Planejado
+
 ---
 
 ## COMO USAR ESTE BACKLOG
