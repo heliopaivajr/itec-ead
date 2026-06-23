@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { AlertaFrequencia } from '@/components/dashboard/AlertaFrequencia';
 import MateriaisAlunoLista from '@/components/dashboard/MateriaisAlunoLista';
+import ManualAlunoBotao from '@/components/dashboard/ManualAlunoBotao';
 import { useMeusCursos } from '@/hooks/useMeusCursos';
 import type { DashboardContext } from '../Dashboard';
 import type { DisciplinaComProgresso } from '@/hooks/useMeusCursos';
@@ -276,6 +277,7 @@ export default function MeusCursos() {
           <p className="text-sm text-muted-foreground mt-0.5">
             {modulo_atual?.periodo} · {disciplinas.length} disciplinas · {totalHoras}h
           </p>
+          <div className="mt-2"><ManualAlunoBotao /></div>
         </div>
         {emAlerta > 0 && (
           <div className="flex items-center gap-2 bg-yellow-500/10 border border-yellow-500/30 rounded-lg px-3 py-2 text-sm">

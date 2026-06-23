@@ -61,6 +61,7 @@ export interface Curso {
   creditos_total: number | null;
   ativo: boolean;
   inicio_turma: string | null;
+  manual_aluno_url: string | null;
   criado_em: string;
 }
 
