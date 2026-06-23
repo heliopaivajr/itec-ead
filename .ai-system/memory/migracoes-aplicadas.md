@@ -26,6 +26,7 @@
 | `supabase/migrations/20260620_048_r0_5_consolida_curriculo_v2.sql` | ✅ **APLICADA** | 2026-06-20 | `prerequisitos_v2` repopulada: **13 `prerequisito` + 11 `recomendado`**; coluna `disciplinas_v2.ativo` criada; CHECK ampliado com `recomendado`. **NÃO reexecutar.** |
 | `supabase/migrations/20260622_049_materiais_disciplina.sql` | ✅ **APLICADA** | 2026-06-22 | R0.5.4: tabela `materiais_disciplina` + RLS, função `aluno_ve_disciplina()`, bucket privado `materiais-disciplina` + policies. Versionada no `main` (PR #16 merged). **NÃO reexecutar.** |
 | `supabase/migrations/20260622_050_manual_aluno.sql` | ✅ **APLICADA** | 2026-06-22 | Manual do Aluno (handbook): coluna `cursos.manual_aluno_url` + bucket privado `manuais-aluno` (read authenticated; write admin/superadmin). Validada 1/1/4 (coluna + bucket + 4 policies). Versionada no `main` (PR #17 merged). **NÃO reexecutar.** |
+| `supabase/migrations/20260623_051_r1_schema_retroativo.sql` | 🟡 **CRIADA (aguardando run)** | — | R1: `matriculas.numero_matricula` (nullable + índice único parcial) + CHECK do funil ADITIVO (7+5 valores) + função `gerar_numero_matricula()` (ITEC+AA+T+NNN, à prova de corrida); `matriculas_disciplina` ganha `faltas`, `frequencia_percentual`, `observacao` e `convalidacao_*` (5 col). Ainda **não rodada** pelo Hélio; será versionada via PR na implementação do R1. |
 
 > As migrações 001–046 (numeração antiga) e as paradas em `migrations-manuais/` (038, 039, 046)
 > seguem o histórico do `CLAUDE.md` do projeto e o backlog do Plano Mestre §9 — não duplicar aqui
