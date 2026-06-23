@@ -28,6 +28,7 @@ import {
   type TipoPrerequisito,
 } from '@/services/cursos.service';
 import MateriaisDisciplinaModal from '@/components/dashboard/MateriaisDisciplinaModal';
+import ManualAlunoCard from '@/components/dashboard/ManualAlunoCard';
 import type { DashboardContext } from '../Dashboard';
 
 // ─── Constantes de apresentação (vocabulário v2) ──────────────
@@ -464,6 +465,9 @@ export default function CursosAdmin() {
           <Plus className="h-4 w-4 mr-2" /> Nova Disciplina
         </Button>
       </div>
+
+      {/* Manual do Aluno (handbook institucional) */}
+      <ManualAlunoCard />
 
       {/* Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
