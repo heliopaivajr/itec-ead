@@ -25,6 +25,7 @@
 | `supabase/migrations/20260619_047_r0_reconciliacao_prerequisitos.sql` | ✅ **APLICADA** | 2026-06-19/20 | 24/24/24 (códigos v2 alinhados; 24 pré-req re-apontados para `disciplinas_v2`). **NÃO reexecutar.** |
 | `supabase/migrations/20260620_048_r0_5_consolida_curriculo_v2.sql` | ✅ **APLICADA** | 2026-06-20 | `prerequisitos_v2` repopulada: **13 `prerequisito` + 11 `recomendado`**; coluna `disciplinas_v2.ativo` criada; CHECK ampliado com `recomendado`. **NÃO reexecutar.** |
 | `supabase/migrations/20260622_049_materiais_disciplina.sql` | ✅ **APLICADA** | 2026-06-22 | R0.5.4: tabela `materiais_disciplina` + RLS, função `aluno_ve_disciplina()`, bucket privado `materiais-disciplina` + policies. Versionada no `main` (PR #16 merged). **NÃO reexecutar.** |
+| `supabase/migrations/20260622_050_manual_aluno.sql` | 🟡 **CRIADA (aguardando run)** | — | Manual do Aluno (handbook): coluna `cursos.manual_aluno_url` + bucket privado `manuais-aluno` (read: authenticated; write: admin/superadmin). Ainda **não rodada** pelo Hélio; será versionada via PR na implementação. |
 
 > As migrações 001–046 (numeração antiga) e as paradas em `migrations-manuais/` (038, 039, 046)
 > seguem o histórico do `CLAUDE.md` do projeto e o backlog do Plano Mestre §9 — não duplicar aqui
