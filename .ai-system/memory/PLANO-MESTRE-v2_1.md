@@ -229,8 +229,8 @@ Objetivo: aluno vindo de outra instituição **não paga** a cadeira e **transfe
 |--------|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:------:|
 | Bloco 0 | — | ✅ | — | — | — | — | — | ✅ | **✅ FECHADO** |
 | R0 | ✅ | ✅ | ✅ | — | ✅ | — | ✅ | ✅ | **✅ FECHADO** (PR #13 merged; migração 047 **APLICADA** e validada 24/24/24) |
-| R0.5 | ✅ | ✅ | ✅ | ✅ | ✅ | ⬜ | ✅ | ⬜ | 🔵 em andamento — R0.5.1 ✅ migração 048 **APLICADA** · R0.5.2 ✅ adapter CursosAdmin v2 (PR #14) · R0.5.3 ✅ **CRUD do Coordenador** (PR #15) · **Materiais da Disciplina** ✅ (migração 049 APLICADA; serviço + UI gestão/consumo, PR #16 merged) · 🔵 próximo: **Manual do Aluno** (handbook institucional — `cursos.manual_aluno_url` + bucket `manuais-aluno`) |
-| R1 | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ |
+| R0.5 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | **✅ CONCLUÍDO** — R0.5.1 ✅ migração 048 · R0.5.2 ✅ adapter CursosAdmin v2 (PR #14) · R0.5.3 ✅ CRUD do Coordenador (PR #15) · Materiais da Disciplina ✅ (migração 049, PR #16) · Manual do Aluno ✅ (migração 050, PR #17). Próximo da trilha: **R1** |
+| R1 | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | 🔵 próximo (Schema retroativo + status: nº matrícula, status_financeiro/acesso/documentacao, CHECK funil; faltas/frequencia_percentual/convalidacao_* em matriculas_disciplina) |
 | R2 | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ |
 | R3 | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ |
 | R4 | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ |
