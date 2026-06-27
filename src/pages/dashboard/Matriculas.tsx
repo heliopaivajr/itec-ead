@@ -3,20 +3,9 @@ import { Check, X, Eye, Loader2, User, Book, ChevronLeft, ChevronRight } from 'l
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { StatusBadge } from '@/components/dashboard/StatusBadge';
-import { getMatriculas, updateStatusMatricula } from '@/services/matriculas.service';
+import { getMatriculas, updateStatusMatricula, type Matricula } from '@/services/matriculas.service';
 import { updateRole } from '@/services/usuarios.service';
 import { useToast } from '@/hooks/use-toast';
-
-interface Matricula {
-  id: string;
-  aluno_id: string;
-  curso_id: string;
-  status: string;
-  observacao?: string;
-  created_at: string;
-  profile?: { full_name: string; email?: string };
-  curso_label?: string;
-}
 
 const COURSE_LABELS: Record<string, string> = {
   'teologia-livre': 'Teologia Livre',
@@ -182,7 +171,7 @@ export default function Matriculas() {
                     <td className="px-4 py-3 text-xs text-muted-foreground">{new Date(m.created_at).toLocaleDateString('pt-BR')}</td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-1.5">
-                        <button onClick={() => { setDetalhes(m); setObsText(m.observacao ?? ''); }}
+                        <button onClick={() => { setDetalhes(m); setObsText(m.observacoes ?? ''); }}
                           className="h-7 w-7 rounded-lg border border-border flex items-center justify-center hover:border-primary/40 hover:text-primary transition-all">
                           <Eye className="h-3.5 w-3.5" />
                         </button>
