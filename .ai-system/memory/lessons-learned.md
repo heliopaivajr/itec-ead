@@ -847,6 +847,19 @@ Adicionar ao SKILL.md do Agente 14 etapa obrigatória ANTES de classificar qualq
 
 ---
 
+## ERR-LOGIC-003 — Interface lia `observacao` mas a coluna é `observacoes` (leitura sempre `undefined`)
+
+**Data:** 2026-06-27
+**Contexto:** R1.2 — alinhamento da interface `Matricula` (`matriculas.service.ts`) ao schema real.
+**Problema:** A interface TS expunha `observacao` (singular) e `Matriculas.tsx` lia `m.observacao`, mas a **coluna real é `observacoes`** (plural) — é o que os writes (`createMatricula`, `updateStatusMatricula`) sempre gravaram. Como `select('*')` retorna a coluna real (`observacoes`), `m.observacao` era **sempre `undefined`**: ao abrir os "detalhes" de uma matrícula, o textarea de observação **nunca pré-preenchia** o valor salvo. Bug silencioso (sem erro, sem tipo — `status`/campos eram `string`/`any`).
+**Decisão tomada:** Canônico = **`observacoes`** (lado de escrita é a fonte da verdade — writes não falhavam). Interface renomeada `observacao→observacoes`; `Matriculas.tsx` corrigido para `m.observacoes`; interface local duplicada removida (importa do serviço); `status` tipado como union `StatusMatricula` (12 valores do funil) — o que teria evitado a classe do bug.
+**Justificativa:** Tipos fracos (`string`/interface defasada) escondem divergência nome-de-coluna. Tipar e ter **uma** fonte do tipo (sem duplicata) faz o compilador apontar o mismatch.
+**Agentes impactados:** 02-domain-designer, 12-code-reviewer, 05-backend-engineer
+**Como aplicar no futuro:** Interface de tabela = espelho fiel das colunas reais; nunca duplicar o tipo numa página; preferir union a `string` para campos com CHECK. Ao ver write num nome e read em outro, confirmar a coluna real (lado de escrita prevalece). Relacionado a [[migracoes-aplicadas]] e à regra do 12-code-reviewer (ERR-LOGIC-003: opção/campo que não bate com o banco).
+**Status:** corrigido (R1.2, PR #18)
+
+---
+
 ## NOTA — Estado real do banco não é verificável por MCP
 
 **Data:** 2026-06-20
