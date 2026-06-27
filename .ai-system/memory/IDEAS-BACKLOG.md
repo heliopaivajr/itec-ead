@@ -447,6 +447,29 @@ Razões:
 
 ---
 
+## LANÇAMENTO RETROATIVO (R2)
+
+### 🔴 BLOQUEADOR — migração 053: `recuperacao` no CHECK de `matriculas_disciplina.status`
+**Descrição**: O R2.2 passou a gravar `status='recuperacao'` (nota 5–6.9 e freq≥75) no lançamento retroativo, mas o **CHECK do banco** (migração 010) **não inclui `recuperacao`** (`cursando·aprovado·reprovado·reprovado_falta·convalidado·trancado`). Enquanto a migração 053 (`ALTER … ADD` ao CHECK) não rodar, lançar uma cadeira em recuperação **falha em runtime (23514)**. O código TS já está pronto.
+**Ação**: criar migração 053 adicionando `recuperacao` ao CHECK (e avaliar incluir nos demais lugares que exibem status).
+**Prioridade**: Alta (bloqueia o caminho de recuperação do R2.2)
+**Versão alvo**: V1 — antes de usar lançamento em produção
+**Status**: Pendente (migração a criar)
+
+### G4 — Histórico Acadêmico deve preferir a frequência consolidada (R2.3)
+**Descrição**: `getHistoricoAluno` (FichaAluno) calcula frequência da tabela `frequencia` (por aula). O lançamento retroativo grava `matriculas_disciplina.frequencia_percentual` (consolidado 2025). O Histórico deve **preferir** a coluna consolidada quando existir, senão os valores lançados não aparecem ali (só na seção "Lançamento Retroativo").
+**Prioridade**: Média
+**Versão alvo**: R2.3
+**Status**: Planejado
+
+### Múltiplas matrículas por aluno no lançamento
+**Descrição**: A tool de Lançamento Retroativo usa hoje a **matrícula ativa** (ou a primeira com turma). Quando houver 2º curso (ex.: Pós-graduação), o aluno terá mais de uma matrícula — revisitar a seleção (dropdown de matrícula) para lançar na correta.
+**Prioridade**: Baixa
+**Versão alvo**: quando existir 2º curso
+**Status**: Planejado
+
+---
+
 ## COMO USAR ESTE BACKLOG
 
 1. **Novas ideias**: Adicionar no final da categoria correspondente
