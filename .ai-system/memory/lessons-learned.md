@@ -860,6 +860,18 @@ Adicionar ao SKILL.md do Agente 14 etapa obrigatória ANTES de classificar qualq
 
 ---
 
+## ADR informal R2 (G2) — Convalidação canônica = tabela `convalidacoes` (colunas `convalidacao_*` da 051 removidas)
+
+**Data:** 2026-06-27
+**Contexto:** R2.0 — diagnóstico do Lançamento Retroativo encontrou **dois modelos de convalidação**: (a) tabela dedicada `convalidacoes` (com `documentos_url[]`, `instituicao_origem`, fluxo `pendente→aprovado/rejeitado`, encaminhamento a coordenador — usada em `matricula-academica.service`, `Convalidacoes.tsx`, `PainelAdmin`), e (b) as 5 colunas `matriculas_disciplina.convalidacao_*` criadas na 051 (Plano §4.3), que **nunca foram referenciadas** em código.
+**Decisão tomada:** **Canônico = tabela `convalidacoes`** (mais rica: array de documentos + fluxo de aprovação + encaminhamento). As colunas `convalidacao_*` da 051 são **redundantes** e foram **removidas** pela migração `052_r2_professor_id_drop_convalidacao.sql`. Decidido também (G1): `matriculas_disciplina.professor_id` (FK→`professores`) para registrar "quem deu a cadeira" no lançamento retroativo.
+**Justificativa:** Dois modelos para o mesmo conceito violam linguagem ubíqua (02) e geram ambiguidade de fonte da verdade. A tabela já tem UI e fluxo; as colunas estavam órfãs. Drop é seguro (F1: `matriculas_disciplina` = 0 linhas; colunas sem referência).
+**Agentes impactados:** 02-domain-designer, 04-db-architect, 05-backend-engineer
+**Como aplicar no futuro:** Antes de criar colunas "reuso de tabela" (Plano §4.3), checar se já existe tabela/serviço dedicado ao conceito — evitar modelo duplicado. Ao remover colunas de migração anterior, confirmar 0 referências em código + estado dos dados (14-auditor).
+**Status:** decidido (migração 052 CRIADA; R2.2 = código/serviço).
+
+---
+
 ## NOTA — Estado real do banco não é verificável por MCP
 
 **Data:** 2026-06-20
