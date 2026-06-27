@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { supabase } from '@/lib/supabase';
 import {
   statusFromNota,
+  anoDaMatricula,
   lancarDisciplinaRetroativa,
   editarLancamento,
   removerLancamento,
@@ -11,12 +12,25 @@ import {
 beforeEach(() => { vi.clearAllMocks(); });
 
 describe('statusFromNota (mapper puro)', () => {
-  it('mapeia os 5 status acadêmicos para os de matriculas_disciplina', () => {
+  it('mapeia os status acadêmicos para os de matriculas_disciplina', () => {
     expect(statusFromNota('aprovado')).toBe('aprovado');
     expect(statusFromNota('reprovado_falta')).toBe('reprovado_falta');
-    expect(statusFromNota('recuperacao')).toBe('reprovado');
+    expect(statusFromNota('recuperacao')).toBe('recuperacao');   // estado válido próprio
     expect(statusFromNota('reprovado_nota')).toBe('reprovado');
     expect(statusFromNota('cursando')).toBe('cursando');
+  });
+});
+
+describe('anoDaMatricula (pura)', () => {
+  it('extrai o ano de 4 dígitos de semestre_ingresso', () => {
+    expect(anoDaMatricula({ semestre_ingresso: '2024.2' })).toBe(2024);
+    expect(anoDaMatricula({ semestre_ingresso: '2026/1' })).toBe(2026);
+  });
+  it('usa o ano de data_inicio quando não há semestre', () => {
+    expect(anoDaMatricula({ data_inicio: '2025-03-10' })).toBe(2025);
+  });
+  it('fallback 2025 quando ausente', () => {
+    expect(anoDaMatricula({})).toBe(2025);
   });
 });
 
@@ -44,10 +58,10 @@ describe('lancarDisciplinaRetroativa', () => {
     expect(payload().status).toBe('reprovado_falta');
   });
 
-  it('deriva status=reprovado quando média 5–6.9 (recuperação colapsa)', async () => {
+  it('deriva status=recuperacao quando média 5–6.9 e freq>=75', async () => {
     mockUpsert({ error: null });
     await lancarDisciplinaRetroativa({ matriculaId: 'm1', disciplinaId: 'd1', nota: 6, frequencia: 90 });
-    expect(payload().status).toBe('reprovado');
+    expect(payload().status).toBe('recuperacao');
   });
 
   it('respeita statusOverride (ex.: convalidado)', async () => {
@@ -79,7 +93,7 @@ describe('editarLancamento', () => {
     expect(r.error).toBeNull();
     const update = vi.mocked(supabase.from).mock.results[1].value.update.mock.calls[0][0];
     expect(update.nota).toBe(6);
-    expect(update.status).toBe('reprovado'); // 6 + freq 90 → recuperacao → reprovado
+    expect(update.status).toBe('recuperacao'); // 6 + freq 90 → recuperacao
   });
 
   it('usa statusOverride sem recalcular', async () => {
@@ -137,5 +151,20 @@ describe('gerarNumeroMatricula (idempotente)', () => {
     expect(r.error).toBeNull();
     expect(r.numero).toBe('ITEC25T002');
     expect((supabase as any).rpc).toHaveBeenCalledWith('gerar_numero_matricula', { p_ano: 2025 });
+  });
+
+  it('deriva o ano da matrícula (semestre_ingresso) quando não há override', async () => {
+    vi.mocked(supabase.from).mockReset();
+    const updateEq = vi.fn().mockResolvedValue({ error: null });
+    vi.mocked(supabase.from)
+      .mockReturnValueOnce({
+        select: () => ({ eq: () => ({ single: () => Promise.resolve({ data: { numero_matricula: null, semestre_ingresso: '2024.2', data_inicio: null }, error: null }) }) }),
+      } as any)
+      .mockReturnValueOnce({ update: vi.fn().mockReturnValue({ eq: updateEq }) } as any);
+    (supabase as any).rpc = vi.fn().mockResolvedValue({ data: 'ITEC24T001', error: null });
+
+    const r = await gerarNumeroMatricula('m1'); // sem override → deriva 2024
+    expect(r.numero).toBe('ITEC24T001');
+    expect((supabase as any).rpc).toHaveBeenCalledWith('gerar_numero_matricula', { p_ano: 2024 });
   });
 });

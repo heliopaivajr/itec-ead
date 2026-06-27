@@ -25,18 +25,21 @@ import { calcularStatus } from '@/services/notas.service';
 import { getProfessores, type Professor } from '@/services/professor.service';
 
 const STATUS_LABEL: Record<StatusDisciplina, string> = {
-  cursando: 'Cursando', aprovado: 'Aprovado', reprovado: 'Reprovado',
+  cursando: 'Cursando', aprovado: 'Aprovado', recuperacao: 'Em recuperação', reprovado: 'Reprovado',
   reprovado_falta: 'Rep. Falta', convalidado: 'Convalidado', trancado: 'Removido',
 };
 const STATUS_COLOR: Record<StatusDisciplina, string> = {
   cursando:        'bg-muted text-muted-foreground border-border',
   aprovado:        'bg-green-500/15 text-green-400 border-green-500/30',
+  recuperacao:     'bg-yellow-500/15 text-yellow-500 border-yellow-500/30',
   reprovado:       'bg-red-500/15 text-red-400 border-red-500/30',
   reprovado_falta: 'bg-red-500/15 text-red-400 border-red-500/30',
   convalidado:     'bg-blue-500/15 text-blue-400 border-blue-500/30',
   trancado:        'bg-slate-500/15 text-slate-400 border-slate-500/30',
 };
-const STATUS_OPTIONS: StatusDisciplina[] = ['cursando', 'aprovado', 'reprovado', 'reprovado_falta', 'convalidado'];
+// Override manual NÃO inclui 'convalidado' (G2: convalidação vive na tela Convalidacoes)
+// nem 'trancado' (use Remover). O badge 'Convalidado' ainda é EXIBIDO quando vier do banco.
+const STATUS_OPTIONS: StatusDisciplina[] = ['cursando', 'aprovado', 'recuperacao', 'reprovado', 'reprovado_falta'];
 
 function StatusBadge({ status }: { status: StatusDisciplina }) {
   return (
@@ -103,7 +106,7 @@ export default function LancamentoRetroativo({ matricula, requesterId }: Props) 
   const gerarNumero = async () => {
     if (!matricula) return;
     setGerandoNumero(true);
-    const { numero: n, error } = await gerarNumeroMatricula(matricula.id, 2025);
+    const { numero: n, error } = await gerarNumeroMatricula(matricula.id);
     setGerandoNumero(false);
     if (error) { window.alert('Erro ao gerar número: ' + error); return; }
     setNumero(n);

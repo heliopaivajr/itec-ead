@@ -2,7 +2,9 @@ import { supabase } from '@/lib/supabase';
 import { calcularStatus, type StatusNota } from './notas.service';
 
 export type StatusDisciplina =
-  | 'cursando' | 'aprovado' | 'reprovado' | 'reprovado_falta' | 'convalidado' | 'trancado';
+  | 'cursando' | 'aprovado' | 'recuperacao' | 'reprovado' | 'reprovado_falta' | 'convalidado' | 'trancado';
+// ⚠️ 'recuperacao' ainda NÃO está no CHECK do banco (migração 010). Gravar esse status
+//    exige a migração 053 (ADD 'recuperacao' ao CHECK) — senão o UPSERT falha (23514).
 
 export interface MatriculaDisciplina {
   id: string;
@@ -20,14 +22,13 @@ export interface MatriculaDisciplina {
 }
 
 // Mapeia o status acadêmico (notas.service) → status de matriculas_disciplina.
-// Para lançamento retroativo a nota é a FINAL consolidada: média < 7 (com freq ok)
-// = não aprovado → 'reprovado' (recuperacao/reprovado_nota colapsam em reprovado).
-// Casos de borda (ex.: aprovado na recuperação) tratam-se pelo override manual.
+// 'recuperacao' (nota 5–6.9 e freq>=75) é ESTADO VÁLIDO próprio (editável: ao subir a
+// nota >=7 recalcula p/ aprovado). 'reprovado_nota' (nota<5) → 'reprovado'.
 export function statusFromNota(s: StatusNota): StatusDisciplina {
   switch (s) {
     case 'aprovado':        return 'aprovado';
     case 'reprovado_falta': return 'reprovado_falta';
-    case 'recuperacao':
+    case 'recuperacao':     return 'recuperacao';
     case 'reprovado_nota':  return 'reprovado';
     case 'cursando':
     default:                return 'cursando';
@@ -237,21 +238,37 @@ export async function removerLancamento(id: string, motivo = 'Removido pela secr
   return { error: null };
 }
 
+// Deriva o ano de ingresso da matrícula: semestre_ingresso (1º ano de 4 dígitos) →
+// data_inicio (ano) → fallback 2025 (lançamento retroativo).
+export function anoDaMatricula(
+  row: { semestre_ingresso?: string | null; data_inicio?: string | null }
+): number {
+  const m = row.semestre_ingresso?.match(/(\d{4})/);
+  if (m) return Number(m[1]);
+  if (row.data_inicio) {
+    const y = new Date(row.data_inicio).getFullYear();
+    if (!Number.isNaN(y)) return y;
+  }
+  return 2025;
+}
+
 // Gera e grava o número da matrícula (ITEC{AA}T{NNN}) via função SQL gerar_numero_matricula.
-// Idempotente: não sobrescreve se a matrícula já tiver número.
+// Ano derivado da própria matrícula (anoOverride tem prioridade). Idempotente.
 export async function gerarNumeroMatricula(
   matriculaId: string,
-  ano = 2025
+  anoOverride?: number
 ): Promise<{ numero: string | null; error: string | null }> {
   // 1. Já tem número? (idempotência)
   const { data: mat, error: readErr } = await supabase
     .from('matriculas')
-    .select('numero_matricula')
+    .select('numero_matricula, semestre_ingresso, data_inicio')
     .eq('id', matriculaId)
     .single();
   if (readErr) return { numero: null, error: readErr.message };
-  const existente = (mat as { numero_matricula: string | null } | null)?.numero_matricula ?? null;
-  if (existente) return { numero: existente, error: null };
+  const row = mat as { numero_matricula: string | null; semestre_ingresso?: string | null; data_inicio?: string | null } | null;
+  if (row?.numero_matricula) return { numero: row.numero_matricula, error: null };
+
+  const ano = anoOverride ?? anoDaMatricula(row ?? {});
 
   // 2. Gera via RPC (função à prova de corrida)
   const { data: numero, error: rpcErr } = await supabase.rpc('gerar_numero_matricula', { p_ano: ano });
