@@ -1,12 +1,30 @@
 import { supabase } from '@/lib/supabase';
 
+// Funil de status de matrícula (gênero feminino — CHECK do banco, migração 051).
+export type StatusMatricula =
+  | 'pendente' | 'ativa' | 'inativa' | 'trancada' | 'evadida' | 'concluida' | 'suspensa'
+  | 'pre_matricula' | 'aguardando_documentos' | 'aguardando_pagamento' | 'aguardando_aprovacao' | 'cancelada';
+
 export interface Matricula {
   id: string;
   aluno_id: string;
   curso_id: string;
-  status: string;
-  observacao?: string;
+  status: StatusMatricula;
+  observacoes?: string | null;        // coluna real (plural) — antes 'observacao' (defasado)
   created_at: string;
+  // Campos opcionais existentes na tabela (vêm via select('*'))
+  numero_matricula?: string | null;   // populado no R2
+  turma_id?: string | null;
+  data_inicio?: string | null;
+  semestre_ingresso?: string | null;
+  obs_retroativa?: string | null;
+  validado_por?: string | null;
+  validado_em?: string | null;
+  modulo_atual?: string | null;
+  tipo_financiamento?: string | null;
+  percentual_desconto?: number | null;
+  observacao_financeira?: string | null;
+  // Derivados (não são colunas)
   profile?: { full_name: string; email?: string };
   curso_label?: string;
 }
