@@ -24,6 +24,7 @@ import {
 } from '@/components/ui/dialog';
 import { PDFDownloadLink } from '@react-pdf/renderer';
 import { DeclaracaoMatriculaPDF } from '@/components/dashboard/DeclaracaoMatriculaPDF';
+import LancamentoRetroativo from '@/components/dashboard/LancamentoRetroativo';
 import { useToast } from '@/hooks/use-toast';
 import type { DashboardContext } from '../Dashboard';
 
@@ -151,6 +152,7 @@ export default function FichaAluno() {
   const podeVerObs      = ['superadmin', 'admin', 'administracao'].includes(adminProfile.role);
   const podeVerDocs     = ['superadmin', 'admin', 'administracao'].includes(adminProfile.role);
   const podeVerHistorico = ['superadmin', 'admin', 'administracao', 'professor'].includes(adminProfile.role);
+  const podeLancar       = ['superadmin', 'admin', 'administracao'].includes(adminProfile.role);
 
   if (loading) {
     return (
@@ -380,6 +382,20 @@ export default function FichaAluno() {
               </div>
             </div>
           )}
+        </Section>
+      )}
+
+      {/* Lançamento Retroativo (R2) */}
+      {podeLancar && (
+        <Section title="Lançamento Retroativo" icon={<BookOpen className="h-4 w-4" />}>
+          <LancamentoRetroativo
+            matricula={
+              (matriculas.find(m => m.status === 'ativa' && m.turma_id)
+                ?? matriculas.find(m => m.turma_id)
+                ?? matriculas[0]) ?? null
+            }
+            requesterId={adminProfile.id}
+          />
         </Section>
       )}
 
