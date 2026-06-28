@@ -32,6 +32,7 @@ export interface MatriculaFicha {
   status: string;
   created_at: string;
   turma_id?: string | null;
+  numero_matricula?: string | null;
   data_inicio?: string | null;
   turma?: {
     id: string;
@@ -77,7 +78,7 @@ export async function getFichaAluno(alunoId: string): Promise<FichaAlunoData> {
 
     supabase
       .from('matriculas')
-      .select('id, status, created_at, turma_id, data_inicio, turma:turmas(id, codigo, nome, data_inicio, cursos(nome))')
+      .select('id, status, created_at, turma_id, numero_matricula, data_inicio, turma:turmas(id, codigo, nome, data_inicio, cursos(nome))')
       .eq('aluno_id', alunoId)
       .order('created_at', { ascending: false })
       .limit(10),
