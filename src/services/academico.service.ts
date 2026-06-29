@@ -2,6 +2,7 @@ import { supabase } from '@/lib/supabase';
 import { getNotasBatchByAluno } from './notas.service';
 import { getResumoFrequenciaBatch } from './frequencia.service';
 import { calcularStatus } from './notas.service';
+import type { StatusDisciplina } from './matricula-academica.service';
 
 // ─── Tipos do Histórico Acadêmico ─────────────────────────────────────────────
 
@@ -10,6 +11,7 @@ export type StatusHistorico =
   | 'recuperacao'
   | 'reprovado_nota'
   | 'reprovado_falta'
+  | 'convalidado'
   | 'em_andamento'
   | 'pendente';
 
@@ -30,6 +32,10 @@ export interface DisciplinaHistorico {
     percentual: number;
   };
   status: StatusHistorico;
+  // Status bruto de matriculas_disciplina (lançamento consolidado R2). Opcional.
+  status_disciplina?: StatusDisciplina | null;
+  // true quando os valores vieram do lançamento consolidado (matriculas_disciplina)
+  consolidado?: boolean;
 }
 
 export interface ModuloHistorico {
@@ -46,6 +52,8 @@ export interface HistoricoAluno {
   media_geral: number | null;
   total_carga_horaria: number;
   total_creditos: number;
+  // Créditos concluídos (status aprovado_direto ou convalidado). Opcional.
+  creditos_aprovados?: number;
   disciplinas_aprovadas: number;
   disciplinas_reprovadas: number;
   disciplinas_em_andamento: number;
@@ -336,6 +344,34 @@ function mapStatusHistorico(
   return nota; // 'recuperacao' | 'reprovado_nota' | 'reprovado_falta'
 }
 
+// matriculas_disciplina.status (consolidado) → StatusHistorico (vocabulário do histórico)
+function mapDiscStatusToHist(s: StatusDisciplina): StatusHistorico {
+  switch (s) {
+    case 'aprovado':        return 'aprovado_direto';
+    case 'recuperacao':     return 'recuperacao';
+    case 'reprovado':       return 'reprovado_nota';
+    case 'reprovado_falta': return 'reprovado_falta';
+    case 'convalidado':     return 'convalidado';
+    case 'trancado':
+    case 'cursando':
+    default:                return 'em_andamento';
+  }
+}
+
+// StatusHistorico → matriculas_disciplina.status (para o badge no fallback de parciais)
+function mapHistStatusToDisc(s: StatusHistorico): StatusDisciplina {
+  switch (s) {
+    case 'aprovado_direto': return 'aprovado';
+    case 'recuperacao':     return 'recuperacao';
+    case 'reprovado_nota':  return 'reprovado';
+    case 'reprovado_falta': return 'reprovado_falta';
+    case 'convalidado':     return 'convalidado';
+    case 'em_andamento':
+    case 'pendente':
+    default:                return 'cursando';
+  }
+}
+
 // Retorna o histórico completo do aluno em uma turma, agrupado por módulo.
 // Usa 3 queries (matriculas → disciplinas batch → notas+frequência batch).
 export async function getHistoricoAluno(
@@ -363,9 +399,14 @@ export async function getHistoricoAluno(
   if (!matriculaData) return vazio;
   const matriculaId = (matriculaData as { id: string }).id;
 
-  // 2. Busca disciplinas matriculadas com dados de módulo (1 query)
+  // 2. Busca disciplinas matriculadas com dados de módulo + valores consolidados (1 query).
+  //    nota/status/frequencia_percentual são colunas da PRÓPRIA matriculas_disciplina
+  //    (mesma linha já lida) — não é join, então sem questão de LICAO-026.
   type DiscRow = {
     disciplina_id: string;
+    nota: number | null;
+    status: StatusDisciplina;
+    frequencia_percentual: number | null;
     disciplinas_v2: {
       id: string;
       nome: string;
@@ -379,7 +420,7 @@ export async function getHistoricoAluno(
   const { data: discData } = await supabase
     .from('matriculas_disciplina')
     .select(`
-      disciplina_id,
+      disciplina_id, nota, status, frequencia_percentual,
       disciplinas_v2(
         id, nome, carga_horaria_presencial, creditos, modulo_id,
         modulos(id, nome, ordem)
@@ -411,8 +452,27 @@ export async function getHistoricoAluno(
     const notas = notasMap.get(row.disciplina_id) ?? { n1: null, n2: null, recuperacao: null, media: null };
     const freq = freqMap.get(row.disciplina_id);
 
-    const percentual = freq?.percentual_presenca ?? 100;
-    const status = mapStatusHistorico(notas.n1, notas.n2, notas.media, percentual);
+    // G4: PREFERIR os valores consolidados de matriculas_disciplina quando existirem.
+    // `!= null` cobre null E undefined (coluna ausente).
+    const temConsolidado = row.nota != null || row.frequencia_percentual != null
+      || (!!row.status && row.status !== 'cursando');
+
+    let media_final: number | null;
+    let percentual: number;
+    let status: StatusHistorico;
+    let statusDisc: StatusDisciplina;
+
+    if (temConsolidado) {
+      media_final = row.nota;
+      percentual  = row.frequencia_percentual ?? freq?.percentual_presenca ?? 100;
+      statusDisc  = row.status;
+      status      = mapDiscStatusToHist(row.status);
+    } else {
+      media_final = notas.media;
+      percentual  = freq?.percentual_presenca ?? 100;
+      status      = mapStatusHistorico(notas.n1, notas.n2, notas.media, percentual);
+      statusDisc  = mapHistStatusToDisc(status);
+    }
 
     const disc: DisciplinaHistorico = {
       id: d.id,
@@ -423,7 +483,7 @@ export async function getHistoricoAluno(
         n1: notas.n1,
         n2: notas.n2,
         recuperacao: notas.recuperacao,
-        media_final: notas.media,
+        media_final,
       },
       frequencia: {
         total_aulas: freq?.total_aulas ?? 0,
@@ -431,6 +491,8 @@ export async function getHistoricoAluno(
         percentual,
       },
       status,
+      status_disciplina: statusDisc,
+      consolidado: !!temConsolidado,
     };
 
     const entry = modulosMap.get(mod.id) ?? { meta: mod, disciplinas: [] };
@@ -446,6 +508,9 @@ export async function getHistoricoAluno(
   let emAndamento = 0;
   let totalCH = 0;
   let totalCreditos = 0;
+  let creditosAprovados = 0;
+  // "Concluída" = aprovada por nota OU convalidada (aproveitada).
+  const concluida = (s: StatusHistorico) => s === 'aprovado_direto' || s === 'convalidado';
 
   const modulos: ModuloHistorico[] = [...modulosMap.values()]
     .sort((a, b) => a.meta.ordem - b.meta.ordem)
@@ -456,14 +521,14 @@ export async function getHistoricoAluno(
         : null;
 
       const status_modulo: ModuloHistorico['status_modulo'] =
-        disciplinas.every(d => d.status === 'aprovado_direto') ? 'aprovado'
+        disciplinas.every(d => concluida(d.status)) ? 'aprovado'
         : disciplinas.every(d => d.status === 'pendente') ? 'pendente'
         : 'em_andamento';
 
       for (const d of disciplinas) {
         totalCH += d.carga_horaria;
         totalCreditos += d.creditos;
-        if (d.status === 'aprovado_direto') aprovadas++;
+        if (concluida(d.status)) { aprovadas++; creditosAprovados += d.creditos; }
         else if (d.status === 'reprovado_nota' || d.status === 'reprovado_falta') reprovadas++;
         else emAndamento++;
         if (d.notas.media_final !== null) {
@@ -484,6 +549,7 @@ export async function getHistoricoAluno(
     media_geral,
     total_carga_horaria: totalCH,
     total_creditos: totalCreditos,
+    creditos_aprovados: creditosAprovados,
     disciplinas_aprovadas: aprovadas,
     disciplinas_reprovadas: reprovadas,
     disciplinas_em_andamento: emAndamento,

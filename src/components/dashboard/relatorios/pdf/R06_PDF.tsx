@@ -11,6 +11,7 @@ const STATUS_LABEL: Record<StatusHistorico, string> = {
   recuperacao: 'Recuperação',
   reprovado_nota: 'Rep. Nota',
   reprovado_falta: 'Rep. Falta',
+  convalidado: 'Convalidado',
   em_andamento: 'Cursando',
   pendente: 'Pendente',
 };

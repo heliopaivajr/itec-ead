@@ -315,6 +315,7 @@ function AlunoView({ name }: { name: string }) {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {[
           { icon: Book,          label: 'Meus Cursos',  desc: 'Acompanhe seu progresso acadêmico.',        href: '/dashboard/cursos' },
+          { icon: GraduationCap, label: 'Meu Histórico',desc: 'Notas, situação e progresso por módulo.',   href: '/dashboard/meu-historico' },
           { icon: CalendarDays,  label: 'Eventos',      desc: 'Calendário acadêmico e próximas aulas.',    href: '/dashboard/eventos' },
           { icon: FileText,      label: 'Documentos',   desc: 'Certificados e histórico acadêmico.',       href: '/dashboard/documentos' },
           { icon: ClipboardCheck,label: 'Frequência',   desc: 'Seu histórico de presença por disciplina.', href: '/dashboard/cursos' },

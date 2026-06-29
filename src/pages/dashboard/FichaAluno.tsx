@@ -574,6 +574,7 @@ const STATUS_HIST_CFG: Record<StatusHistorico, { label: string; cls: string }> =
   recuperacao:      { label: 'Recuperação',     cls: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30' },
   reprovado_nota:   { label: 'Repr. nota',      cls: 'bg-red-500/20 text-red-400 border-red-500/30' },
   reprovado_falta:  { label: 'Repr. falta',     cls: 'bg-red-500/20 text-red-400 border-red-500/30' },
+  convalidado:      { label: 'Convalidado',     cls: 'bg-blue-500/20 text-blue-400 border-blue-500/30' },
   em_andamento:     { label: 'Em andamento',    cls: 'bg-blue-500/20 text-blue-400 border-blue-500/30' },
   pendente:         { label: 'Pendente',         cls: 'bg-muted text-muted-foreground border-border' },
 };

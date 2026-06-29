@@ -35,6 +35,7 @@ const Perfil        = lazy(() => import("./pages/dashboard/Perfil"));
 const Leads         = lazy(() => import("./pages/dashboard/Leads"));
 const Usuarios      = lazy(() => import("./pages/dashboard/Usuarios"));
 const MeusCursos    = lazy(() => import("./pages/dashboard/MeusCursos"));
+const MeuHistorico  = lazy(() => import("./pages/dashboard/MeuHistorico"));
 const Matriculas    = lazy(() => import("./pages/dashboard/Matriculas"));
 const CursosAdmin        = lazy(() => import("./pages/dashboard/CursosAdmin"));
 const Avisos             = lazy(() => import("./pages/dashboard/Avisos"));
@@ -114,6 +115,7 @@ const App = () => (
 
               {/* Aluno */}
               <Route path="cursos"            element={<MeusCursos />} />
+              <Route path="meu-historico"     element={<RoleGuard allowedRoles={['aluno','superadmin']}><MeuHistorico /></RoleGuard>} />
               <Route path="minhas-notas"      element={<ComingSoonPage titulo="Minhas Notas"      descricao="Acompanhe suas notas por disciplina e avaliação em tempo real."        previsao="Agosto 2026" icone={Star} />} />
               <Route path="minha-frequencia"  element={<ComingSoonPage titulo="Minha Frequência"  descricao="Veja seu histórico de presença e o percentual por disciplina."         previsao="Agosto 2026" icone={CalendarCheck} />} />
               <Route path="meus-certificados" element={<ComingSoonPage titulo="Meus Certificados" descricao="Baixe e compartilhe seus certificados de conclusão de curso."          previsao="Agosto 2026" icone={Award} />} />

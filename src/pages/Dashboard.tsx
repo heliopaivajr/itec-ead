@@ -52,6 +52,7 @@ const menuByRole: Record<string, { icon: React.ElementType; label: string; href:
   aluno: [
     { icon: LayoutDashboard, label: 'Dashboard',        href: '/dashboard',                    tooltip: 'Visão geral',                            end: true },
     { icon: Book,            label: 'Meus Cursos',      href: '/dashboard/cursos',             tooltip: 'Cursos matriculados' },
+    { icon: GraduationCap,   label: 'Meu Histórico',    href: '/dashboard/meu-historico',      tooltip: 'Histórico acadêmico, progresso e impressão' },
     { icon: Star,            label: 'Minhas Notas',     href: '/dashboard/minhas-notas',       tooltip: 'Notas — disponível em Agosto 2026' },
     { icon: CalendarCheck,   label: 'Minha Frequência', href: '/dashboard/minha-frequencia',   tooltip: 'Frequência — disponível em Agosto 2026' },
     { icon: CalendarDays,    label: 'Calendário',       href: '/dashboard/calendario',         tooltip: 'Calendário acadêmico de aulas e eventos' },
