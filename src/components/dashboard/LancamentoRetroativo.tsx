@@ -23,31 +23,11 @@ import {
 } from '@/services/matricula-academica.service';
 import { calcularStatus } from '@/services/notas.service';
 import { getProfessores, type Professor } from '@/services/professor.service';
+import StatusDisciplinaBadge, { STATUS_DISCIPLINA_LABEL } from '@/components/dashboard/StatusDisciplinaBadge';
 
-const STATUS_LABEL: Record<StatusDisciplina, string> = {
-  cursando: 'Cursando', aprovado: 'Aprovado', recuperacao: 'Em recuperação', reprovado: 'Reprovado',
-  reprovado_falta: 'Rep. Falta', convalidado: 'Convalidado', trancado: 'Removido',
-};
-const STATUS_COLOR: Record<StatusDisciplina, string> = {
-  cursando:        'bg-muted text-muted-foreground border-border',
-  aprovado:        'bg-green-500/15 text-green-400 border-green-500/30',
-  recuperacao:     'bg-yellow-500/15 text-yellow-500 border-yellow-500/30',
-  reprovado:       'bg-red-500/15 text-red-400 border-red-500/30',
-  reprovado_falta: 'bg-red-500/15 text-red-400 border-red-500/30',
-  convalidado:     'bg-blue-500/15 text-blue-400 border-blue-500/30',
-  trancado:        'bg-slate-500/15 text-slate-400 border-slate-500/30',
-};
 // Override manual NÃO inclui 'convalidado' (G2: convalidação vive na tela Convalidacoes)
 // nem 'trancado' (use Remover). O badge 'Convalidado' ainda é EXIBIDO quando vier do banco.
 const STATUS_OPTIONS: StatusDisciplina[] = ['cursando', 'aprovado', 'recuperacao', 'reprovado', 'reprovado_falta'];
-
-function StatusBadge({ status }: { status: StatusDisciplina }) {
-  return (
-    <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded border ${STATUS_COLOR[status]}`}>
-      {STATUS_LABEL[status]}
-    </span>
-  );
-}
 
 interface ModuloComDisc extends Modulo { disciplinas: Disciplina[] }
 
@@ -227,7 +207,7 @@ export default function LancamentoRetroativo({ matricula, requesterId }: Props) 
                             <div className="flex items-center gap-2 shrink-0">
                               {l.nota !== null && l.nota !== undefined && <span className="text-xs text-muted-foreground">{Number(l.nota).toFixed(1)}</span>}
                               {l.frequencia_percentual !== null && l.frequencia_percentual !== undefined && <span className="text-[10px] text-muted-foreground">{l.frequencia_percentual}%</span>}
-                              <StatusBadge status={l.status} />
+                              <StatusDisciplinaBadge status={l.status} />
                               <button onClick={() => abrirEdicao(d, l)} title="Editar" className="opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded hover:bg-primary/10 text-muted-foreground hover:text-primary">
                                 <Edit2 className="h-3.5 w-3.5" />
                               </button>
@@ -308,7 +288,7 @@ export default function LancamentoRetroativo({ matricula, requesterId }: Props) 
               <div className="flex items-center gap-3 bg-background/40 border border-border rounded-lg p-3">
                 <div className="flex items-center gap-2">
                   <span className="text-xs text-muted-foreground">Status calculado:</span>
-                  <StatusBadge status={previewStatus} />
+                  <StatusDisciplinaBadge status={previewStatus} />
                 </div>
                 <div className="ml-auto flex items-center gap-2">
                   <Label className="text-xs text-muted-foreground">Override</Label>
@@ -316,7 +296,7 @@ export default function LancamentoRetroativo({ matricula, requesterId }: Props) 
                     <SelectTrigger className="bg-background border-border text-foreground text-xs h-8 w-40"><SelectValue /></SelectTrigger>
                     <SelectContent className="bg-card border-border">
                       <SelectItem value="auto">Automático</SelectItem>
-                      {STATUS_OPTIONS.map(s => <SelectItem key={s} value={s}>{STATUS_LABEL[s]}</SelectItem>)}
+                      {STATUS_OPTIONS.map(s => <SelectItem key={s} value={s}>{STATUS_DISCIPLINA_LABEL[s]}</SelectItem>)}
                     </SelectContent>
                   </Select>
                 </div>

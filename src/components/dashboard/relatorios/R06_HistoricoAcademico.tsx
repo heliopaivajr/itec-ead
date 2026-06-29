@@ -23,6 +23,7 @@ const STATUS_CONFIG: Record<StatusHistorico, { label: string; color: string }> =
   recuperacao: { label: 'Recuperação', color: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30' },
   reprovado_nota: { label: 'Rep. Nota', color: 'bg-red-500/20 text-red-400 border-red-500/30' },
   reprovado_falta: { label: 'Rep. Falta', color: 'bg-red-500/20 text-red-400 border-red-500/30' },
+  convalidado: { label: 'Convalidado', color: 'bg-blue-500/20 text-blue-400 border-blue-500/30' },
   em_andamento: { label: 'Cursando', color: 'bg-blue-500/20 text-blue-400 border-blue-500/30' },
   pendente: { label: 'Pendente', color: 'bg-gray-500/20 text-gray-400 border-gray-500/30' },
 };
