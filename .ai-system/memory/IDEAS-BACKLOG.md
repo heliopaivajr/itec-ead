@@ -456,10 +456,14 @@ Razões:
 **Versão alvo**: V1 — antes de usar lançamento em produção
 **Status**: Pendente (migração a criar)
 
-### G4 — Histórico Acadêmico deve preferir a frequência consolidada (R2.3)
-**Descrição**: `getHistoricoAluno` (FichaAluno) calcula frequência da tabela `frequencia` (por aula). O lançamento retroativo grava `matriculas_disciplina.frequencia_percentual` (consolidado 2025). O Histórico deve **preferir** a coluna consolidada quando existir, senão os valores lançados não aparecem ali (só na seção "Lançamento Retroativo").
+### G4 — Histórico Acadêmico deve preferir a frequência consolidada ✅ FEITO (R2.3, PR #20)
+**Descrição**: `getHistoricoAluno` agora PREFERE os valores consolidados de `matriculas_disciplina` (nota/status/frequencia_percentual) quando existem; fallback p/ parciais. Vale para FichaAluno (staff) e a nova tela "Meu Histórico" (aluno).
+**Status**: ✅ Concluído.
+
+### MeusCursos (módulo atual) deve preferir matriculas_disciplina consolidado
+**Descrição**: A tela `MeusCursos` (módulo corrente do aluno) ainda mostra freq/notas das **parciais** (`getResumoFrequenciaBatch` + `getNotasBatchByAluno`), não do consolidado. **Avaliar se `MeusCursos` deve preferir `matriculas_disciplina` consolidado quando as turmas 2026 começarem a lançar** — para o aluno ver o mesmo dado em "Meus Cursos" e "Meu Histórico". (Hoje só "Meu Histórico" usa o consolidado; G4.)
 **Prioridade**: Média
-**Versão alvo**: R2.3
+**Versão alvo**: quando turmas 2026 iniciarem lançamentos
 **Status**: Planejado
 
 ### Múltiplas matrículas por aluno no lançamento

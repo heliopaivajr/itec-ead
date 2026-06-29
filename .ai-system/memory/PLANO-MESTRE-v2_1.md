@@ -231,8 +231,8 @@ Objetivo: aluno vindo de outra instituição **não paga** a cadeira e **transfe
 | R0 | ✅ | ✅ | ✅ | — | ✅ | — | ✅ | ✅ | **✅ FECHADO** (PR #13 merged; migração 047 **APLICADA** e validada 24/24/24) |
 | R0.5 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | **✅ CONCLUÍDO** — R0.5.1 ✅ migração 048 · R0.5.2 ✅ adapter CursosAdmin v2 (PR #14) · R0.5.3 ✅ CRUD do Coordenador (PR #15) · Materiais da Disciplina ✅ (migração 049, PR #16) · Manual do Aluno ✅ (migração 050, PR #17). Próximo da trilha: **R1** |
 | R1 | ✅ | ✅ | ✅ | ✅ | ✅ | — | ✅ | ✅ | **✅ CONCLUÍDO** — schema retroativo (migração 051 APLICADA: numero_matricula + funil aditivo + gerar_numero_matricula + faltas/frequencia_percentual/observacao/convalidacao_*) + R1.2 tipos (interface `Matricula` alinhada, `StatusMatricula` union, observacao→observacoes, PR #18). Próximo: **R2** |
-| R2 | ✅ | ✅ | ✅ | ✅ | ✅ | — | ✅ | ⬜ | 🔵 em andamento — **R2.2 ✅ Lançamento Retroativo** (FichaAluno: aluno×cadeira nota/faltas/freq/professor/observação, status via `calcularStatus`, nº via `gerar_numero_matricula`; migrações 052/053 APLICADAS; PR #19 merged). Próximo: **R2.3** (Visão do Aluno + G4 histórico freq consolidada) |
-| R3 | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ |
+| R2 | ✅ | ✅ | ✅ | ✅ | ✅ | — | ✅ | ✅ | **✅ CONCLUÍDO** — R2.2 ✅ Lançamento Retroativo (migrações 052/053, PR #19) + R2.3 ✅ Visão do Aluno (G4: histórico consolidado de `matriculas_disciplina`; tela "Meu Histórico" + PDF + progresso; PR #20 merged). Próximo: **R3** |
+| R3 | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | 🔵 próximo (Ficha 360 + Dashboards + RLS: visões aluno/professor/secretaria; policies de `notas_aluno` + Storage; dashboards apresentáveis navy/dourado) |
 | R4 | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ |
 
 ---
