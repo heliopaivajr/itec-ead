@@ -472,6 +472,12 @@ Razões:
 **Versão alvo**: quando existir 2º curso
 **Status**: Planejado
 
+### Refinamento de segurança (11): `notas_aluno` por contrato do professor
+**Descrição**: As policies de `notas_aluno` (023/031) hoje permitem que **qualquer professor veja e lance nota de qualquer cadeira** (SELECT libera staff inteiro; INSERT/UPDATE exige só `lancado_por = self`, sem amarrar à disciplina lecionada). Restringir professor às **suas cadeiras** via `contratos_professor` (`status IN ('assinado','impresso')`) quando **F2 (contratos populados)** for resolvido. **Mesmo tema da migração 037 §2 adiada** (restrição professor em frequencia/materiais/matriculas_disciplina/etc.). Diagnosticado no R3.0; RLS de `notas_aluno` em si já está completa e funcionando (ver known-errors F3 ✅).
+**Prioridade**: Média (segurança — pós-agosto, depende de contratos)
+**Versão alvo**: quando F2 (contratos cadastrados) for resolvido
+**Status**: Planejado
+
 ---
 
 ## COMO USAR ESTE BACKLOG

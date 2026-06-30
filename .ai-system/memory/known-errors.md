@@ -858,7 +858,14 @@ NUNCA inferir nomes de policies — sempre verificar no banco via `pg_policies`.
 **Descrição:** `notas_aluno` tem RLS ativo mas **sem policies** → deny-all (ninguém lê/escreve via API). `avaliacoes` só tem policy de SELECT.
 **Impacto:** Lançamento e leitura de notas pela UI não funcionam até criar policies (aluno vê as próprias; professor as da sua disciplina; staff tudo).
 **Correção planejada:** Sprint **R3** — criar policies de `notas_aluno` (aluno/professor/staff) seguindo LICAO-026 (query separada + merge, nunca join aninhado).
-**Status:** aberto — endereçado em R3
+
+**✅ RESOLVIDO (R3.0 — 2026-06-30):** A premissa estava **errada**. `notas_aluno` **NÃO** era deny-all — as policies já existiam desde a **migração 023** (2026-05-29) e foram reescritas na **031** (2026-06-03, via `user_roles` p/ evitar recursão, ADR-006). RLS confirmada ligada por query (`rls_ligada=true`). Policies vigentes:
+- **SELECT:** `aluno_id = auth.uid()` OU staff (`admin/superadmin/administracao/professor`).
+- **INSERT/UPDATE:** `auth.uid() = lancado_por` OU `admin/superadmin` → professor lança/edita as **próprias**.
+- **DELETE:** só `superadmin`.
+
+`LancarNotas.tsx`/`ConsolidadoNotas.tsx` **funcionam** hoje (não falham silenciosamente). Refinamento de granularidade (professor só das suas cadeiras via `contratos_professor`) registrado no IDEAS-BACKLOG — mesmo tema da migração 037 §2 adiada (depende de F2: contratos populados).
+**Status:** ✅ resolvido (era falso-positivo do diagnóstico do Bloco 0). `avaliacoes` (só SELECT) segue como item à parte.
 
 ---
 
