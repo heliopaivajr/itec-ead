@@ -3,7 +3,7 @@ import { useOutletContext } from 'react-router-dom';
 import { Link } from 'react-router-dom';
 import {
   GraduationCap, BookOpen, Book, UserCheck,
-  CalendarDays, ClipboardCheck, FileText, Bell, Users, ClipboardList, AlertTriangle,
+  CalendarDays, ClipboardCheck, FileText, Bell, Users, ClipboardList, AlertTriangle, Award,
 } from 'lucide-react';
 import {
   PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis,
@@ -15,6 +15,7 @@ import { StatusBadge } from '@/components/dashboard/StatusBadge';
 import { getKpis, getLeadsRecentes, getMatriculasRecentes, getLeadsPorCurso } from '@/services/dashboard.service';
 import { getTurmasAtivas } from '@/services/turmas.service';
 import { getAlunosEmRiscoByTurma, type AlunoEmRiscoTurma } from '@/services/frequencia.service';
+import { useAlunoDashboard } from '@/hooks/useAlunoDashboard';
 import type { DashboardContext } from '../Dashboard';
 
 // ─── Admin ───────────────────────────────────────────────────
@@ -299,19 +300,64 @@ function ProfessorView({ name }: { name: string }) {
 
 // ─── Aluno ───────────────────────────────────────────────────
 
-function AlunoView({ name }: { name: string }) {
+function AlunoView({ profile }: { profile: DashboardContext['profile'] }) {
+  const name = profile.full_name;
+  const d = useAlunoDashboard(profile.id);
+
   return (
     <div className="p-6 space-y-6">
       <div>
         <h1 className="text-2xl font-merriweather font-bold text-primary">Olá, {name} 👋</h1>
-        <p className="text-muted-foreground mt-1">Área do Aluno — Instituto Teológico de Educação Cristã</p>
+        <p className="text-muted-foreground mt-1">
+          Área do Aluno — Instituto Teológico de Educação Cristã
+          {d.numeroMatricula && <> · matrícula <span className="font-mono text-foreground">{d.numeroMatricula}</span></>}
+        </p>
       </div>
+
+      {/* KPIs do aluno — dados reais (mesmas fontes do Meu Histórico) */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <KpiCard titulo="Cursos Ativos" valor="—" icone={Book} />
-        <KpiCard titulo="Frequência"    valor="—" icone={ClipboardCheck} corFundo="bg-green-500/10" />
-        <KpiCard titulo="Média Geral"   valor="—" icone={GraduationCap}  corFundo="bg-blue-500/10" />
-        <KpiCard titulo="Avisos"        valor="—" icone={Bell}           corFundo="bg-yellow-500/10" />
+        {d.loading ? (
+          <><KpiSkeleton /><KpiSkeleton /><KpiSkeleton /><KpiSkeleton /></>
+        ) : (
+          <>
+            <KpiCard titulo="Cursos Ativos" valor={d.temMatricula ? d.cursosAtivos : '—'} icone={Book} href="/dashboard/cursos" />
+            <KpiCard titulo="Frequência"    valor={d.freqMedia != null ? `${d.freqMedia}%` : '—'} icone={ClipboardCheck} corFundo="bg-green-500/10" href="/dashboard/meu-historico" />
+            <KpiCard titulo="Média Geral"   valor={d.mediaGeral != null ? d.mediaGeral.toFixed(1) : '—'} icone={GraduationCap} corFundo="bg-blue-500/10" href="/dashboard/meu-historico" />
+            <KpiCard titulo="Avisos"        valor="—" icone={Bell} corFundo="bg-yellow-500/10" href="/dashboard/avisos" />
+          </>
+        )}
       </div>
+
+      {/* Progresso no curso — créditos aprovados ÷ total (mesma fonte do Meu Histórico) */}
+      {!d.loading && (
+        <div className="bg-card border border-border rounded-xl p-5 space-y-3">
+          <div className="flex items-center gap-2 flex-wrap">
+            <Award className="h-4 w-4 text-primary" />
+            <span className="text-sm font-semibold text-foreground">Progresso no curso</span>
+            {d.cursoNome && <span className="text-xs text-muted-foreground">· {d.cursoNome}</span>}
+            {d.moduloAtual && <span className="text-xs text-muted-foreground">· módulo atual: <span className="text-foreground">{d.moduloAtual}</span></span>}
+            {d.temDados && <span className="ml-auto text-sm font-bold text-primary">{d.pctProgresso}%</span>}
+          </div>
+          {d.temDados ? (
+            <>
+              <div className="w-full bg-muted/50 rounded-full h-2 overflow-hidden">
+                <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${d.pctProgresso}%` }} />
+              </div>
+              <div className="flex flex-wrap gap-x-6 gap-y-1 text-xs text-muted-foreground">
+                <span><strong className="text-foreground">{d.creditosAprov}</strong> de {d.creditosTotal} créditos concluídos</span>
+                <span><strong className="text-foreground">{Math.max(d.creditosTotal - d.creditosAprov, 0)}</strong> restantes</span>
+                {d.mediaGeral != null && <span>Média geral: <strong className="text-foreground">{d.mediaGeral.toFixed(1)}</strong></span>}
+                <Link to="/dashboard/meu-historico" className="text-primary hover:underline ml-auto">Ver histórico completo →</Link>
+              </div>
+            </>
+          ) : (
+            <p className="text-xs text-muted-foreground">
+              Seu progresso aparecerá conforme as disciplinas forem lançadas pela secretaria.
+            </p>
+          )}
+        </div>
+      )}
+
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {[
           { icon: Book,          label: 'Meus Cursos',  desc: 'Acompanhe seu progresso acadêmico.',        href: '/dashboard/cursos' },
@@ -348,5 +394,5 @@ export default function DashboardHome() {
 
   if (role === 'superadmin' || role === 'admin' || role === 'administracao') return <AdminView name={full_name} />;
   if (role === 'professor') return <ProfessorView name={full_name} />;
-  return <AlunoView name={full_name} />;
+  return <AlunoView profile={profile} />;
 }
