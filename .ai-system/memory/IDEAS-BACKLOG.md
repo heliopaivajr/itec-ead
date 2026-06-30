@@ -478,6 +478,12 @@ Razões:
 **Versão alvo**: quando F2 (contratos cadastrados) for resolvido
 **Status**: Planejado
 
+### Evoluir `KpiCard` para navegação SPA (`<Link>` em vez de `<a href>`)
+**Descrição**: O `KpiCard` (`src/components/dashboard/KpiCard.tsx`) usa `<a href>` quando recebe `href` → **recarrega a página inteira** em vez de navegação React Router. Afeta os KPIs do AdminView e os novos KPIs do AlunoView (R3.1). Trocar por `<Link to>` para navegação SPA sem reload. Identificado no R3.1.
+**Prioridade**: Baixa (UX — não bloqueante)
+**Versão alvo**: R3.x ou refino de UI
+**Status**: Planejado
+
 ---
 
 ## COMO USAR ESTE BACKLOG
