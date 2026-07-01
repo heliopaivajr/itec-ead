@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import {
   GraduationCap, BookOpen, Book, UserCheck,
   CalendarDays, ClipboardCheck, FileText, Bell, Users, ClipboardList, AlertTriangle, Award,
+  Wallet, Unlink, CheckCircle2,
 } from 'lucide-react';
 import {
   PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis,
@@ -16,6 +17,8 @@ import { getKpis, getLeadsRecentes, getMatriculasRecentes, getLeadsPorCurso } fr
 import { getTurmasAtivas } from '@/services/turmas.service';
 import { getAlunosEmRiscoByTurma, type AlunoEmRiscoTurma } from '@/services/frequencia.service';
 import { useAlunoDashboard } from '@/hooks/useAlunoDashboard';
+import { usePendenciasSecretaria } from '@/hooks/usePendenciasSecretaria';
+import type { PendenciaBloco, PendenciaItem } from '@/services/dashboard.service';
 import type { DashboardContext } from '../Dashboard';
 
 // ─── Admin ───────────────────────────────────────────────────
@@ -37,6 +40,91 @@ function KpiSkeleton() {
     <div className="bg-card border border-border rounded-xl p-5 space-y-2">
       <Skeleton className="h-3 w-20" />
       <Skeleton className="h-8 w-14" />
+    </div>
+  );
+}
+
+// ─── Painel de Pendências (Secretaria/Admin) ─────────────────
+// Só CONTA e LINKA — as ações (aprovar/validar/lançar) vivem nas telas de destino.
+
+interface PendenciaCfg {
+  key: string;
+  titulo: string;
+  icone: React.ElementType;
+  cor: string;        // classe de texto/contagem
+  bg: string;         // fundo do ícone
+  bloco: PendenciaBloco;
+  hrefFor: (it: PendenciaItem) => string;
+  ctaHref: string;
+  ctaLabel: string;
+}
+
+function PendenciaCard({ cfg }: { cfg: PendenciaCfg }) {
+  const { bloco } = cfg;
+  const primeiros = bloco.itens.slice(0, 4);
+  const restantes = bloco.count - primeiros.length;
+
+  return (
+    <div className="bg-card border border-border rounded-xl p-5 flex flex-col">
+      <div className="flex items-center gap-3">
+        <div className={`h-10 w-10 rounded-lg ${cfg.bg} flex items-center justify-center shrink-0`}>
+          <cfg.icone className={`h-5 w-5 ${cfg.cor}`} />
+        </div>
+        <div className="min-w-0">
+          <p className={`text-2xl font-bold ${cfg.cor}`}>{bloco.count}</p>
+          <p className="text-sm text-muted-foreground -mt-0.5">{cfg.titulo}</p>
+        </div>
+      </div>
+
+      {bloco.count === 0 ? (
+        <div className="mt-4 flex items-center gap-2 text-sm text-green-500">
+          <CheckCircle2 className="h-4 w-4" /> Nenhuma pendência aqui
+        </div>
+      ) : (
+        <div className="mt-4 space-y-1.5 flex-1">
+          {primeiros.map((it, i) => (
+            <Link key={`${it.aluno_id}-${i}`} to={cfg.hrefFor(it)}
+              className="flex items-center justify-between gap-2 text-sm hover:text-primary transition-colors group">
+              <span className="truncate text-foreground group-hover:text-primary">{it.nome}</span>
+              {it.detalhe && <span className="text-xs text-muted-foreground shrink-0">{it.detalhe}</span>}
+            </Link>
+          ))}
+          <Link to={cfg.ctaHref} className="inline-block pt-1 text-xs text-primary hover:underline">
+            {restantes > 0 ? `+${restantes} — ${cfg.ctaLabel}` : cfg.ctaLabel} →
+          </Link>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function PendenciasSection() {
+  const { loading, erro, dados } = usePendenciasSecretaria();
+
+  return (
+    <div>
+      <h2 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
+        <AlertTriangle className="h-4 w-4 text-primary" /> Pendências da Secretaria
+      </h2>
+
+      {loading ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          {[1, 2, 3, 4].map(i => <KpiSkeleton key={i} />)}
+        </div>
+      ) : erro || !dados ? (
+        <div className="bg-card border border-border rounded-xl p-5 text-sm text-muted-foreground">
+          Não foi possível carregar as pendências agora. Tente recarregar a página.
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          {([
+            { key: 'mat',  titulo: 'Matrículas a aprovar', icone: UserCheck,     cor: 'text-red-400',    bg: 'bg-red-500/10',    bloco: dados.matriculasPendentes, hrefFor: () => '/dashboard/matriculas',          ctaHref: '/dashboard/matriculas', ctaLabel: 'ver matrículas' },
+            { key: 'doc',  titulo: 'Documentos a validar', icone: FileText,      cor: 'text-amber-400',  bg: 'bg-amber-500/10',  bloco: dados.documentosPendentes, hrefFor: (it) => `/dashboard/aluno/${it.aluno_id}`, ctaHref: '/dashboard/alunos', ctaLabel: 'ver alunos' },
+            { key: 'taxa', titulo: 'Taxas de matrícula',   icone: Wallet,        cor: 'text-orange-400', bg: 'bg-orange-500/10', bloco: dados.taxasPendentes,      hrefFor: (it) => `/dashboard/aluno/${it.aluno_id}`, ctaHref: '/dashboard/alunos', ctaLabel: 'ver alunos' },
+            { key: 'vinc', titulo: 'Alunos sem vínculo',   icone: Unlink,        cor: 'text-yellow-400', bg: 'bg-yellow-500/10', bloco: dados.alunosSemVinculo,    hrefFor: (it) => `/dashboard/aluno/${it.aluno_id}`, ctaHref: '/dashboard/alunos', ctaLabel: 'ver alunos' },
+          ] as PendenciaCfg[]).map(cfg => <PendenciaCard key={cfg.key} cfg={cfg} />)}
+        </div>
+      )}
     </div>
   );
 }
@@ -106,6 +194,9 @@ function AdminView({ name }: { name: string }) {
           </>
         )}
       </div>
+
+      {/* Pendências da Secretaria */}
+      <PendenciasSection />
 
       {/* Gráficos */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
