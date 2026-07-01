@@ -125,6 +125,108 @@ export async function getMatriculasRecentes(limit = 5): Promise<MatriculaRecente
   return matriculas;
 }
 
+// ─── Painel de Pendências da Secretaria (R3.2) ───────────────────────────────
+// Compõe 4 filas acionáveis com queries SEPARADAS em paralelo + merge de nomes
+// em memória (LICAO-026 — nunca join aninhado entre tabelas sob RLS).
+// O painel apenas CONTA e LINKA; as ações (aprovar/validar) vivem nas telas de
+// destino. Falha parcial em qualquer tabela degrada para bloco vazio (não quebra).
+
+export interface PendenciaItem {
+  aluno_id: string;
+  nome: string;
+  detalhe?: string; // status da matrícula | tipo do doc | motivo do sem-vínculo
+}
+export interface PendenciaBloco {
+  count: number;
+  itens: PendenciaItem[];
+}
+export interface PendenciasSecretaria {
+  matriculasPendentes: PendenciaBloco;
+  documentosPendentes: PendenciaBloco;
+  taxasPendentes: PendenciaBloco;
+  alunosSemVinculo: PendenciaBloco;
+}
+
+// Status do funil que exigem ação da secretaria (CHECK migração 051).
+const FUNIL_PENDENTE = [
+  'pendente', 'pre_matricula', 'aguardando_documentos',
+  'aguardando_pagamento', 'aguardando_aprovacao',
+];
+
+export async function getPendenciasSecretaria(): Promise<PendenciasSecretaria> {
+  const [matsPend, docsPend, taxasPend, matsAtivas, lancamentos] = await Promise.all([
+    supabase.from('matriculas').select('id, aluno_id, status').in('status', FUNIL_PENDENTE).limit(200),
+    supabase.from('documentos_aluno').select('aluno_id, tipo').eq('status', 'pendente').limit(200),
+    supabase.from('taxa_matricula').select('aluno_id').eq('status', 'pendente').limit(200),
+    supabase.from('matriculas').select('id, aluno_id, turma_id').eq('status', 'ativa').limit(500),
+    supabase.from('matriculas_disciplina').select('matricula_id').limit(2000),
+  ]);
+
+  // Log de degradação — bloco vira vazio se a tabela/consulta falhar (RLS, etc.)
+  [
+    ['matriculas(pendentes)', matsPend.error],
+    ['documentos_aluno', docsPend.error],
+    ['taxa_matricula', taxasPend.error],
+    ['matriculas(ativas)', matsAtivas.error],
+    ['matriculas_disciplina', lancamentos.error],
+  ].forEach(([nome, err]) => { if (err) console.error(`getPendenciasSecretaria: ${nome}:`, err); });
+
+  const matsPendRows  = (matsPend.data  ?? []) as { id: string; aluno_id: string; status: string }[];
+  const docsRows      = (docsPend.data  ?? []) as { aluno_id: string; tipo: string }[];
+  const taxasRows     = (taxasPend.data ?? []) as { aluno_id: string }[];
+  const ativasRows    = (matsAtivas.data ?? []) as { id: string; aluno_id: string; turma_id: string | null }[];
+  const comLancamento = new Set(((lancamentos.data ?? []) as { matricula_id: string }[]).map(r => r.matricula_id));
+
+  // F1 — matrícula ativa sem turma OU sem nenhuma disciplina lançada
+  const semVinculoRows = ativasRows
+    .map(m => {
+      const motivo: 'sem_turma' | 'sem_lancamento' | null =
+        !m.turma_id ? 'sem_turma' : (!comLancamento.has(m.id) ? 'sem_lancamento' : null);
+      return motivo ? { aluno_id: m.aluno_id, motivo } : null;
+    })
+    .filter((x): x is { aluno_id: string; motivo: 'sem_turma' | 'sem_lancamento' } => x !== null);
+
+  // Merge de nomes — 1 query de profiles para todos os aluno_ids (LICAO-026)
+  const ids = [...new Set([
+    ...matsPendRows.map(r => r.aluno_id),
+    ...docsRows.map(r => r.aluno_id),
+    ...taxasRows.map(r => r.aluno_id),
+    ...semVinculoRows.map(r => r.aluno_id),
+  ].filter(Boolean))];
+
+  const nomes = new Map<string, string>();
+  if (ids.length > 0) {
+    const { data: profs, error: profErr } = await supabase
+      .from('profiles').select('id, full_name').in('id', ids);
+    if (profErr) console.error('getPendenciasSecretaria: profiles:', profErr);
+    (profs ?? []).forEach(p => nomes.set(p.id, (p as { id: string; full_name: string }).full_name));
+  }
+  const nome = (id: string) => nomes.get(id) ?? 'Aluno';
+
+  const MOTIVO_LABEL: Record<string, string> = {
+    sem_turma: 'Sem turma', sem_lancamento: 'Sem lançamento',
+  };
+
+  return {
+    matriculasPendentes: {
+      count: matsPendRows.length,
+      itens: matsPendRows.map(r => ({ aluno_id: r.aluno_id, nome: nome(r.aluno_id), detalhe: r.status })),
+    },
+    documentosPendentes: {
+      count: docsRows.length,
+      itens: docsRows.map(r => ({ aluno_id: r.aluno_id, nome: nome(r.aluno_id), detalhe: r.tipo })),
+    },
+    taxasPendentes: {
+      count: taxasRows.length,
+      itens: taxasRows.map(r => ({ aluno_id: r.aluno_id, nome: nome(r.aluno_id) })),
+    },
+    alunosSemVinculo: {
+      count: semVinculoRows.length,
+      itens: semVinculoRows.map(r => ({ aluno_id: r.aluno_id, nome: nome(r.aluno_id), detalhe: MOTIVO_LABEL[r.motivo] })),
+    },
+  };
+}
+
 // Leads agrupados por curso — agregação em JS (intencional, não migrar para SQL ainda)
 export async function getLeadsPorCurso(): Promise<LeadPorCurso[]> {
   const { data } = await supabase.from('leads_cursos').select('curso_interesse').limit(500);
