@@ -484,6 +484,18 @@ Razões:
 **Versão alvo**: R3.x ou refino de UI
 **Status**: Planejado
 
+### Paginar detector F1 do Painel de Pendências (R3.2)
+**Descrição**: `getPendenciasSecretaria` monta o set de matrículas com lançamento via fetch global de `matriculas_disciplina` (`limit 2000`). No volume atual (~31 matrículas) é ok; se crescer muito, paginar/otimizar (ex.: agregação por `matricula_id` no banco, ou consultar só as matrículas ativas em questão). Identificado no R3.2 Leva 1.
+**Prioridade**: Baixa (só relevante em escala)
+**Versão alvo**: quando volume de lançamentos crescer
+**Status**: Planejado
+
+### Deep-link com hash para a aba Financeiro da FichaAluno (R3.2)
+**Descrição**: Os cards de **Taxas** e **Documentos** do Painel de Pendências linkam para a FichaAluno (`/dashboard/aluno/:id`), mas caem no topo da ficha. Adicionar âncora/hash (ex.: `#financeiro`, `#documentos`) + scroll para a seção correspondente ao abrir. Identificado no R3.2 Leva 1.
+**Prioridade**: Baixa (UX — navegação mais direta)
+**Versão alvo**: R3.x ou refino de UI
+**Status**: Planejado
+
 ---
 
 ## COMO USAR ESTE BACKLOG
