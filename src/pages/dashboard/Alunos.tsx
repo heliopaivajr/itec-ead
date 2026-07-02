@@ -13,7 +13,7 @@ import { Textarea } from '@/components/ui/textarea';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from '@/components/ui/dialog';
-import { updateStatusMatricula } from '@/services/matriculas.service';
+import { mudarStatusMatricula } from '@/services/matriculas.service';
 import { InlineStatusSelect } from '@/components/dashboard/InlineStatusSelect';
 import type { StatusOption } from '@/components/dashboard/InlineStatusSelect';
 import { statusMatriculaOptions } from '@/constants/statusMatricula';
@@ -393,7 +393,11 @@ export default function Alunos() {
                               );
                               if (!ok) throw new Error('cancelado');
                             }
-                            const { error } = await updateStatusMatricula(aluno.matricula_id, novoStatus);
+                            // mudarStatusMatricula aplica o MESMO efeito de acesso da tela Matrículas
+                            // (ativa libera; sair de ativa para status revogador remove acesso).
+                            const { error } = await mudarStatusMatricula(
+                              aluno.matricula_id, novoStatus, undefined, profile.id,
+                            );
                             if (error) throw new Error(error);
                           }}
                         />
