@@ -1,11 +1,14 @@
 import React, { useEffect, useState, useCallback } from 'react';
+import { useOutletContext } from 'react-router-dom';
 import { Check, X, Eye, Loader2, User, Book, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { StatusBadge } from '@/components/dashboard/StatusBadge';
-import { getMatriculas, updateStatusMatricula, type Matricula } from '@/services/matriculas.service';
-import { updateRole } from '@/services/usuarios.service';
+import { InlineStatusSelect } from '@/components/dashboard/InlineStatusSelect';
+import { aprovarMatricula, getMatriculas, mudarStatusMatricula, type Matricula } from '@/services/matriculas.service';
+import { statusMatriculaOptions } from '@/constants/statusMatricula';
 import { useToast } from '@/hooks/use-toast';
+import type { DashboardContext } from '../Dashboard';
 
 const COURSE_LABELS: Record<string, string> = {
   'teologia-livre': 'Teologia Livre',
@@ -14,17 +17,28 @@ const COURSE_LABELS: Record<string, string> = {
   'dfc8eda9-ce75-4869-945a-39c80e4c649b': 'GRAD-TEO — Graduação em Teologia',
 };
 
-const TABS = [
-  { key: 'pendente',  label: 'Pendentes' },
-  { key: 'ativa',     label: 'Ativas' },
-  { key: 'trancada',  label: 'Trancadas' },
-  { key: 'concluida', label: 'Concluídas' },
+// Abas do funil. `statuses` é o(s) valor(es) filtrados no servidor.
+const TABS: { key: string; label: string; statuses: string[] }[] = [
+  { key: 'pendente',              label: 'Pendentes',          statuses: ['pendente'] },
+  { key: 'aguardando_documentos', label: 'Ag. documentos',     statuses: ['aguardando_documentos'] },
+  { key: 'aguardando_pagamento',  label: 'Ag. pagamento',      statuses: ['aguardando_pagamento'] },
+  { key: 'aguardando_aprovacao',  label: 'Ag. aprovação',      statuses: ['aguardando_aprovacao'] },
+  { key: 'pre_matricula',         label: 'Pré-matrícula',      statuses: ['pre_matricula'] },
+  { key: 'ativa',                 label: 'Ativas',             statuses: ['ativa'] },
+  { key: 'trancada',              label: 'Trancadas',          statuses: ['trancada'] },
+  { key: 'concluida',             label: 'Concluídas',         statuses: ['concluida'] },
+  { key: 'cancelada',             label: 'Canceladas',         statuses: ['cancelada'] },
+  { key: 'outros',                label: 'Outros',             statuses: ['inativa', 'evadida', 'suspensa'] },
 ];
+
+// Status que a secretaria pode aprovar diretamente (botão Aprovar).
+const APROVAVEIS = ['pendente', 'aguardando_aprovacao'];
 
 const LIMIT = 20;
 
 export default function Matriculas() {
   const { toast } = useToast();
+  const { profile } = useOutletContext<DashboardContext>();
   const [matriculas, setMatriculas] = useState<Matricula[]>([]);
   const [total, setTotal]           = useState(0);
   const [loading, setLoading]       = useState(true);
@@ -37,9 +51,11 @@ export default function Matriculas() {
 
   const totalPages = Math.max(1, Math.ceil(total / LIMIT));
 
-  const load = useCallback(async (tab: string, p: number) => {
+  const load = useCallback(async (tabKey: string, p: number) => {
     setLoading(true);
-    const result = await getMatriculas(tab, LIMIT, p);
+    const statuses = TABS.find(t => t.key === tabKey)?.statuses ?? [tabKey];
+    const filtro = statuses.length === 1 ? statuses[0] : statuses;
+    const result = await getMatriculas(filtro, LIMIT, p);
     setMatriculas(result.data);
     setTotal(result.total);
     setLoading(false);
@@ -56,26 +72,39 @@ export default function Matriculas() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page]);
 
-  const updateStatus = async (id: string, novoStatus: string, alunoId?: string) => {
+  // Aprovação — caminho ÚNICO (aprovarMatricula): grava validado_* + libera acesso.
+  const aprovar = async (id: string) => {
     setProcessing(id);
-    const { error } = await updateStatusMatricula(id, novoStatus, obsText);
-
+    const { error } = await aprovarMatricula(id, profile.id);
     if (error) {
-      toast({ title: 'Erro', description: error, variant: 'destructive' });
+      toast({ title: 'Erro ao aprovar', description: error, variant: 'destructive' });
     } else {
-      if (novoStatus === 'ativa' && alunoId) {
-        const { error: roleError } = await updateRole(alunoId, 'aluno');
-        if (roleError) {
-          toast({ title: 'Matrícula aprovada, mas erro ao liberar acesso', description: roleError, variant: 'destructive' });
-        } else {
-          toast({ title: 'Matrícula aprovada — acesso liberado!', description: 'O aluno já pode acessar o dashboard.' });
-        }
-      } else {
-        toast({ title: 'Matrícula recusada', description: 'Status atualizado com sucesso.' });
-      }
+      toast({ title: 'Matrícula aprovada — acesso liberado!', description: 'O aluno já pode acessar o dashboard.' });
       setDetalhes(null);
       setObsText('');
       load(activeTab, page);
+    }
+    setProcessing(null);
+  };
+
+  // Transição livre de status — mudarStatusMatricula aplica/revoga acesso conforme o status.
+  // `obs` é explícito para não vazar o texto do modal em edições inline de outra linha.
+  const mudarStatus = async (id: string, novoStatus: string, obs?: string) => {
+    const { error } = await mudarStatusMatricula(id, novoStatus, obs, profile.id);
+    if (error) throw new Error(error);
+    load(activeTab, page);
+  };
+
+  // Recusar (a partir do modal) → trancada, com a observação digitada no modal.
+  const recusar = async (id: string) => {
+    setProcessing(id);
+    try {
+      await mudarStatus(id, 'trancada', obsText || undefined);
+      setDetalhes(null);
+      setObsText('');
+      toast({ title: 'Matrícula recusada', description: 'Status atualizado (acesso revogado).' });
+    } catch (e) {
+      toast({ title: 'Erro', description: e instanceof Error ? e.message : 'Falha ao atualizar.', variant: 'destructive' });
     }
     setProcessing(null);
   };
@@ -167,7 +196,13 @@ export default function Matriculas() {
                       </div>
                     </td>
                     <td className="px-4 py-3 text-sm text-foreground">{m.curso_label ?? COURSE_LABELS[m.curso_id] ?? m.curso_id ?? '—'}</td>
-                    <td className="px-4 py-3"><StatusBadge status={m.status} /></td>
+                    <td className="px-4 py-3">
+                      <InlineStatusSelect
+                        value={m.status}
+                        options={statusMatriculaOptions()}
+                        onSave={async (novo) => { await mudarStatus(m.id, novo); }}
+                      />
+                    </td>
                     <td className="px-4 py-3 text-xs text-muted-foreground">{new Date(m.created_at).toLocaleDateString('pt-BR')}</td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-1.5">
@@ -175,21 +210,15 @@ export default function Matriculas() {
                           className="h-7 w-7 rounded-lg border border-border flex items-center justify-center hover:border-primary/40 hover:text-primary transition-all">
                           <Eye className="h-3.5 w-3.5" />
                         </button>
-                        {m.status === 'pendente' && (
-                          <>
-                            <button
-                              onClick={() => updateStatus(m.id, 'ativa', m.aluno_id)}
-                              disabled={processing === m.id}
-                              className="h-7 w-7 rounded-lg bg-green-500/10 border border-green-500/30 flex items-center justify-center hover:bg-green-500/20 transition-all text-green-500">
-                              {processing === m.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
-                            </button>
-                            <button
-                              onClick={() => updateStatus(m.id, 'trancada')}
-                              disabled={processing === m.id}
-                              className="h-7 w-7 rounded-lg bg-red-500/10 border border-red-500/30 flex items-center justify-center hover:bg-red-500/20 transition-all text-red-500">
-                              <X className="h-3.5 w-3.5" />
-                            </button>
-                          </>
+                        {APROVAVEIS.includes(m.status) && (
+                          <button
+                            onClick={() => aprovar(m.id)}
+                            disabled={processing === m.id}
+                            title="Aprovar e liberar acesso"
+                            className="h-7 px-2 rounded-lg bg-green-500/10 border border-green-500/30 flex items-center gap-1 hover:bg-green-500/20 transition-all text-green-500 text-xs">
+                            {processing === m.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
+                            Aprovar
+                          </button>
                         )}
                       </div>
                     </td>
@@ -261,13 +290,13 @@ export default function Matriculas() {
             </div>
 
             <div className="flex gap-2 pt-1">
-              {detalhes.status === 'pendente' && (
+              {APROVAVEIS.includes(detalhes.status) && (
                 <>
-                  <Button onClick={() => updateStatus(detalhes.id, 'ativa', detalhes.aluno_id)}
+                  <Button onClick={() => aprovar(detalhes.id)}
                     disabled={!!processing} className="flex-1 bg-green-600 hover:bg-green-700 text-white gap-2">
                     <Check className="h-4 w-4" /> Aprovar
                   </Button>
-                  <Button onClick={() => updateStatus(detalhes.id, 'trancada')}
+                  <Button onClick={() => recusar(detalhes.id)}
                     disabled={!!processing} variant="destructive" className="flex-1 gap-2">
                     <X className="h-4 w-4" /> Recusar
                   </Button>

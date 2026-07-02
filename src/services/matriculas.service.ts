@@ -40,7 +40,7 @@ export interface PaginatedMatriculas {
 
 // Matrículas paginadas com filtro por status — usado em Matriculas.tsx
 export async function getMatriculas(
-  status?: string,
+  status?: string | string[],
   limit = 20,
   page = 1
 ): Promise<PaginatedMatriculas> {
@@ -53,7 +53,12 @@ export async function getMatriculas(
     .order('created_at', { ascending: false })
     .range(from, to);
 
-  if (status) query = query.eq('status', status);
+  // Aceita um status único ou vários (aba "outros" do funil — inativa/evadida/suspensa)
+  if (Array.isArray(status)) {
+    if (status.length > 0) query = query.in('status', status);
+  } else if (status) {
+    query = query.eq('status', status);
+  }
 
   const { data, count, error } = await query;
 
@@ -159,51 +164,98 @@ export async function createTaxaMatricula(
   return { error: null };
 }
 
-// Aprova matrícula pendente — apenas administracao/admin/superadmin
-// Requer status atual = 'pendente'; seta validado_por e validado_em
+// Staff que pode aprovar/mudar status de matrícula.
+const STAFF_ROLES = ['administracao', 'admin', 'superadmin'];
+
+async function requesterEhStaff(requesterId: string): Promise<boolean> {
+  const { data } = await supabase
+    .from('user_roles').select('role').eq('user_id', requesterId).single();
+  return STAFF_ROLES.includes((data as { role: string } | null)?.role ?? '');
+}
+
+// Efeito de ACESSO vinculado ao status da matrícula (ação de SISTEMA — não passa
+// por getRolesPermitidas, que é a hierarquia de edição MANUAL de role na UI).
+//  'aluno'    → acesso ao dashboard.
+//  'pendente' → sem acesso (ProtectedRoute → /aguardando), preservando os dados do perfil.
+async function aplicarAcesso(alunoId: string, role: 'aluno' | 'pendente'): Promise<void> {
+  await supabase.from('profiles').update({ role }).eq('id', alunoId);
+  await supabase.from('user_roles').upsert({ user_id: alunoId, role });
+}
+
+// ÚNICO caminho de aprovação (unifica Matriculas.tsx + FichaAluno.tsx — R3.2 Leva 2a).
+// administracao/admin/superadmin; aceita 'pendente' OU 'aguardando_aprovacao';
+// seta ativa + validado_* + libera acesso (role 'aluno'). Idempotente se já ativa.
 export async function aprovarMatricula(
   matriculaId: string,
   requesterId: string
 ): Promise<ServiceResult> {
-  // Verifica role do requester via user_roles (sem recursão de RLS)
-  const { data: roleData, error: roleError } = await supabase
-    .from('user_roles')
-    .select('role')
-    .eq('user_id', requesterId)
-    .single();
-
-  if (roleError) return { error: 'Erro ao verificar permissão' };
-  const role = (roleData as { role: string } | null)?.role ?? '';
-  if (!['administracao', 'admin', 'superadmin'].includes(role)) {
+  if (!(await requesterEhStaff(requesterId))) {
     return { error: 'Permissão insuficiente para aprovar matrículas' };
   }
 
-  // Verifica status atual — deve ser 'pendente'
   const { data: mat } = await supabase
-    .from('matriculas')
-    .select('status')
-    .eq('id', matriculaId)
-    .single();
+    .from('matriculas').select('status, aluno_id').eq('id', matriculaId).single();
 
   if (!mat) return { error: 'Matrícula não encontrada' };
-  if ((mat as { status: string }).status !== 'pendente') {
-    return { error: 'Apenas matrículas com status pendente podem ser aprovadas' };
+  const m = mat as { status: string; aluno_id: string };
+
+  if (m.status === 'ativa') return { error: null }; // idempotente — já aprovada
+
+  if (!['pendente', 'aguardando_aprovacao'].includes(m.status)) {
+    return { error: 'Apenas matrículas pendentes ou aguardando aprovação podem ser aprovadas' };
   }
 
   const { error } = await supabase
     .from('matriculas')
-    .update({
-      status: 'ativa',
-      validado_por: requesterId,
-      validado_em: new Date().toISOString(),
-    })
+    .update({ status: 'ativa', validado_por: requesterId, validado_em: new Date().toISOString() })
     .eq('id', matriculaId);
 
   if (error) return { error: error.message };
+
+  await aplicarAcesso(m.aluno_id, 'aluno'); // libera acesso
   return { error: null };
 }
 
-// Atualização de status — aprovação, recusa, trancamento
+// Transição LIVRE de status (qualquer → qualquer) com efeito de acesso vinculado:
+//  - novoStatus 'ativa'         → validado_* + libera acesso (mesma regra da aprovação).
+//  - saindo de 'ativa'          → revoga acesso (role 'pendente'; mantém dados).
+//  - sempre grava observacoes.
+// observacao é posicional (pode ser undefined) para manter a ordem obs → requesterId.
+export async function mudarStatusMatricula(
+  matriculaId: string,
+  novoStatus: string,
+  observacao: string | undefined,
+  requesterId: string
+): Promise<ServiceResult> {
+  if (!(await requesterEhStaff(requesterId))) {
+    return { error: 'Permissão insuficiente para alterar matrículas' };
+  }
+
+  const { data: mat } = await supabase
+    .from('matriculas').select('status, aluno_id').eq('id', matriculaId).single();
+
+  if (!mat) return { error: 'Matrícula não encontrada' };
+  const m = mat as { status: string; aluno_id: string };
+
+  const payload: Record<string, unknown> = { status: novoStatus, observacoes: observacao || null };
+  if (novoStatus === 'ativa') {
+    payload.validado_por = requesterId;
+    payload.validado_em  = new Date().toISOString();
+  }
+
+  const { error } = await supabase.from('matriculas').update(payload).eq('id', matriculaId);
+  if (error) return { error: error.message };
+
+  if (novoStatus === 'ativa') {
+    await aplicarAcesso(m.aluno_id, 'aluno');
+  } else if (m.status === 'ativa') {
+    await aplicarAcesso(m.aluno_id, 'pendente'); // saiu de ativa → revoga acesso
+  }
+  return { error: null };
+}
+
+// Atualização de status NEUTRA — sem efeito de acesso (usada em edições que não
+// mexem em acesso; para transições com efeito de acesso, usar mudarStatusMatricula).
 export async function updateStatusMatricula(
   matriculaId: string,
   status: string,
