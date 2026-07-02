@@ -108,7 +108,7 @@ const STATUS_ALUNO: StatusOption[] = [
   value={aluno.status}
   options={STATUS_ALUNO}
   onSave={async (novoStatus) => {
-    const { error } = await updateStatusMatricula(aluno.matriculaId, novoStatus);
+    const { error } = await mudarStatusMatricula(aluno.matriculaId, novoStatus, undefined, requesterId);
     if (error) throw new Error(error);
   }}
 />

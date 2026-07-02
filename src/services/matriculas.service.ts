@@ -167,6 +167,11 @@ export async function createTaxaMatricula(
 // Staff que pode aprovar/mudar status de matrícula.
 const STAFF_ROLES = ['administracao', 'admin', 'superadmin'];
 
+// Status para os quais SAIR de 'ativa' revoga o acesso do aluno (role → 'pendente').
+// 'concluida' fica FORA de propósito (egresso mantém acesso — decisão de negócio 2c).
+// Ajuste esta lista para mudar quais transições cortam o acesso.
+const STATUS_REVOGA_ACESSO = ['trancada', 'cancelada', 'evadida', 'suspensa', 'inativa'];
+
 async function requesterEhStaff(requesterId: string): Promise<boolean> {
   const { data } = await supabase
     .from('user_roles').select('role').eq('user_id', requesterId).single();
@@ -248,24 +253,14 @@ export async function mudarStatusMatricula(
 
   if (novoStatus === 'ativa') {
     await aplicarAcesso(m.aluno_id, 'aluno');
-  } else if (m.status === 'ativa') {
-    await aplicarAcesso(m.aluno_id, 'pendente'); // saiu de ativa → revoga acesso
+  } else if (m.status === 'ativa' && STATUS_REVOGA_ACESSO.includes(novoStatus)) {
+    // Saiu de 'ativa' para um status revogador → remove acesso (role 'pendente'; mantém dados).
+    // 'concluida' NÃO está na lista: egresso mantém acesso para ver histórico / baixar certificado.
+    await aplicarAcesso(m.aluno_id, 'pendente');
   }
   return { error: null };
 }
 
-// Atualização de status NEUTRA — sem efeito de acesso (usada em edições que não
-// mexem em acesso; para transições com efeito de acesso, usar mudarStatusMatricula).
-export async function updateStatusMatricula(
-  matriculaId: string,
-  status: string,
-  observacao?: string
-): Promise<ServiceResult> {
-  const { error } = await supabase
-    .from('matriculas')
-    .update({ status, observacoes: observacao || null })
-    .eq('id', matriculaId);
-
-  if (error) return { error: error.message };
-  return { error: null };
-}
+// NOTA (R3.2 Leva 2c): removida a antiga `updateStatusMatricula` (troca de status SEM
+// efeito de acesso). Toda mudança de status passa por `mudarStatusMatricula`, que mantém
+// role/acesso consistentes com o status — evitando o bug de aluno 'ativo' sem acesso.

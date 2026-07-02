@@ -211,6 +211,18 @@ describe('mudarStatusMatricula', () => {
     expect(upsertRoles).toHaveBeenCalledWith({ user_id: 'a1', role: 'pendente' });
   });
 
+  it('ativa → concluida NÃO revoga acesso (egresso mantém — exceção 2c)', async () => {
+    const { updateMatricula, updateProfiles, upsertRoles } = mockStatusFlow({ statusAtual: 'ativa' });
+
+    const r = await mudarStatusMatricula('mat-1', 'concluida', undefined, 'req-1');
+
+    expect(r.error).toBeNull();
+    expect((updateMatricula.mock.calls[0][0] as Record<string, unknown>).status).toBe('concluida');
+    // egresso mantém acesso → nenhuma escrita de role
+    expect(updateProfiles).not.toHaveBeenCalled();
+    expect(upsertRoles).not.toHaveBeenCalled();
+  });
+
   it('transição neutra (pendente → aguardando_pagamento) não mexe em acesso', async () => {
     const { updateProfiles, upsertRoles } = mockStatusFlow({ statusAtual: 'pendente' });
 
