@@ -879,4 +879,19 @@ O Supabase MCP conectado **não enxerga o projeto ITEC** (conta diferente; só B
 
 ---
 
+## LICAO-039 — Aprovação de matrícula unificada: status `ativa` ⇄ acesso do aluno andam sempre juntos
+
+**Data:** 2026-07-01
+**Contexto:** R3.2 Leva 2a/2c. Havia **dois caminhos de aprovação divergentes**: `Matriculas.tsx` (setava status `ativa` + `updateRole`, sem `validado_*`) e `FichaAluno.tsx` (`aprovarMatricula` gravava `validado_*` mas **não liberava acesso**). Resultado: aprovar pela Ficha deixava o aluno **`ativo` sem acesso** ao dashboard.
+**Decisão / regra:** O **status da matrícula e o acesso do aluno (role) andam sempre juntos**, por **qualquer tela**. Caminho único:
+- `aprovarMatricula` (pendente/`aguardando_aprovacao` → `ativa`): grava `validado_*` **e** libera acesso (role `aluno`). Idempotente.
+- `mudarStatusMatricula` (transição livre): `→ativa` libera acesso; **sair de `ativa`** para status **revogador** (`trancada/cancelada/evadida/suspensa/inativa`) revoga acesso (role `pendente`, preserva dados). **Exceção: `concluida` mantém acesso** (egresso vê histórico/baixa certificado).
+- A antiga `updateStatusMatricula` (troca de status **sem** efeito de acesso) foi **removida** — era um *footgun* que reintroduziria o bug. Toda troca de status passa por `mudarStatusMatricula`.
+**Detalhe técnico:** o efeito de acesso é ação de **sistema** — escreve `profiles.role` + `user_roles` direto, **não** via `updateRole`/`getRolesPermitidas` (que bloqueia `administracao`→`pendente`). Valor sem acesso = `pendente` (confirmado no `AuthProvider`: `role 'pendente' → /aguardando`).
+**Agentes impactados:** 02-domain-designer, 05-backend-engineer, 12-code-reviewer
+**Como aplicar no futuro:** Nunca criar um caminho de mudança de status de matrícula que não ajuste o acesso do aluno. Vocabulário de status = `constants/statusMatricula.ts` (12 valores femininos; `StatusBadge` lê dele).
+**Status:** aplicado (PRs #23/#24). Auditoria completa de transições (tabela de histórico) fica no backlog (exige migração).
+
+---
+
 *Mantido pelo agente-Osabio · ITEC-EAD · 2025*
