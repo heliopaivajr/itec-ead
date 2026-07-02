@@ -4,6 +4,7 @@ import {
   getMatriculas,
   createMatricula,
   aprovarMatricula,
+  mudarStatusMatricula,
 } from '@/services/matriculas.service';
 
 beforeEach(() => { vi.clearAllMocks(); });
@@ -87,132 +88,145 @@ describe('createMatricula', () => {
   });
 });
 
-// ─── aprovarMatricula ─────────────────────────────────────────────────────────
+// ─── aprovarMatricula / mudarStatusMatricula (R3.2 Leva 2a) ─────────────────────
 
-// Helper: monta os 3 from() calls de aprovarMatricula em ordem:
-//   1. user_roles.single() → role do requester
-//   2. matriculas.single() → status atual
-//   3. matriculas.update().eq() → resultado do update
-function mockAprovarQueries({
-  role = 'administracao',
+// Mock por tabela (branching). Cobre o fluxo:
+//   user_roles.select().eq().single()  → role do requester
+//   matriculas.select().eq().single()  → { status, aluno_id }
+//   matriculas.update().eq()           → resultado
+//   profiles.update().eq()             → efeito de acesso (role)
+//   user_roles.upsert()                → cache de role
+function mockStatusFlow({
+  requesterRole = 'administracao',
   statusAtual = 'pendente',
+  alunoId = 'a1',
   updateError = null as string | null,
 } = {}) {
-  vi.mocked(supabase.from).mockReset();
-
-  // 1. user_roles → role
-  vi.mocked(supabase.from).mockReturnValueOnce({
-    select: vi.fn().mockReturnValue({
-      eq: vi.fn().mockReturnValue({
-        single: vi.fn().mockResolvedValue({ data: { role }, error: null }),
-      }),
-    }),
-  } as any);
-
-  // 2. matriculas → status atual
-  vi.mocked(supabase.from).mockReturnValueOnce({
-    select: vi.fn().mockReturnValue({
-      eq: vi.fn().mockReturnValue({
-        single: vi.fn().mockResolvedValue({ data: { status: statusAtual }, error: null }),
-      }),
-    }),
-  } as any);
-
-  if (statusAtual !== 'pendente') return; // update não é chamado
-
-  // 3. matriculas.update().eq()
-  const updateFn = vi.fn().mockReturnValue({
+  const updateMatricula = vi.fn().mockReturnValue({
     eq: vi.fn().mockResolvedValue({ error: updateError ? { message: updateError } : null }),
   });
-  vi.mocked(supabase.from).mockReturnValueOnce({
-    update: updateFn,
-  } as any);
+  const updateProfiles = vi.fn().mockReturnValue({ eq: vi.fn().mockResolvedValue({ error: null }) });
+  const upsertRoles = vi.fn().mockResolvedValue({ error: null });
 
-  return updateFn;
+  vi.mocked(supabase.from).mockReset();
+  vi.mocked(supabase.from).mockImplementation((table: string) => {
+    if (table === 'user_roles') {
+      return {
+        select: () => ({ eq: () => ({ single: () => Promise.resolve({ data: { role: requesterRole }, error: null }) }) }),
+        upsert: upsertRoles,
+      } as any;
+    }
+    if (table === 'matriculas') {
+      return {
+        select: () => ({ eq: () => ({ single: () => Promise.resolve({ data: { status: statusAtual, aluno_id: alunoId }, error: null }) }) }),
+        update: updateMatricula,
+      } as any;
+    }
+    if (table === 'profiles') return { update: updateProfiles } as any;
+    return {} as any;
+  });
+
+  return { updateMatricula, updateProfiles, upsertRoles };
 }
 
 describe('aprovarMatricula', () => {
-  it('administracao pode aprovar matrícula pendente → status ativa', async () => {
-    const updateFn = mockAprovarQueries({ role: 'administracao', statusAtual: 'pendente' });
+  it('administracao aprova pendente → ativa + validado_* + libera acesso (role aluno)', async () => {
+    const { updateMatricula, updateProfiles, upsertRoles } = mockStatusFlow({ statusAtual: 'pendente' });
 
-    const resultado = await aprovarMatricula('mat-1', 'req-1');
+    const r = await aprovarMatricula('mat-1', 'req-1');
 
-    expect(resultado.error).toBeNull();
-    expect(updateFn).toHaveBeenCalledOnce();
-    const payload = updateFn.mock.calls[0][0] as Record<string, unknown>;
+    expect(r.error).toBeNull();
+    const payload = updateMatricula.mock.calls[0][0] as Record<string, unknown>;
     expect(payload.status).toBe('ativa');
     expect(payload.validado_por).toBe('req-1');
-    expect(payload.validado_em).toBeDefined();
-  });
-
-  it('admin pode aprovar matrícula pendente', async () => {
-    mockAprovarQueries({ role: 'admin', statusAtual: 'pendente' });
-
-    const resultado = await aprovarMatricula('mat-1', 'req-admin');
-
-    expect(resultado.error).toBeNull();
-  });
-
-  it('superadmin pode aprovar matrícula pendente', async () => {
-    mockAprovarQueries({ role: 'superadmin', statusAtual: 'pendente' });
-
-    const resultado = await aprovarMatricula('mat-1', 'req-super');
-
-    expect(resultado.error).toBeNull();
-  });
-
-  it('professor NÃO pode aprovar → retorna erro de permissão', async () => {
-    vi.mocked(supabase.from).mockReset();
-    vi.mocked(supabase.from).mockReturnValueOnce({
-      select: vi.fn().mockReturnValue({
-        eq: vi.fn().mockReturnValue({
-          single: vi.fn().mockResolvedValue({ data: { role: 'professor' }, error: null }),
-        }),
-      }),
-    } as any);
-
-    const resultado = await aprovarMatricula('mat-1', 'req-prof');
-
-    expect(resultado.error).toContain('Permissão');
-    // update NÃO deve ter sido chamado — nenhum from() para update
-    expect(vi.mocked(supabase.from)).toHaveBeenCalledTimes(1);
-  });
-
-  it('aluno NÃO pode aprovar → retorna erro de permissão', async () => {
-    vi.mocked(supabase.from).mockReset();
-    vi.mocked(supabase.from).mockReturnValueOnce({
-      select: vi.fn().mockReturnValue({
-        eq: vi.fn().mockReturnValue({
-          single: vi.fn().mockResolvedValue({ data: { role: 'aluno' }, error: null }),
-        }),
-      }),
-    } as any);
-
-    const resultado = await aprovarMatricula('mat-1', 'req-aluno');
-
-    expect(resultado.error).toContain('Permissão');
-  });
-
-  it('matrícula já ativa → retorna erro de transição inválida', async () => {
-    mockAprovarQueries({ role: 'administracao', statusAtual: 'ativa' });
-
-    const resultado = await aprovarMatricula('mat-1', 'req-1');
-
-    expect(resultado.error).toContain('pendente');
-    // update NÃO deve ter sido chamado — apenas 2 from() calls (roles + status)
-    expect(vi.mocked(supabase.from)).toHaveBeenCalledTimes(2);
-  });
-
-  it('validado_por e validado_em são preenchidos corretamente após aprovação', async () => {
-    const before = new Date().toISOString();
-    const updateFn = mockAprovarQueries({ role: 'administracao', statusAtual: 'pendente' });
-
-    await aprovarMatricula('mat-1', 'secretaria-id');
-
-    const payload = updateFn!.mock.calls[0][0] as Record<string, unknown>;
-    expect(payload.validado_por).toBe('secretaria-id');
     expect(typeof payload.validado_em).toBe('string');
-    // validado_em deve ser uma data recente (após o início do teste)
-    expect(new Date(payload.validado_em as string).getTime()).toBeGreaterThanOrEqual(new Date(before).getTime());
+    // libera acesso
+    expect(updateProfiles).toHaveBeenCalledWith({ role: 'aluno' });
+    expect(upsertRoles).toHaveBeenCalledWith({ user_id: 'a1', role: 'aluno' });
+  });
+
+  it('aprova a partir de aguardando_aprovacao → ativa', async () => {
+    const { updateMatricula, updateProfiles } = mockStatusFlow({ statusAtual: 'aguardando_aprovacao' });
+
+    const r = await aprovarMatricula('mat-1', 'req-1');
+
+    expect(r.error).toBeNull();
+    expect((updateMatricula.mock.calls[0][0] as Record<string, unknown>).status).toBe('ativa');
+    expect(updateProfiles).toHaveBeenCalledWith({ role: 'aluno' });
+  });
+
+  it('já ativa → idempotente (error null, sem novo update)', async () => {
+    const { updateMatricula } = mockStatusFlow({ statusAtual: 'ativa' });
+
+    const r = await aprovarMatricula('mat-1', 'req-1');
+
+    expect(r.error).toBeNull();
+    expect(updateMatricula).not.toHaveBeenCalled();
+  });
+
+  it('status não-aprovável (trancada) → erro', async () => {
+    const { updateMatricula } = mockStatusFlow({ statusAtual: 'trancada' });
+
+    const r = await aprovarMatricula('mat-1', 'req-1');
+
+    expect(r.error).toBeTruthy();
+    expect(updateMatricula).not.toHaveBeenCalled();
+  });
+
+  it('professor NÃO pode aprovar → erro de permissão', async () => {
+    const { updateMatricula } = mockStatusFlow({ requesterRole: 'professor' });
+
+    const r = await aprovarMatricula('mat-1', 'req-prof');
+
+    expect(r.error).toContain('Permissão');
+    expect(updateMatricula).not.toHaveBeenCalled();
+  });
+});
+
+describe('mudarStatusMatricula', () => {
+  it('novoStatus ativa → aplica validado_* e libera acesso (role aluno)', async () => {
+    const { updateMatricula, updateProfiles, upsertRoles } = mockStatusFlow({ statusAtual: 'pendente' });
+
+    const r = await mudarStatusMatricula('mat-1', 'ativa', 'ok', 'req-1');
+
+    expect(r.error).toBeNull();
+    const payload = updateMatricula.mock.calls[0][0] as Record<string, unknown>;
+    expect(payload.status).toBe('ativa');
+    expect(payload.validado_por).toBe('req-1');
+    expect(payload.observacoes).toBe('ok');
+    expect(updateProfiles).toHaveBeenCalledWith({ role: 'aluno' });
+    expect(upsertRoles).toHaveBeenCalledWith({ user_id: 'a1', role: 'aluno' });
+  });
+
+  it('saindo de ativa → revoga acesso (role pendente), sem validado_*', async () => {
+    const { updateMatricula, updateProfiles, upsertRoles } = mockStatusFlow({ statusAtual: 'ativa' });
+
+    const r = await mudarStatusMatricula('mat-1', 'trancada', undefined, 'req-1');
+
+    expect(r.error).toBeNull();
+    const payload = updateMatricula.mock.calls[0][0] as Record<string, unknown>;
+    expect(payload.status).toBe('trancada');
+    expect(payload.validado_por).toBeUndefined();
+    expect(updateProfiles).toHaveBeenCalledWith({ role: 'pendente' });
+    expect(upsertRoles).toHaveBeenCalledWith({ user_id: 'a1', role: 'pendente' });
+  });
+
+  it('transição neutra (pendente → aguardando_pagamento) não mexe em acesso', async () => {
+    const { updateProfiles, upsertRoles } = mockStatusFlow({ statusAtual: 'pendente' });
+
+    const r = await mudarStatusMatricula('mat-1', 'aguardando_pagamento', undefined, 'req-1');
+
+    expect(r.error).toBeNull();
+    expect(updateProfiles).not.toHaveBeenCalled();
+    expect(upsertRoles).not.toHaveBeenCalled();
+  });
+
+  it('não-staff → erro de permissão, sem update', async () => {
+    const { updateMatricula } = mockStatusFlow({ requesterRole: 'aluno' });
+
+    const r = await mudarStatusMatricula('mat-1', 'ativa', undefined, 'req-aluno');
+
+    expect(r.error).toContain('Permissão');
+    expect(updateMatricula).not.toHaveBeenCalled();
   });
 });

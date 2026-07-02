@@ -16,6 +16,7 @@ import {
 import { updateStatusMatricula } from '@/services/matriculas.service';
 import { InlineStatusSelect } from '@/components/dashboard/InlineStatusSelect';
 import type { StatusOption } from '@/components/dashboard/InlineStatusSelect';
+import { statusMatriculaOptions } from '@/constants/statusMatricula';
 import { NovoAlunoModal } from '@/components/dashboard/NovoAlunoModal';
 import { useToast } from '@/hooks/use-toast';
 import type { DashboardContext } from '../Dashboard';
@@ -176,15 +177,10 @@ function AlunoModal({ aluno, salvando, onSave, onClose }: AlunoModalProps) {
 
 // ─── Página principal ─────────────────────────────────────────────────────────
 
-const STATUS_MATRICULA_OPTIONS: StatusOption[] = [
-  { value: 'ativa',     label: 'Ativo',     color: 'bg-green-100 text-green-800'  },
-  { value: 'inativa',   label: 'Inativo',   color: 'bg-gray-100 text-gray-600'   },
-  { value: 'trancada',  label: 'Trancado',  color: 'bg-yellow-100 text-yellow-800' },
-  { value: 'evadida',   label: 'Evadido',   color: 'bg-orange-100 text-orange-800' },
-  { value: 'concluida', label: 'Concluído', color: 'bg-blue-100 text-blue-800'   },
-  { value: 'suspensa',  label: 'Suspenso',  color: 'bg-red-100 text-red-800'     },
-  { value: 'pendente',  label: 'Pendente',  color: 'bg-purple-100 text-purple-800' },
-];
+// Vocabulário compartilhado (R3.2 Leva 2a) — mesmo mapa do funil de matrículas.
+const STATUS_MATRICULA_OPTIONS: StatusOption[] = statusMatriculaOptions([
+  'ativa', 'inativa', 'trancada', 'evadida', 'concluida', 'suspensa', 'pendente',
+]);
 
 export default function Alunos() {
   const { profile } = useOutletContext<DashboardContext>();
