@@ -496,6 +496,12 @@ Razões:
 **Versão alvo**: R3.x ou refino de UI
 **Status**: Planejado
 
+### Auditoria completa de transições de status de matrícula (R3.2 Leva 2a)
+**Descrição**: Hoje a mudança de status de matrícula não deixa trilha (quem/quando/de→para) — só o stamp `validado_por`/`validado_em` na aprovação (1 evento). Para auditoria real, criar **tabela de histórico de transições** (`matricula_status_log`: matricula_id, de, para, por, em, observacao) e gravar em `aprovarMatricula`/`mudarStatusMatricula`. **Exige migração.** Identificado no R3.2 Leva 2a.
+**Prioridade**: Média (governança/segurança — pós-agosto)
+**Versão alvo**: quando houver janela para migração de auditoria
+**Status**: Planejado
+
 ---
 
 ## COMO USAR ESTE BACKLOG
