@@ -14,6 +14,7 @@ import {
   vincularDisciplina,
   preencherContrato,
   getDisciplinasAtivasProfessor,
+  CONTRATO_ATIVO,
 } from '@/services/professor.service';
 
 beforeEach(() => { vi.clearAllMocks(); });
@@ -470,50 +471,77 @@ describe('professor.service', () => {
 describe('getDisciplinasAtivasProfessor', () => {
   beforeEach(() => { vi.clearAllMocks(); });
 
-  it('professor sem contratos assinados → retorna []', async () => {
+  it('professor sem contratos ativos → retorna []', async () => {
     vi.mocked(supabase.from).mockReset();
-    const eqStatusFn = vi.fn().mockReturnValue({
+    const inStatusFn = vi.fn().mockReturnValue({
       limit: vi.fn().mockResolvedValue({ data: [], error: null }),
     });
     vi.mocked(supabase.from).mockReturnValueOnce({
       select: vi.fn().mockReturnValue({
-        eq: vi.fn().mockReturnValue({ eq: eqStatusFn }),
+        eq: vi.fn().mockReturnValue({ in: inStatusFn }),
       }),
     } as any);
 
     const resultado = await getDisciplinasAtivasProfessor('prof-1');
 
     expect(resultado).toEqual([]);
-    // Verifica que filtrou por status = 'assinado'
-    expect(eqStatusFn).toHaveBeenCalledWith('status', 'assinado');
+    // Decisão C: filtra por status NÃO-encerrado (lista CONTRATO_ATIVO)
+    expect(inStatusFn).toHaveBeenCalledWith('status', CONTRATO_ATIVO);
+    expect(CONTRATO_ATIVO).toContain('pendente');
+    expect(CONTRATO_ATIVO).toContain('impresso');
+    expect(CONTRATO_ATIVO).not.toContain('encerrado');
   });
 
-  it('contratos pendentes NÃO aparecem — busca apenas status assinado', async () => {
+  it('contratos PENDENTE/IMPRESSO contam (não-encerrados destravam o professor)', async () => {
     vi.mocked(supabase.from).mockReset();
-    const eqStatusFn = vi.fn().mockReturnValue({
-      limit: vi.fn().mockResolvedValue({ data: [], error: null }),
-    });
+
+    // Call 1: contrato ainda 'pendente' (sem assinatura) — deve aparecer
     vi.mocked(supabase.from).mockReturnValueOnce({
       select: vi.fn().mockReturnValue({
-        eq: vi.fn().mockReturnValue({ eq: eqStatusFn }),
+        eq: vi.fn().mockReturnValue({
+          in: vi.fn().mockReturnValue({
+            limit: vi.fn().mockResolvedValue({
+              data: [{
+                id: 'cont-pend', disciplina_id: 'disc-9',
+                disciplinas_v2: { nome: 'Hermenêutica', modulos: { curso_id: 'curso-1' } },
+              }],
+              error: null,
+            }),
+          }),
+        }),
       }),
     } as any);
 
-    await getDisciplinasAtivasProfessor('prof-sem-assinado');
+    // Call 2: turma ativa
+    vi.mocked(supabase.from).mockReturnValueOnce({
+      select: vi.fn().mockReturnValue({
+        in: vi.fn().mockReturnValue({
+          in: vi.fn().mockReturnValue({
+            order: vi.fn().mockReturnValue({
+              limit: vi.fn().mockResolvedValue({
+                data: [{ id: 't9', nome: 'Turma X', ano: 2026, semestre: 1, curso_id: 'curso-1' }],
+                error: null,
+              }),
+            }),
+          }),
+        }),
+      }),
+    } as any);
 
-    expect(eqStatusFn).toHaveBeenCalledWith('status', 'assinado');
-    // Retorna vazio — nenhum contrato assinado retornado pelo mock
-    // mesmo que existam pendentes no banco (que este mock ignora)
+    const resultado = await getDisciplinasAtivasProfessor('prof-pend');
+
+    expect(resultado).toHaveLength(1);
+    expect(resultado[0].disciplina_nome).toBe('Hermenêutica');
   });
 
-  it('professor com 1 contrato assinado → retorna disciplina com turma', async () => {
+  it('professor com contrato → retorna disciplina com turma', async () => {
     vi.mocked(supabase.from).mockReset();
 
     // Call 1: contratos_professor com join
     vi.mocked(supabase.from).mockReturnValueOnce({
       select: vi.fn().mockReturnValue({
         eq: vi.fn().mockReturnValue({
-          eq: vi.fn().mockReturnValue({
+          in: vi.fn().mockReturnValue({
             limit: vi.fn().mockResolvedValue({
               data: [{
                 id: 'cont-1',
@@ -560,14 +588,14 @@ describe('getDisciplinasAtivasProfessor', () => {
     expect(resultado[0].turma_semestre).toBe(1);
   });
 
-  it('professor com contrato assinado mas sem turma ativa → retorna disciplina com turma null', async () => {
+  it('professor com contrato mas sem turma ativa → retorna disciplina com turma null', async () => {
     vi.mocked(supabase.from).mockReset();
 
     // Call 1: contratos com disciplina + modulo
     vi.mocked(supabase.from).mockReturnValueOnce({
       select: vi.fn().mockReturnValue({
         eq: vi.fn().mockReturnValue({
-          eq: vi.fn().mockReturnValue({
+          in: vi.fn().mockReturnValue({
             limit: vi.fn().mockResolvedValue({
               data: [{
                 id: 'cont-2', disciplina_id: 'disc-2',

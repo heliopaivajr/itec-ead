@@ -229,12 +229,18 @@ export interface DisciplinaAtiva {
   turma_semestre: number | null;
 }
 
-// Disciplinas ativas do professor — contratos com status 'assinado'
+// Status de contrato que contam como VÍNCULO ATIVO (habilitam o professor a trabalhar).
+// Decisão C (Hélio): o vínculo — contrato não-encerrado — já destrava o professor;
+// a assinatura física é formalidade PARALELA, não bloqueia o uso. Ajuste esta lista
+// para mudar o que conta como "disciplina ativa". (Ver LICAO / R3.3a.)
+export const CONTRATO_ATIVO = ['pendente', 'preenchido', 'impresso', 'assinado'];
+
+// Disciplinas ativas do professor — contratos NÃO-encerrados (CONTRATO_ATIVO).
 // Resolve turma via: contrato → disciplina → modulo → curso → turmas ativas
 export async function getDisciplinasAtivasProfessor(
   professorId: string
 ): Promise<DisciplinaAtiva[]> {
-  // Query 1: contratos assinados com disciplina + módulo + curso
+  // Query 1: contratos ativos (não-encerrados) com disciplina + módulo + curso
   type ContratoRow = {
     id: string;
     disciplina_id: string;
@@ -248,7 +254,7 @@ export async function getDisciplinasAtivasProfessor(
     .from('contratos_professor')
     .select('id, disciplina_id, disciplinas_v2(nome, modulos(curso_id))')
     .eq('professor_id', professorId)
-    .eq('status', 'assinado')
+    .in('status', CONTRATO_ATIVO)
     .limit(20);
 
   if (!contratos || contratos.length === 0) return [];

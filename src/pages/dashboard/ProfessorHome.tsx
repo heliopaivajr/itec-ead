@@ -118,6 +118,8 @@ export default function ProfessorHome() {
     ? nome.trim()
     : `Prof. ${nome.trim()}`;
   const solicitacoesPendentes = solicitacoes.filter(s => s.status === 'pendente');
+  // Vínculos ativos ainda não assinados (formalidade paralela — não bloqueia nada).
+  const contratosParaAssinar = disciplinas.filter(d => d.contrato.status !== 'assinado');
 
   return (
     <div className="p-6 space-y-6">
@@ -144,6 +146,26 @@ export default function ProfessorHome() {
         <div className="bg-yellow-500/10 border border-yellow-400/30 rounded-lg p-3 flex items-center gap-2 text-sm text-yellow-700 dark:text-yellow-400">
           <Clock className="h-4 w-4 shrink-0" />
           {solicitacoesPendentes.length} solicitação{solicitacoesPendentes.length > 1 ? 'ões' : ''} aguardando aprovação da secretaria.
+        </div>
+      )}
+
+      {/* Aviso de assinatura pendente — formalidade, NÃO bloqueia o trabalho */}
+      {contratosParaAssinar.length > 0 && (
+        <div className="bg-blue-500/10 border border-blue-400/30 rounded-lg p-3 flex items-start sm:items-center justify-between gap-3 flex-wrap text-sm text-blue-700 dark:text-blue-300">
+          <div className="flex items-start gap-2">
+            <FileText className="h-4 w-4 shrink-0 mt-0.5" />
+            <span>
+              {contratosParaAssinar.length} contrato{contratosParaAssinar.length > 1 ? 's' : ''} pendente{contratosParaAssinar.length > 1 ? 's' : ''} de assinatura — baixe, assine e entregue à secretaria.
+              <span className="text-blue-600/70 dark:text-blue-300/70"> (não impede você de trabalhar)</span>
+            </span>
+          </div>
+          <Button
+            size="sm" variant="outline"
+            className="border-blue-400/40 text-blue-700 dark:text-blue-300 hover:bg-blue-500/10 shrink-0"
+            onClick={() => navigate(`/dashboard/professor/contrato/${contratosParaAssinar[0].contrato.id}`)}
+          >
+            <FileText className="h-4 w-4 mr-1.5" /> Baixar contrato
+          </Button>
         </div>
       )}
 

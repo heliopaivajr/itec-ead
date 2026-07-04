@@ -6,8 +6,11 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { getProfessores, updateStatusProfessor, vincularDisciplina } from '@/services/professor.service';
-import type { Professor } from '@/services/professor.service';
+import {
+  getProfessores, updateStatusProfessor, vincularDisciplina,
+  getContratosByProfessor, updateStatusContrato,
+} from '@/services/professor.service';
+import type { Professor, ContratoProfessor } from '@/services/professor.service';
 import { InlineStatusSelect } from '@/components/dashboard/InlineStatusSelect';
 import type { StatusOption } from '@/components/dashboard/InlineStatusSelect';
 import { getAllDisciplinas } from '@/services/academico.service';
@@ -29,6 +32,15 @@ const STATUS_PROFESSOR_OPTIONS: StatusOption[] = [
   { value: 'afastado',   label: 'Afastado',   color: 'bg-orange-100 text-orange-800' },
   { value: 'desligado',  label: 'Desligado',  color: 'bg-gray-100 text-gray-600'     },
 ];
+
+// Rótulo/cor do status do CONTRATO (vínculo). 'encerrado' = vínculo desativado.
+const CONTRATO_STATUS_META: Record<string, { label: string; cor: string }> = {
+  pendente:   { label: 'Pendente',   cor: 'bg-yellow-500/15 text-yellow-500 border-yellow-500/25' },
+  preenchido: { label: 'Preenchido', cor: 'bg-blue-500/15 text-blue-400 border-blue-500/25' },
+  impresso:   { label: 'Impresso',   cor: 'bg-purple-500/15 text-purple-400 border-purple-500/25' },
+  assinado:   { label: 'Assinado',   cor: 'bg-green-500/15 text-green-500 border-green-500/25' },
+  encerrado:  { label: 'Encerrado',  cor: 'bg-zinc-500/15 text-zinc-400 border-zinc-500/25' },
+};
 
 export default function ProfessoresAdmin() {
   const { profile } = useOutletContext<DashboardContext>();
@@ -87,6 +99,22 @@ export default function ProfessoresAdmin() {
   const [disciplinas, setDisciplinas] = useState<Disciplina[]>([]);
   const [disciplinaId, setDisciplinaId] = useState('');
   const [vinculando, setVinculando]   = useState(false);
+  // Vínculos (contratos) do professor selecionado + ações
+  const [vinculos, setVinculos]       = useState<ContratoProfessor[]>([]);
+  const [loadingVinculos, setLoadingVinculos] = useState(false);
+  const [contratoProc, setContratoProc] = useState<string | null>(null);
+
+  const nomeDisciplina = (id: string) => {
+    const d = disciplinas.find(x => x.id === id);
+    return d ? `${d.codigo} — ${d.nome}` : id;
+  };
+
+  const carregarVinculos = useCallback(async (profId: string) => {
+    setLoadingVinculos(true);
+    const lista = await getContratosByProfessor(profId);
+    setVinculos(lista);
+    setLoadingVinculos(false);
+  }, []);
 
   const debRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const handleSearch = (v: string) => {
@@ -140,6 +168,8 @@ export default function ProfessoresAdmin() {
   const abrirVincular = (p: Professor) => {
     setVincularProf(p);
     setDisciplinaId('');
+    setVinculos([]);
+    carregarVinculos(p.id);
   };
 
   const handleVincular = async () => {
@@ -150,9 +180,31 @@ export default function ProfessoresAdmin() {
     if (error) {
       toast({ title: 'Erro ao vincular', description: error, variant: 'destructive' });
     } else {
-      toast({ title: 'Disciplina vinculada!', description: 'Contrato pendente criado.' });
-      setVincularProf(null);
+      toast({ title: 'Disciplina vinculada!', description: 'Vínculo ativo — o professor já pode trabalhar. Assinatura é formalidade paralela.' });
+      setDisciplinaId('');
+      carregarVinculos(vincularProf.id); // mantém o modal aberto e mostra o novo vínculo
     }
+  };
+
+  // Formalidade: registra que o professor entregou o contrato assinado. Sem efeito de acesso.
+  const handleMarcarAssinado = async (contratoId: string) => {
+    if (!vincularProf) return;
+    setContratoProc(contratoId);
+    const { error } = await updateStatusContrato(contratoId, 'assinado');
+    setContratoProc(null);
+    if (error) toast({ title: 'Erro', description: error, variant: 'destructive' });
+    else { toast({ title: 'Contrato marcado como assinado.' }); carregarVinculos(vincularProf.id); }
+  };
+
+  // Encerrar vínculo (soft) — remove das disciplinas ativas do professor. Nunca DELETE físico.
+  const handleEncerrarVinculo = async (contratoId: string) => {
+    if (!vincularProf) return;
+    if (!window.confirm('Encerrar este vínculo? O professor deixa de ter esta disciplina ativa (o registro é mantido).')) return;
+    setContratoProc(contratoId);
+    const { error } = await updateStatusContrato(contratoId, 'encerrado');
+    setContratoProc(null);
+    if (error) toast({ title: 'Erro', description: error, variant: 'destructive' });
+    else { toast({ title: 'Vínculo encerrado.' }); carregarVinculos(vincularProf.id); }
   };
 
   return (
@@ -395,10 +447,60 @@ export default function ProfessoresAdmin() {
               </button>
             </div>
             <p className="text-sm text-muted-foreground">
-              Vinculando: <strong className="text-foreground">{vincularProf.nome_completo}</strong>
+              Vínculos de <strong className="text-foreground">{vincularProf.nome_completo}</strong>
             </p>
-            <div className="space-y-1.5">
-              <label className="text-xs font-medium text-muted-foreground">Disciplina</label>
+
+            {/* Vínculos existentes */}
+            <div className="space-y-2 max-h-56 overflow-y-auto">
+              {loadingVinculos ? (
+                <div className="flex items-center gap-2 text-sm text-muted-foreground py-2">
+                  <Loader2 className="h-4 w-4 animate-spin" /> Carregando vínculos...
+                </div>
+              ) : vinculos.length === 0 ? (
+                <p className="text-xs text-muted-foreground py-2">Nenhuma disciplina vinculada ainda.</p>
+              ) : (
+                vinculos.map(c => {
+                  const meta = CONTRATO_STATUS_META[c.status] ?? CONTRATO_STATUS_META.pendente;
+                  const encerrado = c.status === 'encerrado';
+                  return (
+                    <div key={c.id} className={`border border-border rounded-lg px-3 py-2 flex items-center justify-between gap-2 ${encerrado ? 'opacity-60' : ''}`}>
+                      <div className="min-w-0">
+                        <p className="text-sm text-foreground truncate">{nomeDisciplina(c.disciplina_id)}</p>
+                        <span className={`inline-flex items-center text-[11px] font-semibold px-1.5 py-0.5 rounded-full border mt-0.5 ${meta.cor}`}>
+                          {meta.label}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        {!encerrado && c.status !== 'assinado' && (
+                          <button
+                            onClick={() => handleMarcarAssinado(c.id)}
+                            disabled={contratoProc === c.id}
+                            title="Registrar contrato assinado (formalidade)"
+                            className="text-xs px-2 py-1 rounded border border-green-500/30 text-green-500 hover:bg-green-500/10 transition-colors"
+                          >
+                            {contratoProc === c.id ? '...' : 'Assinado'}
+                          </button>
+                        )}
+                        {!encerrado && (
+                          <button
+                            onClick={() => handleEncerrarVinculo(c.id)}
+                            disabled={contratoProc === c.id}
+                            title="Encerrar vínculo"
+                            className="text-xs px-2 py-1 rounded border border-destructive/40 text-destructive hover:bg-destructive/10 transition-colors"
+                          >
+                            Encerrar
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+
+            {/* Novo vínculo */}
+            <div className="space-y-1.5 border-t border-border pt-3">
+              <label className="text-xs font-medium text-muted-foreground">Vincular nova disciplina</label>
               <select
                 value={disciplinaId}
                 onChange={e => setDisciplinaId(e.target.value)}
@@ -415,7 +517,7 @@ export default function ProfessoresAdmin() {
                 {vinculando ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
                 Vincular e criar contrato
               </Button>
-              <Button variant="outline" onClick={() => setVincularProf(null)}>Cancelar</Button>
+              <Button variant="outline" onClick={() => setVincularProf(null)}>Fechar</Button>
             </div>
           </div>
         </div>
