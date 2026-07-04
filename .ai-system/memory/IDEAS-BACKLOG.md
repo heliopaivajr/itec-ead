@@ -502,6 +502,18 @@ Razões:
 **Versão alvo**: quando houver janela para migração de auditoria
 **Status**: Planejado
 
+### Auditoria de encerramento de contrato de professor (R3.3a)
+**Descrição**: `contratos_professor` não tem `encerrado_em`/`encerrado_por` (só `solicitacoes_disciplina` tem). Ao encerrar um vínculo (status `encerrado`), não fica quem/quando. Adicionar colunas `encerrado_em`/`encerrado_por` + gravar em `updateStatusContrato`/handler de encerrar. **Exige migração.** Identificado no R3.3a.
+**Prioridade**: Baixa (governança — pós-agosto)
+**Versão alvo**: junto da janela de auditoria
+**Status**: Planejado
+
+### Reavaliar RLS professor-por-contrato (migração 037 §2) — agora há contratos
+**Descrição**: A restrição RLS que limita o professor às **suas** cadeiras (notas_aluno/frequencia/materiais/matriculas_disciplina/etc.) via `contratos_professor` estava adiada por F2 (0 contratos). Com R3.3a destravando a criação de vínculos (`CONTRATO_ATIVO`), reavaliar aplicar a restrição — usando `status <> 'encerrado'` (não só `assinado`/`impresso`, conforme decisão C). **Exige migração** (policies). Pós-agosto, após popular contratos reais. Ver known-errors F3 (✅) e nota da 037 §2.
+**Prioridade**: Média (segurança — pós-agosto)
+**Versão alvo**: quando contratos reais estiverem cadastrados
+**Status**: Planejado
+
 ---
 
 ## COMO USAR ESTE BACKLOG
