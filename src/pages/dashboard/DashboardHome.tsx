@@ -17,6 +17,7 @@ import { getKpis, getLeadsRecentes, getMatriculasRecentes, getLeadsPorCurso } fr
 import { getTurmasAtivas } from '@/services/turmas.service';
 import { getAlunosEmRiscoByTurma, type AlunoEmRiscoTurma } from '@/services/frequencia.service';
 import { useAlunoDashboard } from '@/hooks/useAlunoDashboard';
+import { useProfessorDashboard } from '@/hooks/useProfessorDashboard';
 import { usePendenciasSecretaria } from '@/hooks/usePendenciasSecretaria';
 import type { PendenciaBloco, PendenciaItem } from '@/services/dashboard.service';
 import type { DashboardContext } from '../Dashboard';
@@ -353,19 +354,39 @@ function AdminView({ name }: { name: string }) {
 
 // ─── Professor ───────────────────────────────────────────────
 
-function ProfessorView({ name }: { name: string }) {
+function ProfessorView({ profile }: { profile: DashboardContext['profile'] }) {
+  const name = profile.full_name;
+  const d = useProfessorDashboard(profile.id);
+
   return (
     <div className="p-6 space-y-6">
       <div>
         <h1 className="text-2xl font-merriweather font-bold text-primary">Bem-vindo, Prof. {name}</h1>
         <p className="text-muted-foreground mt-1">Área do Professor — Gerencie suas turmas e materiais</p>
       </div>
+
+      {/* KPIs do professor — dados reais (disciplinas ativas via CONTRATO_ATIVO) */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <KpiCard titulo="Turmas Ativas"       valor="—" icone={Users} />
-        <KpiCard titulo="Alunos"              valor="—" icone={GraduationCap} corFundo="bg-green-500/10" />
-        <KpiCard titulo="Aulas esta semana"   valor="—" icone={CalendarDays}  corFundo="bg-blue-500/10" />
-        <KpiCard titulo="Avaliações pendentes" valor="—" icone={ClipboardList} corFundo="bg-yellow-500/10" />
+        {d.loading ? (
+          <><KpiSkeleton /><KpiSkeleton /><KpiSkeleton /><KpiSkeleton /></>
+        ) : (
+          <>
+            <KpiCard titulo="Disciplinas"     valor={d.temDisciplinas ? d.disciplinasAtivas : '—'} icone={BookOpen} href="/dashboard/professor" />
+            <KpiCard titulo="Turmas"          valor={d.temDisciplinas ? d.turmas : '—'} icone={Users} corFundo="bg-green-500/10" href="/dashboard/professor" />
+            <KpiCard titulo="Alunos"          valor={d.temDisciplinas ? (d.alunos || '—') : '—'} icone={GraduationCap} corFundo="bg-blue-500/10" href="/dashboard/professor" />
+            <KpiCard titulo="Notas pendentes" valor={d.temDisciplinas ? d.notasPendentes : '—'} icone={ClipboardList} corFundo="bg-yellow-500/10" href="/dashboard/professor" />
+          </>
+        )}
       </div>
+
+      {/* Estado vazio honesto — sem vínculo ainda */}
+      {!d.loading && !d.temDisciplinas && (
+        <div className="bg-card border border-border rounded-xl p-5 text-sm text-muted-foreground flex items-center gap-2">
+          <BookOpen className="h-4 w-4 text-muted-foreground opacity-60 shrink-0" />
+          Nenhuma disciplina atribuída ainda — a secretaria fará o vínculo.
+        </div>
+      )}
+
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {[
           { icon: Users,         label: 'Minhas Disciplinas', desc: 'Acesse suas disciplinas ativas.',        href: '/dashboard/professor' },
@@ -484,6 +505,6 @@ export default function DashboardHome() {
   const { role, full_name } = profile;
 
   if (role === 'superadmin' || role === 'admin' || role === 'administracao') return <AdminView name={full_name} />;
-  if (role === 'professor') return <ProfessorView name={full_name} />;
+  if (role === 'professor') return <ProfessorView profile={profile} />;
   return <AlunoView profile={profile} />;
 }

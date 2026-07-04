@@ -15,9 +15,57 @@ import {
   encaminharConvalidacao,
   getExcecoesPendentes,
   negarExcecaoPrerequisito,
+  getResumoDisciplinasProfessor,
 } from '@/services/matricula-academica.service';
 
 beforeEach(() => { vi.clearAllMocks(); });
+
+// ─── getResumoDisciplinasProfessor (R3.3b) ──────────────────────────────────────
+describe('getResumoDisciplinasProfessor', () => {
+  it('sem disciplinas → zeros, sem query', async () => {
+    vi.mocked(supabase.from).mockReset();
+    const r = await getResumoDisciplinasProfessor([]);
+    expect(r).toEqual({ alunos: 0, notasPendentes: 0 });
+    expect(supabase.from).not.toHaveBeenCalled();
+  });
+
+  it('conta alunos distintos e notas pendentes (nota null OU cursando)', async () => {
+    vi.mocked(supabase.from).mockReset();
+    vi.mocked(supabase.from).mockReturnValue({
+      select: vi.fn().mockReturnValue({
+        in: vi.fn().mockReturnValue({
+          limit: vi.fn().mockResolvedValue({
+            data: [
+              { matricula_id: 'm1', nota: 8,    status: 'aprovado' },  // ok
+              { matricula_id: 'm1', nota: null, status: 'cursando' },  // pendente (mesma matrícula)
+              { matricula_id: 'm2', nota: null, status: 'cursando' },  // pendente
+              { matricula_id: 'm3', nota: 6,    status: 'cursando' },  // pendente (cursando c/ nota parcial)
+            ],
+            error: null,
+          }),
+        }),
+      }),
+    } as any);
+
+    const r = await getResumoDisciplinasProfessor(['d1', 'd2']);
+    expect(r.alunos).toBe(3);          // m1, m2, m3 distintos
+    expect(r.notasPendentes).toBe(3);  // 3 linhas com nota null OU status cursando
+  });
+
+  it('erro na query → zeros (degrada, não quebra)', async () => {
+    vi.mocked(supabase.from).mockReset();
+    vi.mocked(supabase.from).mockReturnValue({
+      select: vi.fn().mockReturnValue({
+        in: vi.fn().mockReturnValue({
+          limit: vi.fn().mockResolvedValue({ data: null, error: { message: 'rls' } }),
+        }),
+      }),
+    } as any);
+
+    const r = await getResumoDisciplinasProfessor(['d1']);
+    expect(r).toEqual({ alunos: 0, notasPendentes: 0 });
+  });
+});
 
 describe('matricula-academica.service', () => {
   describe('matricularEmDisciplina', () => {

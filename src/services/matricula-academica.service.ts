@@ -108,6 +108,34 @@ export async function getMatriculasDisciplinaByAluno(
   return (data as MatriculaDisciplina[]) ?? [];
 }
 
+export interface ResumoDisciplinasProfessor {
+  alunos: number;         // matrículas (alunos) distintas nas disciplinas
+  notasPendentes: number; // linhas sem nota final (nota IS NULL) ou status 'cursando'
+}
+
+// Agrega matriculas_disciplina para um conjunto de disciplinas (as do professor).
+// Query separada (LICAO-026): matriculas_disciplina não tem aluno_id — dedupe por
+// matricula_id (cada matrícula = 1 aluno). Sem join aninhado sob RLS.
+export async function getResumoDisciplinasProfessor(
+  disciplinaIds: string[]
+): Promise<ResumoDisciplinasProfessor> {
+  if (disciplinaIds.length === 0) return { alunos: 0, notasPendentes: 0 };
+
+  const { data, error } = await supabase
+    .from('matriculas_disciplina')
+    .select('matricula_id, nota, status')
+    .in('disciplina_id', disciplinaIds)
+    .limit(2000);
+
+  if (error || !data) return { alunos: 0, notasPendentes: 0 };
+
+  const rows = data as { matricula_id: string; nota: number | null; status: string }[];
+  const alunos = new Set(rows.map(r => r.matricula_id)).size;
+  const notasPendentes = rows.filter(r => r.nota == null || r.status === 'cursando').length;
+
+  return { alunos, notasPendentes };
+}
+
 export async function matricularEmDisciplina(
   matriculaId: string,
   disciplinaId: string,
