@@ -514,6 +514,12 @@ Razões:
 **Versão alvo**: quando contratos reais estiverem cadastrados
 **Status**: Planejado
 
+### Avaliações pendentes por avaliação (definição "a") — ProfessorView (R3.3b)
+**Descrição**: O KPI "Notas pendentes" do ProfessorView usa a definição **(b)** — alunos sem nota final em `matriculas_disciplina` (`nota IS NULL`/`cursando`). Quando a **criação de avaliações** (`avaliacoes`: N1/N2/rec/trabalho/extra) estiver em uso, avaliar trocar/complementar pela definição **(a)**: por avaliação definida, comparar `notas_aluno` lançadas vs nº de alunos matriculados → "avaliações com notas faltando". Mais preciso, porém multi-query e só útil com avaliações criadas. Identificado no R3.3b.
+**Prioridade**: Baixa (só relevante quando avaliações forem usadas)
+**Versão alvo**: quando a criação de avaliações estiver em uso
+**Status**: Planejado
+
 ---
 
 ## COMO USAR ESTE BACKLOG
