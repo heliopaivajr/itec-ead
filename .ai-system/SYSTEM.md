@@ -1,5 +1,7 @@
 # SYSTEM.md — DNA do Produto ITEC-EAD
-# Atualizado: 2026-05-26 | Score: 7.8/10
+# Atualizado: 2026-07-04
+
+> Stack real: **React 18 + TS + Vite + Tailwind + Supabase + Vercel** · local `E:\_HELIOJR\ITEC\itec-ead`. Ver `STACK.md`.
 
 ## Identidade
 Nome: ITEC-EAD — Plataforma de Ensino a Distância
@@ -13,7 +15,8 @@ e ministerial para servirem nas igrejas locais e organizações.
 
 ## Produto
 Plataforma de gestão acadêmica completa:
-matrícula → frequência → materiais → financeiro → certificação
+matrícula → frequência/notas → materiais → financeiro → histórico consolidado
+(certificado = roadmap futuro, ver "Cursos/funcionalidades futuras")
 
 ## Curso ativo
 Graduação em Teologia — 3 anos — 1850h — 185 créditos
@@ -36,14 +39,17 @@ Turma: 20–30 alunos
 - Jurídico: Adv. Hugo
 - Secretaria: Camila
 
-## Regras de negócio críticas
-- Presença mínima: 75% por disciplina
-- Limite de faltas: 25% → reprovação automática
-- Pré-requisitos bloqueiam matrícula (exceto aprovação superadmin)
-- Convalidação exige aprovação superadmin + coordenador
-- Contrato do professor: um por disciplina, cadastro permanente
-- Matrícula sempre exige validação presencial no ITEC
-- Documentos do aluno retidos em caso de inadimplência
+## Regras de negócio críticas (modelo real)
+- **Matrícula com funil de status** (`pendente · pre_matricula · aguardando_documentos/pagamento/aprovacao · ativa · trancada · concluida · inativa · evadida · suspensa · cancelada`). O status **`ativa` ⇄ acesso do aluno** andam sempre juntos, por qualquer tela (aprovar libera; sair de `ativa` para status revogador remove acesso; `concluida` mantém acesso do egresso). Ver LICAO-039.
+- **Estrutura acadêmica:** `disciplinas_v2` (código do Manual) + módulos + **pré/co-requisitos** (`prerequisitos_v2`) que bloqueiam a matrícula na disciplina (exceção via `excecoes_prerequisito`/superadmin).
+- **Aprovação na disciplina:** nota **≥ 7,0 E** frequência **≥ 75%**. Frequência < 75% → reprovação por falta. (`notas_aluno` = parciais; `matriculas_disciplina.nota` = final.)
+- **Convalidação:** tabela **canônica `convalidacoes`** (documentos + fluxo `pendente→aprovado/rejeitado`, aprovação coordenador/superadmin). As colunas `convalidacao_*` foram removidas (migração 052).
+- **Histórico consolidado + lançamento retroativo:** a secretaria lança aluno×cadeira de 2025 (nota/faltas/frequência/situação/professor/observação) em `matriculas_disciplina`; o histórico **prefere os valores consolidados** e cai para as parciais quando ausentes.
+- **Materiais por disciplina** (`materiais`) com upload/aprovação; progresso do aluno em `progresso_aluno`.
+- **Vínculo do professor:** contrato **não-encerrado** já habilita o professor a trabalhar (ver alunos, lançar nota/falta); a **assinatura física é formalidade paralela** (baixa/imprime/assina/entrega) e **não bloqueia** o uso (decisão C — R3.3a).
+- Matrícula exige **validação presencial** no ITEC.
+- Documentos do aluno retidos em caso de inadimplência.
+- **Certificado = roadmap futuro** (não implementado; sem modelo de "pontos"/LMS).
 
 ## Cursos futuros (só LP agora)
 - SETEB — Educação Teológica Básica

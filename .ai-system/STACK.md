@@ -1,5 +1,9 @@
 # STACK.md — Stack Técnica ITEC-EAD
-# Atualizado: 2026-05-26 (pós-Sprint D)
+# Atualizado: 2026-07-04
+
+## Stack (resumo)
+**React 18 + TypeScript + Vite + Tailwind CSS + Supabase + Vercel.**
+Repositório local: `E:\_HELIOJR\ITEC\itec-ead`. Aplicação web SPA (não é WordPress/LMS).
 
 ## Frontend
 - React 18
