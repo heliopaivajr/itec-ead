@@ -520,6 +520,12 @@ Razões:
 **Versão alvo**: quando a criação de avaliações estiver em uso
 **Status**: Planejado
 
+### Ficha 360 — nome da disciplina ITEC de destino na convalidação (R3.4)
+**Descrição**: A seção Convalidações da FichaAluno exibe `disciplina_origem` (origem), pois `getConvalidacoesByAluno` faz `select('*')` sem join. Para mostrar também a **disciplina ITEC de destino** (`disciplinas_v2` via `convalidacoes.disciplina_id`), fazer merge por query separada (LICAO-026) — em `getConvalidacoesByAluno` ou no loader da ficha. Polish opcional. Identificado no R3.4.
+**Prioridade**: Baixa (UX — refino)
+**Versão alvo**: refino de ficha
+**Status**: Planejado
+
 ### BLOCO AUDITORIA + QA — pós-R3.4 (gate: só após R3.4 mergeado)
 **Descrição**: Com o Núcleo Acadêmico completo (R0→R4), travar mudanças e auditar antes de novas features. Ordem obrigatória:
 1. **MODO AUDITORIA** — Agente 14 (protocolo 9 etapas) + 15-debt + 11-security + 17-lgpd → relatório em `.ai-system/audit/[data]/report.md`. **Não modificar código** até aprovação do Hélio.
