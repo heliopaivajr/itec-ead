@@ -15,6 +15,7 @@ import {
   type DocumentoFicha,
   type MensalidadeFicha,
 } from '@/services/ficha-aluno.service';
+import type { Convalidacao } from '@/services/matricula-academica.service';
 import { updatePerfil } from '@/services/usuarios.service';
 import { uploadAvatar } from '@/services/profile.service';
 import { getHistoricoAluno, type HistoricoAluno, type StatusHistorico } from '@/services/academico.service';
@@ -43,6 +44,13 @@ const STATUS_COLORS: Record<string, string> = {
   rejeitado: 'bg-red-500/20 text-red-400 border-red-500/30',
 };
 
+// Status de convalidação (pendente/aprovado/rejeitado) — R3.4
+const CONVALIDACAO_STATUS_COLORS: Record<string, string> = {
+  pendente:  'bg-yellow-500/20 text-yellow-400 border-yellow-500/30',
+  aprovado:  'bg-green-500/20 text-green-400 border-green-500/30',
+  rejeitado: 'bg-red-500/20 text-red-400 border-red-500/30',
+};
+
 function fmt(iso: string | null | undefined) {
   if (!iso) return '—';
   return new Date(iso).toLocaleDateString('pt-BR');
@@ -64,6 +72,7 @@ export default function FichaAluno() {
   const [matriculas,   setMatriculas]   = useState<MatriculaFicha[]>([]);
   const [documentos,   setDocumentos]   = useState<DocumentoFicha[]>([]);
   const [mensalidades, setMensalidades] = useState<MensalidadeFicha[]>([]);
+  const [convalidacoes, setConvalidacoes] = useState<Convalidacao[]>([]);
 
   const [obsEdit,    setObsEdit]    = useState('');
   const [savingObs,  setSavingObs]  = useState(false);
@@ -109,6 +118,7 @@ export default function FichaAluno() {
     setMatriculas(ficha.matriculas);
     setDocumentos(ficha.documentos);
     setMensalidades(ficha.mensalidades);
+    setConvalidacoes(ficha.convalidacoes);
     setObsEdit(ficha.perfil?.observacoes_internas ?? '');
     setLoading(false);
 
@@ -153,6 +163,7 @@ export default function FichaAluno() {
   const podeVerDocs     = ['superadmin', 'admin', 'administracao'].includes(adminProfile.role);
   const podeVerHistorico = ['superadmin', 'admin', 'administracao', 'professor'].includes(adminProfile.role);
   const podeLancar       = ['superadmin', 'admin', 'administracao'].includes(adminProfile.role);
+  const podeVerConvalidacoes = ['superadmin', 'admin', 'administracao'].includes(adminProfile.role);
 
   if (loading) {
     return (
@@ -226,6 +237,11 @@ export default function FichaAluno() {
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
               <h2 className="text-xl font-semibold">{perfil.full_name}</h2>
+              {perfil.codigo_itec && (
+                <Badge variant="outline" className="bg-primary/15 text-primary border-primary/30 text-xs font-mono">
+                  Código ITEC: {perfil.codigo_itec}
+                </Badge>
+              )}
               {inadimplente && (
                 <Badge variant="outline" className="bg-red-500/20 text-red-400 border-red-500/30 text-xs">
                   Inadimplente
@@ -290,7 +306,7 @@ export default function FichaAluno() {
           <table className="w-full text-sm">
             <thead>
               <tr className="text-left text-muted-foreground border-b">
-                <th className="pb-2 font-medium">ID</th>
+                <th className="pb-2 font-medium">Nº Matrícula</th>
                 <th className="pb-2 font-medium">Turma</th>
                 <th className="pb-2 font-medium">Data</th>
                 <th className="pb-2 font-medium">Status</th>
@@ -300,7 +316,11 @@ export default function FichaAluno() {
             <tbody className="divide-y">
               {matriculas.map(m => (
                 <tr key={m.id}>
-                  <td className="py-2 font-mono text-xs text-muted-foreground">{m.id.slice(0, 8)}…</td>
+                  <td className="py-2 font-mono text-xs">
+                    {m.numero_matricula
+                      ? <span className="text-foreground">{m.numero_matricula}</span>
+                      : <span className="text-muted-foreground">—</span>}
+                  </td>
                   <td className="py-2">{m.turma?.codigo ?? <span className="text-muted-foreground">—</span>}</td>
                   <td className="py-2">{fmt(m.created_at)}</td>
                   <td className="py-2">
@@ -437,6 +457,57 @@ export default function FichaAluno() {
           </table>
         )}
       </Section>
+
+      {/* Convalidações (staff — leitura; gestão em Convalidacoes.tsx) */}
+      {podeVerConvalidacoes && (
+        <Section title="Convalidações" icon={<BookOpen className="h-4 w-4" />}>
+          <div className="flex justify-end mb-2">
+            <Button size="sm" variant="outline" className="h-7 text-xs"
+              onClick={() => navigate('/dashboard/convalidacoes')}>
+              Gerenciar convalidações
+            </Button>
+          </div>
+          {convalidacoes.length === 0 ? (
+            <Empty text="Nenhuma convalidação registrada." />
+          ) : (
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-left text-muted-foreground border-b">
+                  <th className="pb-2 font-medium">Disciplina (origem)</th>
+                  <th className="pb-2 font-medium">Instituição</th>
+                  <th className="pb-2 font-medium">CH</th>
+                  <th className="pb-2 font-medium">Status</th>
+                  <th className="pb-2 font-medium">Docs</th>
+                  <th className="pb-2 font-medium">Solicitado</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y">
+                {convalidacoes.map(c => (
+                  <tr key={c.id}>
+                    <td className="py-2">{c.disciplina_origem || <span className="text-muted-foreground">—</span>}</td>
+                    <td className="py-2">{c.instituicao_origem || <span className="text-muted-foreground">—</span>}</td>
+                    <td className="py-2">{c.carga_horaria_origem != null ? `${c.carga_horaria_origem}h` : '—'}</td>
+                    <td className="py-2">
+                      <Badge variant="outline" className={`text-xs ${CONVALIDACAO_STATUS_COLORS[c.status] ?? ''}`}>
+                        {c.status}
+                      </Badge>
+                    </td>
+                    <td className="py-2 text-xs">
+                      {(c.documentos_url ?? []).length === 0
+                        ? <span className="text-muted-foreground">—</span>
+                        : (c.documentos_url ?? []).map((u, i) => (
+                            <a key={i} href={u} target="_blank" rel="noopener noreferrer"
+                              className="text-primary hover:underline mr-2">Ver doc{(c.documentos_url ?? []).length > 1 ? ` ${i + 1}` : ''}</a>
+                          ))}
+                    </td>
+                    <td className="py-2 text-xs text-muted-foreground">{fmt(c.solicitado_em)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </Section>
+      )}
 
       {/* Financeiro */}
       <Section title="Financeiro" icon={<CreditCard className="h-4 w-4" />}>
