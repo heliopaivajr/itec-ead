@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase';
+import { getConvalidacoesByAluno, type Convalidacao } from './matricula-academica.service';
 
 export interface PerfilAluno {
   id: string;
@@ -66,10 +67,11 @@ export interface FichaAlunoData {
   matriculas: MatriculaFicha[];
   documentos: DocumentoFicha[];
   mensalidades: MensalidadeFicha[];
+  convalidacoes: Convalidacao[];
 }
 
 export async function getFichaAluno(alunoId: string): Promise<FichaAlunoData> {
-  const [perfilRes, matRes, docRes, mensRes] = await Promise.all([
+  const [perfilRes, matRes, docRes, mensRes, convalidacoes] = await Promise.all([
     supabase
       .from('profiles')
       .select('id, full_name, email, role, telefone, bio, avatar_url, created_at, cpf, rg, data_nascimento, sexo, endereco, numero, complemento, bairro, cidade, estado, cep, igreja_local, observacoes_internas, codigo_itec')
@@ -96,12 +98,16 @@ export async function getFichaAluno(alunoId: string): Promise<FichaAlunoData> {
       .eq('aluno_id', alunoId)
       .order('data_vencimento', { ascending: false })
       .limit(36),
+
+    // Convalidações do aluno (R3.4) — leitura na ficha; gestão em Convalidacoes.tsx.
+    getConvalidacoesByAluno(alunoId),
   ]);
 
   return {
-    perfil:       perfilRes.data as PerfilAluno | null,
-    matriculas:   (matRes.data ?? []) as unknown as MatriculaFicha[],
-    documentos:   (docRes.data ?? []) as DocumentoFicha[],
-    mensalidades: (mensRes.data ?? []) as MensalidadeFicha[],
+    perfil:        perfilRes.data as PerfilAluno | null,
+    matriculas:    (matRes.data ?? []) as unknown as MatriculaFicha[],
+    documentos:    (docRes.data ?? []) as DocumentoFicha[],
+    mensalidades:  (mensRes.data ?? []) as MensalidadeFicha[],
+    convalidacoes,
   };
 }
