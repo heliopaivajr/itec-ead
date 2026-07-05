@@ -520,6 +520,16 @@ Razões:
 **Versão alvo**: quando a criação de avaliações estiver em uso
 **Status**: Planejado
 
+### BLOCO AUDITORIA + QA — pós-R3.4 (gate: só após R3.4 mergeado)
+**Descrição**: Com o Núcleo Acadêmico completo (R0→R4), travar mudanças e auditar antes de novas features. Ordem obrigatória:
+1. **MODO AUDITORIA** — Agente 14 (protocolo 9 etapas) + 15-debt + 11-security + 17-lgpd → relatório em `.ai-system/audit/[data]/report.md`. **Não modificar código** até aprovação do Hélio.
+2. **QA** — Agente 10-test: cobrir regras de domínio (funil de status/acesso [LICAO-039], nota≥7 E freq≥75%, pré-requisitos, convalidação, lançamento retroativo, vínculo de professor [decisão C]); resolver/documentar as **9 falhas pré-existentes** (8 ProtectedRoute + 1 academico `verificarPrerequisitos`).
+3. **Caça a bugs** — varredura por persona (aluno/professor/secretaria/coordenação) nas rotas profundas.
+4. **Sprint de AUTH dedicado** — bug ERR-AUTH-002 (falso logout / cold start): aplicar a lição do commit `2d79368` (testar deep routes localmente ANTES de deploy); revisar `archive/v2.0-docs`. Não tocar em auth fora deste sprint.
+**Prioridade**: Alta (qualidade pré-lançamento)
+**Versão alvo**: imediatamente após R3.4
+**Status**: Planejado (gate: R3.4 mergeado) — detalhe também no Tracker §7 do PLANO-MESTRE-v2_1
+
 ---
 
 ## COMO USAR ESTE BACKLOG
