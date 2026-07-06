@@ -118,7 +118,7 @@ Deno.serve(async (req) => {
     email: email.trim(),
     password: senha_temporaria,
     email_confirm: true,
-    user_metadata: { full_name: full_name.trim() },
+    user_metadata: { full_name: full_name.trim(), email: email.trim() },
   });
 
   if (authError) {
