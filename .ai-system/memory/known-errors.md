@@ -301,6 +301,29 @@ if (upsertErr) {
 **Severidade:** Média — só impacta se `user_roles` for usado ativamente em policies. Hoje ADR-006 ainda não foi implementado.
 **Status:** identificado — aguarda Sprint de auth para mitigar
 
+**↓ REBAIXADO (auditoria 2026-07-05, report-B):** a premissa estava errada. `user_roles`
+**não é tabela — é VIEW** sobre `profiles` (migração 032, criada como projeção sem RLS
+para evitar recursão — ADR-006). Consequência: o `upsert()` roda contra uma view **sem
+PK/unique constraint**, então o `ON CONFLICT` implícito **falha sempre** (42P10) — não
+é uma falha ocasional a mitigar, é permanente. Mas dessincronização é **impossível**:
+a view é uma projeção 1:1 de `profiles.role`, que já é atualizado (com tratamento de
+erro) na linha anterior de cada caller. Não há estado de cache para dessincronizar.
+
+**Reclassificação:** de "risco médio de permissões erradas" para **código morto
+inofensivo** — 3 upserts redundantes que sempre falham e são engolidos (silenciosos,
+mas sem efeito, porque não há nada para sincronizar):
+- `src/services/matriculas.service.ts:187` (`aplicarAcesso`)
+- `src/services/usuarios.service.ts:206` (`updateRole`)
+- `supabase/functions/criar-aluno/index.ts:158` (roda como `service_role`)
+
+**Severidade:** Baixa (era Média/P1). **Remediação real = SEC-02** (remover as 3 linhas
+mortas) — fica no backlog de limpeza, não bloqueia lançamento.
+
+O risco de segurança de fato associado a `user_roles` era outro, mais grave: ver **SEC-01**
+abaixo (grants indevidos na view permitindo escalação de privilégio) — **✅ RESOLVIDO**.
+
+**Status:** ✅ reclassificado (não é mais risco de RLS) — SEC-02 (limpeza de código) aberto no backlog
+
 ---
 
 ## ERR-TYPE-001
@@ -979,6 +1002,67 @@ Migrar `getDisciplinas`/`updateDisciplina` para `disciplinas_v2`; substituir/rem
 
 **Status:** corrigido (QUITADO)
 **Aprovado pelo Hélio:** Sim (R0.5 aprovado)
+
+---
+
+## SEC-01 — Escalação de privilégio via grants indevidos na VIEW `user_roles`
+
+**Data:** 2026-07-05 (achado) / 2026-07-06 (resolvido)
+**Agente envolvido:** 11-security-auditor (auditoria report-B) / 04-db-architect (migração)
+**Tipo de erro:** segurança / RLS — escalação de privilégio
+**Gravidade:** CRÍTICA (bloqueador de lançamento)
+
+**Descrição:**
+`user_roles` é uma VIEW sobre `profiles` (migração 032, criada para servir de fonte de
+role às policies sem recursão — ADR-006), mas a 032 nunca fez nenhum `REVOKE`. Com os
+grants default do Supabase, `anon`/`authenticated` herdavam INSERT/UPDATE/DELETE na
+view. Como a view é auto-atualizável e executa como a **dona** (bypassa o RLS de
+`profiles`), qualquer usuário autenticado podia fazer:
+```
+PATCH /rest/v1/user_roles?user_id=eq.<seu-id>  {"role":"superadmin"}
+```
+e escrever direto em `profiles.role`, **contornando** as policies P5/P6 (033) que
+protegem esse campo contra auto-promoção.
+
+**Como foi descoberto:**
+Auditoria de segurança/RLS (Parte B, 2026-07-05) — leitura de todas as migrations de
+policies e grants; análise dos privilégios default de views no Postgres/Supabase.
+
+**Causa provável:**
+A 032 focou em resolver a recursão (ADR-006) e assumiu implicitamente que uma view
+"para uso interno de policies" não precisava de REVOKE explícito — grants default do
+schema `public` se aplicam a views como se fossem tabelas.
+
+**Impacto:**
+Nenhum incidente confirmado (não há evidência de exploração). Risco era de escalação
+total de privilégio por qualquer aluno autenticado.
+
+**Correção aplicada:**
+Migração `20260706_054_sec01_revoke_user_roles.sql`:
+- `REVOKE INSERT, UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER` de `anon` e `authenticated`;
+- `REVOKE SELECT` de `anon` (authenticated mantém SELECT — as policies dependem disso).
+
+⚠️ **Não** foi usado `security_invoker = true` na view — isso reintroduziria a recursão
+infinita do ADR-006 (`profiles_select_staff` consulta `user_roles`, que sob invoker
+voltaria a ler `profiles` sob RLS, reavaliando a mesma policy). O REVOKE sozinho já
+fecha a escalação: sem privilégio de escrita, o UPDATE morre antes de alcançar a view.
+
+**Como evitar no futuro:**
+Toda VIEW criada para uso em policies RLS (padrão "sem RLS, definer implícito") deve
+vir com REVOKE explícito de escrita para `anon`/`authenticated` **na mesma migração**
+que a cria — nunca assumir que grants default são seguros para views auto-atualizáveis.
+
+**Prompt precisa melhorar?** Sim — Agente 04 (db-architect) deve incluir no checklist:
+"Toda CREATE VIEW usada por policies: REVOKE explícito de INSERT/UPDATE/DELETE para
+anon/authenticated, a menos que a escrita seja intencional e documentada."
+**Skill precisa melhorar?** Sim — checklist de migrations do Agente 04
+**Checklist precisa melhorar?** Sim
+**Documento precisa melhorar?** Sim — nota adicionada em [[ERR-RISK-001]] (rebaixado:
+o upsert que "sincronizava" essa view era código morto, não o risco real)
+
+**Status:** ✅ RESOLVIDO (migração 054 aplicada e validada — `anon` sem privilégios,
+`authenticated` só `SELECT`)
+**Aprovado pelo Hélio:** Sim (fluxo de auditoria → PR `fix/sec01-user-roles`)
 
 ---
 
