@@ -268,7 +268,7 @@ Sistema completo (R0→R4) → travar mudanças e auditar antes de novas feature
 4. **Currículo:** importe a matriz do §3 (ou a planilha `ITEC_Fluxo_Disciplinas_v1.xlsx`) como referência de `disciplinas_v2`.
 5. **SDD obrigatório:** nenhuma linha de código antes da spec do sprint aprovada pelo Hélio.
 6. **Trabalhe um sprint por vez**, na ordem do §6. Ao abrir um sprint: spec → auditoria prévia → `.sql` (se houver) → implementação → testes → RLS/segurança → PR/merge → Osábio → marcar §7.
-7. **Backlog parado** (resolver depois dos blocos de matérias): bug de login/sessão; versionar migrations 038-046 + Edge Function `criar-aluno`; corrigir dados (Fátima nasc. 2064, Icaro nasc. 2013, coluna Sexo Turma 01); decisão upgrade Supabase Free→Pro.
+7. **Backlog parado** (resolver depois dos blocos de matérias): bug de login/sessão; ~~versionar migrations 038-046 + Edge Function `criar-aluno`~~ **✅ RESOLVIDO (2026-07-06** — commit `69f6c76`: `migrations-manuais/` 038/039/046 + migração 051 (R1, que só existia local — achado da auditoria) + PASSO 1 da 039 no `criar-aluno` versionados no `main`); corrigir dados (Fátima nasc. 2064, Icaro nasc. 2013, coluna Sexo Turma 01); decisão upgrade Supabase Free→Pro.
 
 ---
 
