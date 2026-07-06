@@ -26,13 +26,18 @@
 | `supabase/migrations/20260620_048_r0_5_consolida_curriculo_v2.sql` | ✅ **APLICADA** | 2026-06-20 | `prerequisitos_v2` repopulada: **13 `prerequisito` + 11 `recomendado`**; coluna `disciplinas_v2.ativo` criada; CHECK ampliado com `recomendado`. **NÃO reexecutar.** |
 | `supabase/migrations/20260622_049_materiais_disciplina.sql` | ✅ **APLICADA** | 2026-06-22 | R0.5.4: tabela `materiais_disciplina` + RLS, função `aluno_ve_disciplina()`, bucket privado `materiais-disciplina` + policies. Versionada no `main` (PR #16 merged). **NÃO reexecutar.** |
 | `supabase/migrations/20260622_050_manual_aluno.sql` | ✅ **APLICADA** | 2026-06-22 | Manual do Aluno (handbook): coluna `cursos.manual_aluno_url` + bucket privado `manuais-aluno` (read authenticated; write admin/superadmin). Validada 1/1/4 (coluna + bucket + 4 policies). Versionada no `main` (PR #17 merged). **NÃO reexecutar.** |
-| `supabase/migrations/20260623_051_r1_schema_retroativo.sql` | ✅ **APLICADA** | 2026-06-23 | R1: `matriculas.numero_matricula` (nullable + índice único parcial) + CHECK do funil ADITIVO (7+5 valores) + função `gerar_numero_matricula()` (advisory lock + ano via `lpad`). `matriculas_disciplina` ganha `faltas`, `frequencia_percentual`, `observacao` e `convalidacao_*` (5 col). Validada: colunas criadas; CHECK aditivo; `gerar_numero_matricula()` testada (2025→`ITEC25T001`, 2026→`ITEC26T001`). **NÃO reexecutar.** ⚠️ Os 5 `convalidacao_*` foram **removidos pela 052** (redundantes). |
+| `supabase/migrations/20260623_051_r1_schema_retroativo.sql` | ✅ **APLICADA** | 2026-06-23 | R1: `matriculas.numero_matricula` (nullable + índice único parcial) + CHECK do funil ADITIVO (7+5 valores) + função `gerar_numero_matricula()` (advisory lock + ano via `lpad`). `matriculas_disciplina` ganha `faltas`, `frequencia_percentual`, `observacao` e `convalidacao_*` (5 col). Validada: colunas criadas; CHECK aditivo; `gerar_numero_matricula()` testada (2025→`ITEC25T001`, 2026→`ITEC26T001`). **NÃO reexecutar.** ⚠️ Os 5 `convalidacao_*` foram **removidos pela 052** (redundantes). 📌 **Versionada em 2026-07-05** (branch `chore/versionar-migrations-pendentes`) — estava aplicada mas SEM cópia no repositório (achado da auditoria 2026-07-05, Ressalva 0). |
 | `supabase/migrations/20260627_052_r2_professor_id_drop_convalidacao.sql` | ✅ **APLICADA** | 2026-06-27 | R2 (G1+G2): `matriculas_disciplina.professor_id` UUID FK→`professores`; **DROP** dos 5 `convalidacao_*` da 051 (redundantes — convalidação canônica = tabela `convalidacoes`). Validada: `professor_id` criado=1; `convalidacao_*` restantes=0. **NÃO reexecutar.** |
 | `supabase/migrations/20260627_053_recuperacao_status_check.sql` | ✅ **APLICADA** | 2026-06-27 | R2.2: adiciona `'recuperacao'` ao CHECK de `matriculas_disciplina.status` (aditivo — 6 atuais + recuperacao). Validada: CHECK agora inclui `recuperacao`; lançamento retroativo de cadeiras em recuperação destravado. Versionada no branch do R2.2. **NÃO reexecutar.** |
 
 > As migrações 001–046 (numeração antiga) e as paradas em `migrations-manuais/` (038, 039, 046)
 > seguem o histórico do `CLAUDE.md` do projeto e o backlog do Plano Mestre §9 — não duplicar aqui
 > sem confirmação. Esta tabela cobre a fase atual (Núcleo Acadêmico).
+>
+> 📌 **2026-07-05:** `migrations-manuais/` (038, 039, 046 — aplicadas manualmente via SQL Editor) foi
+> **versionado no repositório** junto com o PASSO 1 da 039 (Edge Function `criar-aluno` enviando
+> `email` no `user_metadata`) — branch `chore/versionar-migrations-pendentes`. Fecha parte do
+> backlog §9 do Plano Mestre ("versionar migrations 038-046 + Edge Function criar-aluno").
 
 ---
 
