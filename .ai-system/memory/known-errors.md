@@ -1066,4 +1066,48 @@ o upsert que "sincronizava" essa view era código morto, não o risco real)
 
 ---
 
+## PERF-01 — Verificação de pré-requisito nunca reconhecia disciplina cursada
+
+**Data:** 2026-07-05 (achado) / 2026-07-07 (resolvido)
+**Agente envolvido:** 13-performance/11-security (achado, report-B) / 05-backend (fix)
+**Tipo de erro:** regra de negócio violada / query com coluna inexistente
+**Gravidade:** ALTA (bloqueador de lançamento — funcional)
+
+**Descrição:**
+As DUAS vias de verificação de pré-requisito estavam quebradas em `academico.service.ts`:
+- `verificarPrerequisitoBatch` (usada pelo portal do aluno via `useMeusCursos`) filtrava
+  `matriculas_disciplina` por `.eq('aluno_id', ...)` — **coluna que não existe** na tabela
+  (só `matricula_id`). PostgREST retornava 400, o erro era engolido e `cursadas` ficava
+  sempre vazio.
+- `verificarPrerequisitos` (single) usava pseudo-subquery inválida (query builder passado
+  como VALOR de `.eq` — supabase-js não suporta subquery). Sem caller em produção.
+
+**Impacto:**
+Invisível enquanto `matriculas_disciplina` tinha 0 linhas (F1). Após o lançamento
+retroativo, toda disciplina com pré-req formal apareceria **bloqueada indevidamente**
+no portal do aluno, mesmo com o pré-requisito aprovado. Ironia registrada: o
+`matricula-academica.service:117` documentava a ausência da coluna e fazia o filtro certo.
+
+**Correção aplicada (PR `fix/perf01-prerequisito-batch`, mergeado 2026-07-07):**
+- Batch: filtro do aluno via join — `select('disciplina_id, matricula:matriculas!inner(aluno_id)')`
+  + `.eq('matricula.aluno_id', alunoId)` (padrão do matricula-academica.service).
+- Single: **removida** (código morto). Para 1 disciplina, usar o batch com `[disciplinaId]`.
+- Regra de liberação confirmada e agora TESTADA: só `aprovado`/`convalidado` contam como
+  cursada (D2); `recuperacao`, `cursando`, `reprovado*` e `trancado` NÃO liberam.
+- Testes novos validam o SHAPE da query (join obrigatório; `.eq('aluno_id')` direto quebra
+  a suíte) — a regressão não volta silenciosa.
+- Efeito na suíte: a **9ª falha pré-existente (academico) está resolvida** — restam **8**
+  (todas do ProtectedRoute, dívida do teste pós-refactor de auth → sprint de auth).
+
+**Como evitar no futuro:**
+Mock fluente não valida schema — toda query nova em service deve conferir as colunas na
+migration da tabela (mesma lição do ERR-SCHEMA-001/ERR-001) e, para filtros por aluno em
+`matriculas_disciplina`, usar SEMPRE o join `matriculas!inner(aluno_id)`. Testes de service
+devem validar o shape da query quando o filtro é crítico de domínio.
+
+**Status:** ✅ RESOLVIDO
+**Aprovado pelo Hélio:** Sim (fluxo de auditoria → PR mergeado)
+
+---
+
 *Mantido pelo agente-Osabio · ITEC-EAD · 2025*

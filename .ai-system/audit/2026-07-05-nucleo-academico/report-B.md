@@ -17,12 +17,12 @@
 | **2. LGPD** | 🟡 | PII sob RLS ✅, sem PII em URL ✅, signed URLs ✅. Ressalvas: **professor lê CPF/RG/endereço de TODOS os alunos** (minimização), exclusão definitiva é stub (fila manual), avatars de alunos públicos. |
 | **3. Performance** | 🟢 | Índices cobrem todas as colunas quentes; LIMIT disciplinado em 100% das queries (DT-03 mantido); MeusCursos batelado. Ressalva: detector F1 com `limit(2000)` full-scan e relatórios com tetos de 500–5000 — ok para 150 alunos, monitorar. **Porém a análise de queries revelou PERF-01, que é bug funcional grave** (pré-requisitos). |
 
-### 🔴 BLOQUEADORES DE LANÇAMENTO (agosto)
+### 🔴 BLOQUEADORES DE LANÇAMENTO (agosto) — ✅ AMBOS RESOLVIDOS (placar 2/2)
 
-| # | Achado | Por quê bloqueia |
-|---|---|---|
-| **SEC-01** | Grants da VIEW `user_roles` (exposição de roles + possível **escalação de privilégio** via UPDATE na view) | Se confirmado ao vivo, qualquer aluno autenticado promove o próprio role. Verificação custa 2 queries; correção custa 2 `REVOKE`. **Verificar antes de qualquer aluno real.** |
-| **PERF-01** | **As DUAS vias de verificação de pré-requisito estão quebradas** (coluna `aluno_id` inexistente em `matriculas_disciplina` no batch + pseudo-subquery na single) — falha silenciosa, `cursadas` sempre vazio | Hoje é invisível (F1: 0 linhas na tabela). No instante em que a secretaria fizer o **lançamento retroativo (R2)**, todo aluno de módulo 2+ verá disciplinas **bloqueadas indevidamente** no portal. Quebra o motor de elegibilidade do Plano §4.4. |
+| # | Achado | Por quê bloqueava | Resolução |
+|---|---|---|---|
+| **SEC-01** | Grants da VIEW `user_roles` (exposição de roles + possível **escalação de privilégio** via UPDATE na view) | Se confirmado ao vivo, qualquer aluno autenticado promoveria o próprio role | ✅ **RESOLVIDO 2026-07-06** — migração 054 aplicada e validada (REVOKEs; `anon` sem privilégios, `authenticated` só SELECT). PR `fix/sec01-user-roles` mergeado. Ver known-errors → SEC-01 |
+| **PERF-01** | **As DUAS vias de verificação de pré-requisito estavam quebradas** (coluna `aluno_id` inexistente em `matriculas_disciplina` no batch + pseudo-subquery na single) — falha silenciosa, `cursadas` sempre vazio | Pós-lançamento retroativo, todo aluno de módulo 2+ veria disciplinas **bloqueadas indevidamente** no portal | ✅ **RESOLVIDO 2026-07-07** — batch corrigido com join `matriculas!inner(aluno_id)`; single removida (morta); regra aprovado/convalidado testada + teste de shape da query; 9ª falha da suíte eliminada (restam 8 do ProtectedRoute → sprint auth). PR `fix/perf01-prerequisito-batch` mergeado. Ver known-errors → PERF-01 |
 
 Tudo o mais abaixo é **melhoria pré-agosto** (recomendada) ou **melhoria futura** (marcado por achado).
 
@@ -30,7 +30,7 @@ Tudo o mais abaixo é **melhoria pré-agosto** (recomendada) ou **melhoria futur
 
 # 1. SEGURANÇA / RLS (11-security-auditor)
 
-## 1.1 SEC-01 — VIEW `user_roles`: grants default expõem leitura e, possivelmente, ESCRITA — 🔴 CRÍTICA (condicional) · BLOQUEADOR
+## 1.1 SEC-01 — VIEW `user_roles`: grants default expõem leitura e, possivelmente, ESCRITA — 🔴 CRÍTICA (condicional) · BLOQUEADOR → ✅ RESOLVIDO 2026-07-06 (migração 054 aplicada; PR `fix/sec01-user-roles`)
 
 **Contexto que muda tudo:** `user_roles` **não é tabela — é VIEW** criada pela migração 032:
 
@@ -145,7 +145,7 @@ A função (049, SECURITY DEFINER com `search_path` fixado ✅) considera **qual
 
 # 3. PERFORMANCE (13-performance)
 
-## 3.1 PERF-01 — Verificação de pré-requisitos: coluna inexistente → falha silenciosa TOTAL — 🔴 ALTA (bug funcional) · BLOQUEADOR
+## 3.1 PERF-01 — Verificação de pré-requisitos: coluna inexistente → falha silenciosa TOTAL — 🔴 ALTA (bug funcional) · BLOQUEADOR → ✅ RESOLVIDO 2026-07-07 (PR `fix/perf01-prerequisito-batch`)
 
 Achado durante a varredura de queries (é bug de domínio, não de velocidade — reportado aqui e cruzado com a Parte A P-03):
 

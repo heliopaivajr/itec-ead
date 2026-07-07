@@ -243,6 +243,13 @@ Sistema completo (R0→R4) → travar mudanças e auditar antes de novas feature
 4. **Sprint de AUTH dedicado** — bug **ERR-AUTH-002** (falso logout / cold start): aplicar a lição do commit `2d79368` (testar deep routes **localmente ANTES** de deploy); revisar o material em `archive/v2.0-docs`. **Não tocar em auth fora deste sprint.**
 > Gate: **só iniciar após R3.4 mergeado.** Registrado 2026-07-05 (doc-only). Ver IDEAS-BACKLOG.
 
+**PROGRESSO DA REMEDIAÇÃO PÓS-AUDITORIA** (etapa 1 ✅ concluída em 2026-07-05/06 — relatórios `report-A.md` + `report-B.md` em `.ai-system/audit/2026-07-05-nucleo-academico/`, ambos aprovados):
+- ✅ **SEC-01** (2026-07-06) — escalação de privilégio na VIEW `user_roles` fechada (migração 054 aplicada + PR `fix/sec01-user-roles` mergeado).
+- ✅ **PERF-01** (2026-07-07) — verificação de pré-requisito corrigida (join `matriculas!inner`; single morta removida; regra aprovado/convalidado testada; PR `fix/perf01-prerequisito-batch` mergeado). Falhas da suíte: 9 → **8** (a do academico resolvida; restam as 8 do ProtectedRoute → sprint auth).
+- **→ Os 2 BLOQUEADORES do report-B estão fechados (2/2).**
+- 🟠 Próximos (leva pré-agosto, report-B): **SEC-03/SEC-04** (policies de Storage: SELECT amplo em materiais/manuais + escrita que impede professor/secretaria) · **LGPD-01** (professor lê CPF/RG de todos) · **LGPD-02** (exclusão/retenção) · versionar migrações 051✅/054✅ (feito) e limpar upserts mortos (SEC-02, backlog).
+- 🔴 Depois: **Sprint de AUTH** (item 4 acima — também zera as 8 falhas restantes da suíte via correção dos testes do ProtectedRoute) e itens 2-3 do bloco (QA + caça a bugs).
+
 ---
 
 ## 8. REGRAS INVIOLÁVEIS (consolidadas)
