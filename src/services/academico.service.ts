@@ -184,58 +184,10 @@ export async function getPrerequisitos(disciplinaId: string): Promise<Prerequisi
   return (data as Prerequisito[]) ?? [];
 }
 
-// Verifica se o aluno cumpriu os pré-requisitos de uma disciplina.
-// Retorna aprovado=false e a lista de disciplinas que ainda faltam.
-export async function verificarPrerequisitos(
-  alunoId: string,
-  disciplinaId: string
-): Promise<VerificacaoPrerequisitos> {
-  const prereqs = await getPrerequisitos(disciplinaId);
-  if (prereqs.length === 0) return { aprovado: true, faltam: [] };
-
-  // Busca disciplinas já cursadas/aprovadas pelo aluno
-  const { data: cursadas } = await supabase
-    .from('matriculas_disciplina')
-    .select('disciplina_id, status')
-    .in('status', ['aprovado', 'convalidado'])
-    .eq('matricula_id',
-      supabase.from('matriculas').select('id').eq('aluno_id', alunoId)
-    );
-
-  const cursadasIds = new Set((cursadas ?? []).map((r: { disciplina_id: string }) => r.disciplina_id));
-
-  // Busca exceções autorizadas para esta disciplina
-  const { data: excecoes } = await supabase
-    .from('excecoes_prerequisito')
-    .select('prerequisito_dispensado_id')
-    .eq('aluno_id', alunoId)
-    .eq('disciplina_id', disciplinaId);
-
-  const dispensados = new Set(
-    (excecoes ?? []).map((e: { prerequisito_dispensado_id: string }) => e.prerequisito_dispensado_id)
-  );
-
-  // Considera tanto disciplinas cursadas quanto exceções autorizadas
-  const faltamIds = prereqs
-    .filter(p =>
-      p.tipo === 'prerequisito' &&
-      !cursadasIds.has(p.prerequisito_id) &&
-      !dispensados.has(p.prerequisito_id)
-    )
-    .map(p => p.prerequisito_id);
-
-  if (faltamIds.length === 0) return { aprovado: true, faltam: [] };
-
-  const { data: faltamDiscs } = await supabase
-    .from('disciplinas_v2')
-    .select('*')
-    .in('id', faltamIds);
-
-  return {
-    aprovado: false,
-    faltam: (faltamDiscs as Disciplina[]) ?? [],
-  };
-}
+// Verificação individual de pré-requisito REMOVIDA (PERF-01, auditoria 2026-07-05):
+// usava uma pseudo-subquery inválida (query builder passado como valor de .eq) e não
+// tinha nenhum caller em produção. Use verificarPrerequisitoBatch — para uma única
+// disciplina, chame com [disciplinaId].
 
 // Batch: pré-requisitos para múltiplas disciplinas de um aluno (3 queries)
 export async function verificarPrerequisitoBatch(
@@ -255,9 +207,12 @@ export async function verificarPrerequisitoBatch(
       .limit(disciplinaIds.length * 10),
     supabase
       .from('matriculas_disciplina')
-      .select('disciplina_id')
+      // matriculas_disciplina NÃO tem aluno_id — filtrar via join com matriculas
+      // (mesmo padrão de matricula-academica.service getMatriculasDisciplinaByAluno).
+      // Conta como "cursada" apenas aprovado/convalidado (D2: recuperacao NÃO libera).
+      .select('disciplina_id, matricula:matriculas!inner(aluno_id)')
       .in('status', ['aprovado', 'convalidado'])
-      .eq('aluno_id', alunoId)
+      .eq('matricula.aluno_id', alunoId)
       .limit(200),
     supabase
       .from('excecoes_prerequisito')
