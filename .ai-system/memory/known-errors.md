@@ -1110,4 +1110,51 @@ devem validar o shape da query quando o filtro é crítico de domínio.
 
 ---
 
+## SEC-03 / SEC-04 / SEC-05 — Policies de Storage frouxas nos buckets de material/manual
+
+**Data:** 2026-07-05 (achado, report-B) / 2026-07-07 (parcialmente resolvido — migração 055)
+**Agente envolvido:** 11-security-auditor (achado) / 04-db-architect (fix)
+**Tipo de erro:** segurança / RLS de Storage
+**Gravidade:** MÉDIA (não bloqueador — buckets privados, 0 objetos, universo controlado)
+
+**Descrição (3 achados nos buckets `materiais-disciplina` [049] e `manuais-aluno` [050]):**
+- **SEC-03:** `materiais_obj_select` liberava o bucket INTEIRO a qualquer `authenticated`
+  (`USING bucket_id='materiais-disciplina'`) — pendente/evadido/aluno de outro curso
+  listava e baixava qualquer material. O gate fino (`aluno_ve_disciplina` + aprovado/ativo)
+  existia só na TABELA, não no Storage.
+- **SEC-04:** escrita (INSERT/UPDATE/DELETE) só admin/superadmin — a spec (Plano §4.2/§5)
+  pede que **secretaria (`administracao`)** e **professor da cadeira** também subam.
+- **SEC-05:** `aluno_ve_disciplina()` não filtrava `status` — matrícula evadida/cancelada/
+  trancada/pendente continuava liberando material.
+
+**Como foi descoberto:**
+Auditoria de Storage (report-B) + diagnóstico dedicado (queries em `pg_policies` e
+`storage.buckets` confirmaram buckets privados com 0 objetos).
+
+**Correção aplicada (migração 055, aplicada 2026-07-07):**
+- SEC-05 ✅ — `aluno_ve_disciplina` passa a exigir `m.status IN ('ativa','concluida')`.
+- SEC-03 ✅ — `materiais_obj_select` gateado por disciplina (`foldername[1]::uuid` via
+  `aluno_ve_disciplina`) + staff/professor leem tudo.
+- SEC-04 🔵 **PARCIAL** — escrita de materiais e do manual do aluno agora inclui
+  `administracao`. Falta a outra metade: **professor subir material/manual da SUA cadeira**
+  (restrito por `contratos_professor`/`CONTRATO_ATIVO`) — adiado para sprint próprio, que
+  entrega também a TELA do professor. Registrado no IDEAS-BACKLOG.
+
+**Como evitar no futuro:**
+Toda policy de Storage `FOR SELECT` num bucket com dado gateável deve replicar o gate da
+tabela (via `storage.foldername(name)` + função SECURITY DEFINER), nunca `USING bucket_id`
+sozinho. Funções usadas como gate de acesso devem filtrar o STATUS da relação (matrícula
+ativa), não só a existência.
+
+**Status:** SEC-03 ✅ RESOLVIDO · SEC-05 ✅ RESOLVIDO · SEC-04 🔵 parcial (professor pendente)
+**Aprovado pelo Hélio:** Sim (fluxo de auditoria → PR `fix/storage-055-rls`)
+
+> ⚠️ **Achado correlato NÃO tratado na 055 — bucket `comprovantes-pagamento`:** `Financeiro.tsx`
+> tenta upload direto (viola services-only) num bucket **sem migração/policy** usando
+> `getPublicUrl` e path previsível com `aluno_id`. Feature provavelmente quebrada E risco de
+> PII financeira exposta se o bucket existir como público. Registrado no IDEAS-BACKLOG para a
+> revisão do módulo financeiro.
+
+---
+
 *Mantido pelo agente-Osabio · ITEC-EAD · 2025*

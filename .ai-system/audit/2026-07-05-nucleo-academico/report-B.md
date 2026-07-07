@@ -97,7 +97,7 @@ A Parte A (e o próprio known-errors) tratou o `user_roles.upsert` ignorando err
 
 **SEC-09 (BAIXA · melhoria futura):** dois padrões convivem nas policies — as antigas (009–013) checam `EXISTS (SELECT FROM profiles WHERE id=auth.uid() AND role IN ...)` e as novas usam `user_roles`. O padrão antigo **funciona** sob RLS (a própria linha do usuário é legível por P1), mas a mistura dificulta auditoria. Consolidar num padrão único quando SEC-01 definir o mecanismo final.
 
-## 1.4 SEC-03 — Storage: SELECT amplo demais em `materiais-disciplina` e `manuais-aluno` — MÉDIA · melhoria pré-agosto
+## 1.4 SEC-03 — Storage: SELECT amplo demais em `materiais-disciplina` e `manuais-aluno` — MÉDIA · melhoria pré-agosto → ✅ RESOLVIDO 2026-07-07 (migração 055; gate por disciplina)
 
 ```sql
 -- 049 e 050, idênticas na leitura:
@@ -111,11 +111,11 @@ USING (bucket_id = 'materiais-disciplina');   -- e 'manuais-aluno'
 
 **Recomendação:** replicar o gate na policy do Storage — ex.: `USING (bucket_id='materiais-disciplina' AND (aluno_ve_disciplina((storage.foldername(name))[1]::uuid) OR <staff>))` (o path já começa com `disciplinaId/`), ou servir downloads exclusivamente por signed URL emitida por caminho autorizado e remover o SELECT amplo.
 
-## 1.5 SEC-04 — Escrita nos buckets 049/050 restrita a admin/superadmin — BAIXA (gap funcional) · melhoria pré-agosto
+## 1.5 SEC-04 — Escrita nos buckets 049/050 restrita a admin/superadmin — BAIXA (gap funcional) · melhoria pré-agosto → 🔵 PARCIAL 2026-07-07 (migração 055 adicionou `administracao`; professor da cadeira pendente — sprint com UI)
 
 A matriz de permissões (Plano §5) diz que **professor da cadeira re-sobe manual** e **secretaria/coordenador sobem manual do aluno** — mas as policies de INSERT/UPDATE/DELETE dos dois buckets só aceitam `admin/superadmin` (nem `administracao`). O fluxo de aprovação de manuais (§4.2) não funciona para professor/secretaria: upload falhará. Não é furo de segurança (é restritivo demais, não permissivo demais) — é feature quebrada para essas personas.
 
-## 1.6 SEC-05 — `aluno_ve_disciplina()` não filtra status da matrícula — BAIXA · melhoria futura
+## 1.6 SEC-05 — `aluno_ve_disciplina()` não filtra status da matrícula — BAIXA · melhoria futura → ✅ RESOLVIDO 2026-07-07 (migração 055; filtro `status IN ('ativa','concluida')`)
 
 A função (049, SECURITY DEFINER com `search_path` fixado ✅) considera **qualquer** matrícula do aluno no curso — incluindo `evadida`, `cancelada`, `trancada`. Aluno que saiu continua vendo materiais aprovados (na tabela; no Storage já via tudo pelo SEC-03). Adicionar `AND m.status IN ('ativa','concluida')` quando fizer o SEC-03.
 

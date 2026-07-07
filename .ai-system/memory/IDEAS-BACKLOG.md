@@ -40,6 +40,15 @@ Este documento registra todas as ideias, melhorias e funcionalidades discutidas 
 
 ## 2. PAINEL DE CONTROLE DE ACESSO
 
+### 2.0 [SPRINT] Material do professor — tela + escrita restrita à cadeira do contrato
+**Descrição**: Fecha a **outra metade do SEC-04** (report-B). Hoje professor só LÊ material (migração 055); a escrita é de admin/superadmin/administracao. Falta o professor **subir material e o manual da SUA cadeira**.
+**Solução técnica**: (a) tela no painel do professor para gerir materiais das disciplinas dele; (b) policy de Storage de WRITE (`materiais-disciplina`) restrita à cadeira do **contrato ativo** — cruzar `contratos_professor`/`CONTRATO_ATIVO` (decisão C) com o `disciplinaId` do path (`foldername[1]`), via função SECURITY DEFINER análoga à `aluno_ve_disciplina`.
+**Dependências**: contratos de professor cadastrados (ERR-DATA-F2) — mesma trava da migração 037 §2.
+**Prioridade**: Média (não bloqueia agosto — admin/secretaria já sobem material)
+**Versão alvo**: pós-agosto (sprint próprio, com UI)
+**Status**: Registrado — remediação pós-auditoria (SEC-04 metade 2)
+**Origem**: report-B SEC-04; migração 055 fez a parte de `administracao`.
+
 ### 2.1 Gestão Dinâmica de Permissões
 **Descrição**: Tela administrativa para superadmin gerenciar quais roles acessam quais módulos/rotas.  
 **Solução técnica**: Criar tabela `permissoes_modulos` no banco + interface de configuração.  
@@ -198,6 +207,15 @@ Este documento registra todas as ideias, melhorias e funcionalidades discutidas 
 ---
 
 ## 8. FINANCEIRO
+
+### 8.0 [SEGURANÇA] Bucket `comprovantes-pagamento` — quebrado + risco de PII
+**Descrição**: `Financeiro.tsx` faz `supabase.storage.from('comprovantes-pagamento').upload(...)` direto na page (viola services-only), mas o bucket **não existe em nenhuma migração** (sem policies versionadas). A feature provavelmente está quebrada; se o bucket existir criado à mão como **público**, comprovantes de pagamento (PII financeira do aluno) ficam acessíveis sem login.
+**Agravantes**: usa `getPublicUrl` (não signed URL) e path **previsível** `comprovantes/{aluno_id}_{mes_referencia}_{nome}` (sem UUID, expõe `aluno_id`).
+**O que fazer**: na revisão do módulo financeiro — criar bucket **PRIVADO** + policies (aluno vê o próprio; staff/financeiro tudo) + path com UUID (não expor `aluno_id`) + download por signed URL + mover o upload para um service. Confirmar antes se o bucket existe/é público (query B do diagnóstico de Storage).
+**Origem**: achado correlato do report-B (diagnóstico Storage, 2026-07-06) — fora do escopo da migração 055.
+**Prioridade**: ALTA (verificar já; correção junto da revisão financeira)
+**Versão alvo**: V1 (antes de agosto) — pelo menos a verificação
+**Status**: Registrado — pendente revisão do módulo financeiro
 
 ### 8.1 Gateway de Pagamento PIX/Boleto
 **Descrição**: Integração com Asaas para pagamento online de mensalidades.  
