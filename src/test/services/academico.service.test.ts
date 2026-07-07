@@ -7,7 +7,6 @@ import {
   getAllDisciplinas,
   getDisciplinaById,
   getPrerequisitos,
-  verificarPrerequisitos,
   verificarPrerequisitoBatch,
   getHistoricoAluno,
 } from '@/services/academico.service';
@@ -280,111 +279,122 @@ describe('academico.service', () => {
       expect(resultado.get('d2')?.faltam).toHaveLength(1);
       expect(resultado.get('d2')?.faltam[0].codigo).toBe('B1NTG');
     });
-  });
 
-  describe('verificarPrerequisitos', () => {
-    it('retorna aprovado=true quando não há pré-requisitos', async () => {
-      // getPrerequisitos → vazio
+    // PERF-01 (auditoria 2026-07-05): a query filtrava .eq('aluno_id') numa coluna
+    // que NÃO existe em matriculas_disciplina → 400 silencioso → cursadas sempre
+    // vazio → toda disciplina com pré-req aparecia bloqueada. Estes testes validam
+    // o SHAPE correto (aluno via join matriculas!inner) e o cenário de liberação.
+    it('pré-req cursado com aprovação NÃO bloqueia — e a query filtra aluno via join, não por coluna inexistente', async () => {
       vi.mocked(supabase.from).mockReset();
-      const mockLimit = vi.fn().mockResolvedValue({ data: [], error: null });
-      vi.mocked(supabase.from).mockReturnValue({
-        select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ limit: mockLimit }) }),
-      } as any);
 
-      const resultado = await verificarPrerequisitos('aluno-1', 'disc-1');
+      const matDiscSelect = vi.fn();
+      const matDiscIn = vi.fn();
+      const matDiscEq = vi.fn();
 
-      expect(resultado.aprovado).toBe(true);
-      expect(resultado.faltam).toHaveLength(0);
-    });
-
-    it('retorna aprovado=true quando todos os pré-requisitos foram cumpridos', async () => {
-      vi.mocked(supabase.from).mockReset();
-      // Chamada 1: getPrerequisitos → [{ prerequisito_id: 'disc-A', tipo: 'prerequisito' }]
-      // Chamada 2: cursadas → [{ disciplina_id: 'disc-A' }]
       vi.mocked(supabase.from)
+        // 1. prerequisitos_v2 → d2 exige d1
         .mockReturnValueOnce({
           select: vi.fn().mockReturnValue({
-            eq: vi.fn().mockReturnValue({
+            in: vi.fn().mockReturnValue({
               limit: vi.fn().mockResolvedValue({
-                data: [{ id: 'p1', disciplina_id: 'disc-1', prerequisito_id: 'disc-A', tipo: 'prerequisito' }],
+                data: [{ disciplina_id: 'd2', prerequisito_id: 'd1', tipo: 'prerequisito' }],
                 error: null,
               }),
             }),
           }),
         } as any)
+        // 2. matriculas_disciplina → aluno cursou d1 (aprovado), via join com matriculas
+        .mockReturnValueOnce({
+          select: matDiscSelect.mockReturnValue({
+            in: matDiscIn.mockReturnValue({
+              eq: matDiscEq.mockReturnValue({
+                limit: vi.fn().mockResolvedValue({
+                  data: [{ disciplina_id: 'd1', matricula: { aluno_id: 'aluno-1' } }],
+                  error: null,
+                }),
+              }),
+            }),
+          }),
+        } as any)
+        // 3. excecoes_prerequisito → nenhuma
         .mockReturnValueOnce({
           select: vi.fn().mockReturnValue({
-            in: vi.fn().mockReturnValue({
-              eq: vi.fn().mockResolvedValue({
-                data: [{ disciplina_id: 'disc-A', status: 'aprovado' }],
-                error: null,
+            eq: vi.fn().mockReturnValue({
+              in: vi.fn().mockReturnValue({
+                limit: vi.fn().mockResolvedValue({ data: [], error: null }),
               }),
             }),
           }),
         } as any);
 
-      const resultado = await verificarPrerequisitos('aluno-1', 'disc-1');
+      const todasDiscs = [
+        { id: 'd1', codigo: 'B1NTG', nome: 'NT I' } as any,
+        { id: 'd2', codigo: 'B1NTA', nome: 'NT II' } as any,
+      ];
+      const resultado = await verificarPrerequisitoBatch('aluno-1', ['d2'], todasDiscs);
 
-      expect(resultado.aprovado).toBe(true);
-      expect(resultado.faltam).toHaveLength(0);
+      // Regra: quem cursou o pré-req com aprovação vê a disciplina LIBERADA
+      expect(resultado.get('d2')?.aprovado).toBe(true);
+      expect(resultado.get('d2')?.faltam).toHaveLength(0);
+
+      // Shape da query (regressão PERF-01): aluno entra pelo JOIN com matriculas —
+      // NUNCA por .eq('aluno_id') direto, que é coluna inexistente na tabela.
+      expect(matDiscSelect).toHaveBeenCalledWith(expect.stringContaining('matriculas!inner(aluno_id)'));
+      expect(matDiscIn).toHaveBeenCalledWith('status', ['aprovado', 'convalidado']);
+      expect(matDiscEq).toHaveBeenCalledWith('matricula.aluno_id', 'aluno-1');
+      expect(matDiscEq).not.toHaveBeenCalledWith('aluno_id', expect.anything());
     });
 
-    it('retorna aprovado=false com lista de disciplinas faltantes', async () => {
+    it('status que não aprovam (cursando/reprovado/recuperacao) não liberam o pré-requisito', async () => {
       vi.mocked(supabase.from).mockReset();
-      // verificarPrerequisitos faz 4 chamadas from():
-      // 1. prerequisitos_v2 → [A, B]
-      // 2. matriculas_disciplina (outer) → faz subquery .eq(matricula_id, subquery)
-      // 3. matriculas (subquery inner) → retorna ids de matrículas do aluno
-      // 4. disciplinas_v2 → faltantes = [disc-B]
       vi.mocked(supabase.from)
-        // 1. getPrerequisitos
-        .mockReturnValueOnce({
-          select: vi.fn().mockReturnValue({
-            eq: vi.fn().mockReturnValue({
-              limit: vi.fn().mockResolvedValue({
-                data: [
-                  { id: 'p1', disciplina_id: 'disc-1', prerequisito_id: 'disc-A', tipo: 'prerequisito' },
-                  { id: 'p2', disciplina_id: 'disc-1', prerequisito_id: 'disc-B', tipo: 'prerequisito' },
-                ],
-                error: null,
-              }),
-            }),
-          }),
-        } as any)
-        // 2. matriculas_disciplina (outer — usa subquery inline)
+        // 1. prerequisitos_v2 → d2 exige d1
         .mockReturnValueOnce({
           select: vi.fn().mockReturnValue({
             in: vi.fn().mockReturnValue({
-              eq: vi.fn().mockResolvedValue({
-                data: [{ disciplina_id: 'disc-A', status: 'aprovado' }],
+              limit: vi.fn().mockResolvedValue({
+                data: [{ disciplina_id: 'd2', prerequisito_id: 'd1', tipo: 'prerequisito' }],
                 error: null,
               }),
             }),
           }),
         } as any)
-        // 3. matriculas (subquery inner — from().select().eq())
+        // 2. matriculas_disciplina → vazio (o filtro .in(status) já exclui
+        //    cursando/reprovado/reprovado_falta/recuperacao/trancado no servidor)
         .mockReturnValueOnce({
           select: vi.fn().mockReturnValue({
-            eq: vi.fn().mockReturnValue({}), // objeto vazio — só é passado como argumento ao outer .eq()
+            in: vi.fn().mockReturnValue({
+              eq: vi.fn().mockReturnValue({
+                limit: vi.fn().mockResolvedValue({ data: [], error: null }),
+              }),
+            }),
           }),
         } as any)
-        // 4. disciplinas_v2 → faltantes
+        // 3. excecoes_prerequisito → nenhuma
         .mockReturnValueOnce({
           select: vi.fn().mockReturnValue({
-            in: vi.fn().mockResolvedValue({
-              data: [{ id: 'disc-B', codigo: 'B1NTG', nome: 'NT I' }],
-              error: null,
+            eq: vi.fn().mockReturnValue({
+              in: vi.fn().mockReturnValue({
+                limit: vi.fn().mockResolvedValue({ data: [], error: null }),
+              }),
             }),
           }),
         } as any);
 
-      const resultado = await verificarPrerequisitos('aluno-1', 'disc-1');
+      const todasDiscs = [
+        { id: 'd1', codigo: 'B1NTG', nome: 'NT I' } as any,
+        { id: 'd2', codigo: 'B1NTA', nome: 'NT II' } as any,
+      ];
+      const resultado = await verificarPrerequisitoBatch('aluno-1', ['d2'], todasDiscs);
 
-      expect(resultado.aprovado).toBe(false);
-      expect(resultado.faltam).toHaveLength(1);
-      expect(resultado.faltam[0].codigo).toBe('B1NTG');
+      expect(resultado.get('d2')?.aprovado).toBe(false);
+      expect(resultado.get('d2')?.faltam[0].codigo).toBe('B1NTG');
     });
   });
+
+  // describe('verificarPrerequisitos') REMOVIDO junto com a função (PERF-01):
+  // a single usava pseudo-subquery inválida e não tinha caller em produção.
+  // A cobertura de pré-requisitos vive em verificarPrerequisitoBatch acima.
 });
 
 // ─── getHistoricoAluno ────────────────────────────────────────────────────────
