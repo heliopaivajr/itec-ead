@@ -40,9 +40,12 @@ interface UploadItem { nome: string; status: 'enviando' | 'ok' | 'erro'; erro?: 
 interface Props {
   disciplina: { id: string; codigo: string; nome: string };
   onClose: () => void;
+  // false para o PROFESSOR: ele não aprova o próprio material (o material dele já
+  // entra aprovado — MATERIAL_PROFESSOR_AUTO_APROVA). Staff (default) vê o botão.
+  podeAprovar?: boolean;
 }
 
-export default function MateriaisDisciplinaModal({ disciplina, onClose }: Props) {
+export default function MateriaisDisciplinaModal({ disciplina, onClose, podeAprovar = true }: Props) {
   const [materiais, setMateriais] = useState<Material[]>([]);
   const [loading, setLoading] = useState(true);
   const [adicionando, setAdicionando] = useState(false);
@@ -262,7 +265,7 @@ export default function MateriaisDisciplinaModal({ disciplina, onClose }: Props)
                     </div>
                   </div>
                   <div className="flex items-center gap-1 shrink-0">
-                    {m.status !== 'aprovado' && (
+                    {podeAprovar && m.status !== 'aprovado' && (
                       <Button size="sm" variant="outline" onClick={() => handleAprovar(m)}
                         className="border-green-500/30 text-green-400 hover:bg-green-500/10 h-7 text-xs">
                         Aprovar

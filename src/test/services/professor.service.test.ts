@@ -15,6 +15,9 @@ import {
   preencherContrato,
   getDisciplinasAtivasProfessor,
   CONTRATO_ATIVO,
+  uploadContratoAssinado,
+  getContratoAssinadoUrl,
+  MAX_CONTRATO_BYTES,
 } from '@/services/professor.service';
 
 beforeEach(() => { vi.clearAllMocks(); });
@@ -627,5 +630,77 @@ describe('getDisciplinasAtivasProfessor', () => {
     expect(resultado[0].disciplina_nome).toBe('AT I');
     expect(resultado[0].turma_id).toBeNull();
     expect(resultado[0].turma_nome).toBeNull();
+  });
+});
+
+// ─── Contrato assinado (sprint Material do Professor, migração 056) ─────────────
+
+function fakePdf(name: string, size: number, type = 'application/pdf'): File {
+  const f = new File(['x'], name, { type });
+  Object.defineProperty(f, 'size', { value: size });
+  return f;
+}
+
+describe('uploadContratoAssinado', () => {
+  it('bloqueia arquivo que não é PDF', async () => {
+    const { error } = await uploadContratoAssinado('c1', fakePdf('foto.png', 1000, 'image/png'));
+    expect(error).toMatch(/PDF/i);
+  });
+
+  it('bloqueia PDF acima de 20MB', async () => {
+    const { error } = await uploadContratoAssinado('c1', fakePdf('contrato.pdf', MAX_CONTRATO_BYTES + 1));
+    expect(error).toMatch(/20 MB/);
+  });
+
+  it('sobe o PDF em {contratoId}/{uuid}.pdf e grava pdf_url na linha do contrato', async () => {
+    const uploadSpy = vi.fn().mockResolvedValue({ error: null });
+    vi.mocked(supabase.storage.from).mockReturnValue({ upload: uploadSpy } as any);
+
+    const updateSpy = vi.fn().mockReturnValue({ eq: vi.fn().mockResolvedValue({ error: null }) });
+    vi.mocked(supabase.from).mockReset();
+    vi.mocked(supabase.from).mockReturnValue({ update: updateSpy } as any);
+
+    const { error } = await uploadContratoAssinado('contrato-1', fakePdf('assinado.pdf', 1024));
+
+    expect(error).toBeNull();
+    expect(supabase.storage.from).toHaveBeenCalledWith('contratos-professor');
+    // path começa com o contratoId (foldername[1] — gate da policy 056)
+    expect(uploadSpy.mock.calls[0][0]).toMatch(/^contrato-1\/.*\.pdf$/);
+    // grava SÓ pdf_url — professor não muda status (quem confirma é a secretaria)
+    expect(supabase.from).toHaveBeenCalledWith('contratos_professor');
+    expect(updateSpy).toHaveBeenCalledWith({ pdf_url: expect.stringMatching(/^contrato-1\//) });
+    expect(updateSpy.mock.calls[0][0].status).toBeUndefined();
+  });
+
+  it('propaga erro do storage sem tocar na tabela', async () => {
+    vi.mocked(supabase.storage.from).mockReturnValue({
+      upload: vi.fn().mockResolvedValue({ error: { message: 'bucket negado' } }),
+    } as any);
+    vi.mocked(supabase.from).mockReset();
+
+    const { error } = await uploadContratoAssinado('c1', fakePdf('a.pdf', 1024));
+    expect(error).toBe('bucket negado');
+    expect(supabase.from).not.toHaveBeenCalled();
+  });
+});
+
+describe('getContratoAssinadoUrl', () => {
+  it('retorna signed URL (1h)', async () => {
+    const signedSpy = vi.fn().mockResolvedValue({ data: { signedUrl: 'https://signed/contrato' }, error: null });
+    vi.mocked(supabase.storage.from).mockReturnValue({ createSignedUrl: signedSpy } as any);
+
+    const { url, error } = await getContratoAssinadoUrl('c1/uuid.pdf');
+    expect(error).toBeNull();
+    expect(url).toBe('https://signed/contrato');
+    expect(signedSpy).toHaveBeenCalledWith('c1/uuid.pdf', 3600);
+  });
+
+  it('retorna erro quando o storage falha', async () => {
+    vi.mocked(supabase.storage.from).mockReturnValue({
+      createSignedUrl: vi.fn().mockResolvedValue({ data: null, error: { message: 'not found' } }),
+    } as any);
+    const { url, error } = await getContratoAssinadoUrl('x');
+    expect(url).toBeNull();
+    expect(error).toBe('not found');
   });
 });

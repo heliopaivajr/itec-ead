@@ -166,6 +166,55 @@ export async function getContratoByDisciplina(
   return data as ContratoProfessor;
 }
 
+// ─── Contrato assinado (Storage: bucket privado 'contratos-professor', migração 056) ──
+// Fluxo: professor baixa o contrato, assina fora (gov.br) e SOBE o PDF aqui.
+// O envio grava pdf_url na linha do contrato mas NÃO muda o status — quem confirma
+// ("Marcar como assinado") é a secretaria, no ProfessoresAdmin. O RLS (056) garante
+// que o professor só escreve no path do PRÓPRIO contrato e não altera status.
+
+const BUCKET_CONTRATOS = 'contratos-professor';
+export const MAX_CONTRATO_BYTES = 20 * 1024 * 1024; // 20 MB — PDF assinado
+
+export async function uploadContratoAssinado(
+  contratoId: string,
+  file: File
+): Promise<ServiceResult> {
+  const ext = (file.name.split('.').pop() ?? '').toLowerCase();
+  const ehPdf = ext === 'pdf' || file.type === 'application/pdf';
+  if (!ehPdf) return { error: 'O contrato assinado deve ser um arquivo PDF.' };
+  if (file.size > MAX_CONTRATO_BYTES) {
+    const mb = (file.size / 1024 / 1024).toFixed(1);
+    return { error: `Arquivo muito grande (${mb} MB). Limite de 20 MB.` };
+  }
+
+  // Re-envio gera novo UUID; o PDF anterior permanece no bucket (histórico).
+  const path = `${contratoId}/${crypto.randomUUID()}.pdf`;
+  const { error: upErr } = await supabase.storage
+    .from(BUCKET_CONTRATOS)
+    .upload(path, file, { upsert: false, contentType: 'application/pdf' });
+  if (upErr) return { error: upErr.message };
+
+  // Só pdf_url: a tabela (009) não tem atualizado_em, e o RLS (056) trava as demais colunas.
+  const { error: updErr } = await supabase
+    .from('contratos_professor')
+    .update({ pdf_url: path })
+    .eq('id', contratoId);
+  if (updErr) return { error: updErr.message };
+
+  return { error: null };
+}
+
+// Signed URL (1h) do PDF assinado — usada pelo professor e pela secretaria.
+export async function getContratoAssinadoUrl(
+  pdfPath: string
+): Promise<{ url: string | null; error: string | null }> {
+  const { data, error } = await supabase.storage
+    .from(BUCKET_CONTRATOS)
+    .createSignedUrl(pdfPath, 3600);
+  if (error || !data) return { url: null, error: error?.message ?? 'Não foi possível gerar o link.' };
+  return { url: data.signedUrl, error: null };
+}
+
 export async function updateStatusContrato(
   id: string,
   status: ContratoProfessor['status']

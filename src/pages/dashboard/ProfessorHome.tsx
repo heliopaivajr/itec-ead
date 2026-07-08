@@ -3,7 +3,10 @@ import { useOutletContext, useNavigate } from 'react-router-dom';
 import {
   BookOpen, Users, AlertTriangle, CheckCircle2,
   FileText, ClipboardList, RefreshCw, Star, PlusCircle, Clock, XCircle,
+  FolderOpen, Upload, Loader2,
 } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
+import { uploadContratoAssinado } from '@/services/professor.service';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
@@ -39,6 +42,27 @@ export default function ProfessorHome() {
   const [observacao, setObservacao]         = useState('');
   const [salvando, setSalvando]             = useState(false);
   const [solError, setSolError]             = useState<string | null>(null);
+
+  // Contrato assinado: professor sobe o PDF; secretaria confirma depois.
+  const { toast } = useToast();
+  const [enviandoPdf, setEnviandoPdf]       = useState<string | null>(null);
+  const [pdfEnviados, setPdfEnviados]       = useState<Set<string>>(new Set());
+
+  const handleEnviarAssinado = async (contratoId: string, file: File | undefined) => {
+    if (!file) return;
+    setEnviandoPdf(contratoId);
+    const { error: upErr } = await uploadContratoAssinado(contratoId, file);
+    setEnviandoPdf(null);
+    if (upErr) {
+      toast({ title: 'Erro ao enviar o contrato', description: upErr, variant: 'destructive' });
+      return;
+    }
+    setPdfEnviados(prev => new Set(prev).add(contratoId));
+    toast({
+      title: 'Contrato assinado enviado!',
+      description: 'A secretaria vai conferir e confirmar a assinatura.',
+    });
+  };
 
   // Carrega solicitações do professor
   useEffect(() => {
@@ -149,23 +173,52 @@ export default function ProfessorHome() {
         </div>
       )}
 
-      {/* Aviso de assinatura pendente — formalidade, NÃO bloqueia o trabalho */}
+      {/* Aviso de assinatura pendente — formalidade, NÃO bloqueia o trabalho.
+          Fluxo: baixar → assinar fora (ex.: gov.br) → enviar o PDF assinado aqui.
+          A secretaria confere e confirma via "Marcar como assinado". */}
       {contratosParaAssinar.length > 0 && (
-        <div className="bg-blue-500/10 border border-blue-400/30 rounded-lg p-3 flex items-start sm:items-center justify-between gap-3 flex-wrap text-sm text-blue-700 dark:text-blue-300">
+        <div className="bg-blue-500/10 border border-blue-400/30 rounded-lg p-3 space-y-2 text-sm text-blue-700 dark:text-blue-300">
           <div className="flex items-start gap-2">
             <FileText className="h-4 w-4 shrink-0 mt-0.5" />
             <span>
-              {contratosParaAssinar.length} contrato{contratosParaAssinar.length > 1 ? 's' : ''} pendente{contratosParaAssinar.length > 1 ? 's' : ''} de assinatura — baixe, assine e entregue à secretaria.
+              {contratosParaAssinar.length} contrato{contratosParaAssinar.length > 1 ? 's' : ''} pendente{contratosParaAssinar.length > 1 ? 's' : ''} de assinatura — baixe, assine (ex.: gov.br) e envie o PDF assinado.
               <span className="text-blue-600/70 dark:text-blue-300/70"> (não impede você de trabalhar)</span>
             </span>
           </div>
-          <Button
-            size="sm" variant="outline"
-            className="border-blue-400/40 text-blue-700 dark:text-blue-300 hover:bg-blue-500/10 shrink-0"
-            onClick={() => navigate(`/dashboard/professor/contrato/${contratosParaAssinar[0].contrato.id}`)}
-          >
-            <FileText className="h-4 w-4 mr-1.5" /> Baixar contrato
-          </Button>
+          <ul className="space-y-1.5">
+            {contratosParaAssinar.map(({ contrato, disciplina }) => {
+              const enviado = pdfEnviados.has(contrato.id) || !!contrato.pdf_url;
+              return (
+                <li key={contrato.id} className="flex items-center justify-between gap-2 flex-wrap rounded-md bg-blue-500/5 px-2.5 py-1.5">
+                  <span className="font-mono text-xs">{disciplina.codigo} <span className="font-sans text-blue-600/70 dark:text-blue-300/70">— {disciplina.nome}</span></span>
+                  <span className="flex items-center gap-1.5">
+                    {enviado && (
+                      <span className="text-[11px] px-1.5 py-0.5 rounded border border-green-500/30 bg-green-500/10 text-green-600 dark:text-green-400">
+                        PDF enviado — aguardando secretaria
+                      </span>
+                    )}
+                    <Button
+                      size="sm" variant="outline"
+                      className="h-7 text-xs border-blue-400/40 text-blue-700 dark:text-blue-300 hover:bg-blue-500/10"
+                      onClick={() => navigate(`/dashboard/professor/contrato/${contrato.id}`)}
+                    >
+                      <FileText className="h-3.5 w-3.5 mr-1" /> Baixar
+                    </Button>
+                    <label className={`inline-flex items-center h-7 text-xs px-2.5 rounded-md border cursor-pointer transition-colors border-blue-400/40 text-blue-700 dark:text-blue-300 hover:bg-blue-500/10 ${enviandoPdf === contrato.id ? 'opacity-60 pointer-events-none' : ''}`}>
+                      {enviandoPdf === contrato.id
+                        ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />
+                        : <Upload className="h-3.5 w-3.5 mr-1" />}
+                      {enviado ? 'Reenviar assinado' : 'Enviar assinado'}
+                      <input
+                        type="file" accept="application/pdf,.pdf" className="hidden"
+                        onChange={e => { handleEnviarAssinado(contrato.id, e.target.files?.[0]); e.target.value = ''; }}
+                      />
+                    </label>
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
         </div>
       )}
 
@@ -224,14 +277,22 @@ export default function ProfessorHome() {
               >
                 <Star className="h-4 w-4 mr-2" /> Lançar Notas
               </Button>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-3 gap-2">
                 <Button
                   size="sm"
                   variant="outline"
                   className="border-border text-foreground/70 hover:text-primary"
                   onClick={() => navigate(`/dashboard/professor/turma/${disciplina.id}`)}
                 >
-                  <Users className="h-4 w-4 mr-1.5" /> Ver Turma
+                  <Users className="h-4 w-4 mr-1.5" /> Turma
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="border-border text-foreground/70 hover:text-primary"
+                  onClick={() => navigate('/dashboard/professor/materiais')}
+                >
+                  <FolderOpen className="h-4 w-4 mr-1.5" /> Materiais
                 </Button>
                 <Button
                   size="sm"

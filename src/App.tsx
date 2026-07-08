@@ -9,7 +9,7 @@ import {
   Tv, Users, CalendarDays, FileText,
   CreditCard, HelpCircle, ClipboardList, BookOpen,
   Bell, ShieldAlert,
-  ClipboardCheck, FolderOpen, Star, CalendarCheck, Award, UserCog, BarChart2,
+  ClipboardCheck, Star, CalendarCheck, Award, UserCog, BarChart2,
 } from 'lucide-react';
 
 import Index from "./pages/Index";
@@ -49,6 +49,7 @@ const LancarFrequencia   = lazy(() => import("./pages/dashboard/LancarFrequencia
 const VerTurma           = lazy(() => import("./pages/dashboard/VerTurma"));
 const ContratoForm       = lazy(() => import("./pages/dashboard/ContratoForm"));
 const MeusContratos      = lazy(() => import("./pages/dashboard/MeusContratos"));
+const MateriaisProfessor = lazy(() => import("./pages/dashboard/MateriaisProfessor"));
 const ProfessoresAdmin   = lazy(() => import("./pages/dashboard/ProfessoresAdmin"));
 const EquipeITEC         = lazy(() => import("./pages/dashboard/EquipeITEC"));
 const GestaoTurmas       = lazy(() => import("./pages/dashboard/GestaoTurmas"));
@@ -159,7 +160,7 @@ const App = () => (
               <Route path="professor/alunos"     element={<ComingSoonPage titulo="Meus Alunos"    descricao="Veja a lista de alunos das suas turmas e acesse as fichas individuais." previsao="Agosto 2026" icone={Users} />} />
               <Route path="professor/frequencia" element={<ComingSoonPage titulo="Frequência"     descricao="Lance a presença dos alunos por aula de forma rápida."                previsao="Agosto 2026" icone={ClipboardCheck} />} />
               <Route path="professor/notas"      element={<ComingSoonPage titulo="Notas"          descricao="Registre e gerencie as avaliações e notas por disciplina."            previsao="Agosto 2026" icone={BookOpen} />} />
-              <Route path="professor/materiais"  element={<ComingSoonPage titulo="Materiais de Aula" descricao="Faça upload de apostilas, slides e PDFs para seus alunos."        previsao="Agosto 2026" icone={FolderOpen} />} />
+              <Route path="professor/materiais"  element={<RoleGuard allowedRoles={['professor','admin','superadmin','administracao']}><MateriaisProfessor /></RoleGuard>} />
               <Route path="professor/avaliacoes" element={<ComingSoonPage titulo="Avaliações"     descricao="Crie e gerencie provas, trabalhos e atividades das suas turmas."      previsao="Agosto 2026" icone={FileText} />} />
 
               {/* Professor — rotas de ação (com parâmetros) */}
