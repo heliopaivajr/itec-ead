@@ -19,9 +19,18 @@ function mockList(result: { data: any; error: any }) {
   } as any);
 }
 
-function mockInsert(result: { error: any }) {
+// criarMaterial consulta profiles (role do criador → auto-aprovação) antes do insert.
+// Retorna o spy do insert para asserções de payload (status/aprovado_por).
+function mockInsert(result: { error: any }, role: string = 'administracao') {
   vi.mocked(supabase.from).mockReset();
-  vi.mocked(supabase.from).mockReturnValue({ insert: vi.fn().mockResolvedValue(result) } as any);
+  const insertSpy = vi.fn().mockResolvedValue(result);
+  vi.mocked(supabase.from).mockImplementation(((table: string) => {
+    if (table === 'profiles') {
+      return { select: () => ({ eq: () => ({ single: () => Promise.resolve({ data: { role }, error: null }) }) }) };
+    }
+    return { insert: insertSpy };
+  }) as any);
+  return insertSpy;
 }
 
 function mockUpdateEq(result: { error: any }) {
@@ -54,13 +63,40 @@ describe('materiais.service', () => {
   });
 
   describe('criarMaterial', () => {
-    it('insere com status pendente e retorna error=null', async () => {
-      mockInsert({ error: null });
+    it('staff (administracao): insere com status pendente — curadoria mantida', async () => {
+      const insertSpy = mockInsert({ error: null }, 'administracao');
       const r = await criarMaterial({
         disciplina_id: 'disc-1', titulo: 'Aula 1', tipo: 'pdf', origem: 'upload', arquivo_url: 'disc-1/uuid.pdf',
       });
       expect(r.error).toBeNull();
       expect(supabase.from).toHaveBeenCalledWith('materiais_disciplina');
+      expect(insertSpy).toHaveBeenCalledWith(expect.objectContaining({ status: 'pendente' }));
+      expect(insertSpy.mock.calls[0][0].aprovado_por).toBeUndefined();
+    });
+
+    // Decisão do Hélio (sprint Material do Professor): material de PROFESSOR entra
+    // auto-aprovado. O RLS (056) garante que ele só insere na cadeira do contrato.
+    it('professor: insere AUTO-APROVADO (status aprovado + aprovado_por/aprovado_em)', async () => {
+      const insertSpy = mockInsert({ error: null }, 'professor');
+      const r = await criarMaterial({
+        disciplina_id: 'disc-1', titulo: 'Slides Aula 2', tipo: 'pdf', origem: 'upload', arquivo_url: 'disc-1/uuid.pdf',
+      });
+      expect(r.error).toBeNull();
+      expect(insertSpy).toHaveBeenCalledWith(expect.objectContaining({
+        status: 'aprovado',
+        aprovado_por: 'u1',            // uid do mock de auth.getUser
+        criado_por: 'u1',
+      }));
+      expect(insertSpy.mock.calls[0][0].aprovado_em).toEqual(expect.any(String));
+    });
+
+    it('professor: link (YouTube) também entra auto-aprovado', async () => {
+      const insertSpy = mockInsert({ error: null }, 'professor');
+      const r = await criarMaterial({
+        disciplina_id: 'disc-1', titulo: 'Aula gravada', tipo: 'video', origem: 'link', arquivo_url: 'https://youtu.be/x',
+      });
+      expect(r.error).toBeNull();
+      expect(insertSpy).toHaveBeenCalledWith(expect.objectContaining({ status: 'aprovado', origem: 'link' }));
     });
 
     it('propaga erro do banco', async () => {

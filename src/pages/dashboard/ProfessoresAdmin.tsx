@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
   getProfessores, updateStatusProfessor, vincularDisciplina,
-  getContratosByProfessor, updateStatusContrato,
+  getContratosByProfessor, updateStatusContrato, getContratoAssinadoUrl,
 } from '@/services/professor.service';
 import type { Professor, ContratoProfessor } from '@/services/professor.service';
 import { InlineStatusSelect } from '@/components/dashboard/InlineStatusSelect';
@@ -194,6 +194,13 @@ export default function ProfessoresAdmin() {
     setContratoProc(null);
     if (error) toast({ title: 'Erro', description: error, variant: 'destructive' });
     else { toast({ title: 'Contrato marcado como assinado.' }); carregarVinculos(vincularProf.id); }
+  };
+
+  // Baixa o PDF assinado que o professor enviou (bucket contratos-professor, signed URL 1h).
+  const handleBaixarPdf = async (pdfPath: string) => {
+    const { url, error } = await getContratoAssinadoUrl(pdfPath);
+    if (error || !url) { toast({ title: 'Erro ao gerar o link do PDF', description: error ?? undefined, variant: 'destructive' }); return; }
+    window.open(url, '_blank', 'noopener');
   };
 
   // Encerrar vínculo (soft) — remove das disciplinas ativas do professor. Nunca DELETE físico.
@@ -471,11 +478,22 @@ export default function ProfessoresAdmin() {
                         </span>
                       </div>
                       <div className="flex items-center gap-1.5 shrink-0">
+                        {c.pdf_url && (
+                          <button
+                            onClick={() => handleBaixarPdf(c.pdf_url!)}
+                            title="Baixar o PDF assinado enviado pelo professor"
+                            className="text-xs px-2 py-1 rounded border border-blue-500/30 text-blue-500 hover:bg-blue-500/10 transition-colors"
+                          >
+                            PDF
+                          </button>
+                        )}
                         {!encerrado && c.status !== 'assinado' && (
                           <button
                             onClick={() => handleMarcarAssinado(c.id)}
                             disabled={contratoProc === c.id}
-                            title="Registrar contrato assinado (formalidade)"
+                            title={c.pdf_url
+                              ? 'Confirmar o contrato assinado enviado pelo professor'
+                              : 'Registrar contrato assinado (formalidade)'}
                             className="text-xs px-2 py-1 rounded border border-green-500/30 text-green-500 hover:bg-green-500/10 transition-colors"
                           >
                             {contratoProc === c.id ? '...' : 'Assinado'}

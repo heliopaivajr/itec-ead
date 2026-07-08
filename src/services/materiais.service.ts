@@ -50,9 +50,22 @@ const BUCKET = 'materiais-disciplina';
 export const MAX_UPLOAD_BYTES = 50 * 1024 * 1024; // 50 MB
 export const EXTENSOES_PERMITIDAS = ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'mp4'] as const;
 
+// Decisão do Hélio (sprint Material do Professor, 2026-07-08): material criado por
+// PROFESSOR entra direto como 'aprovado' — o RLS (migração 056) garante que ele só
+// insere na disciplina do próprio contrato ativo, então "criador professor" implica
+// "professor da cadeira". Para REATIVAR a curadoria (material de professor voltar a
+// 'pendente' até staff aprovar), basta o superadmin trocar esta constante para false.
+export const MATERIAL_PROFESSOR_AUTO_APROVA = true;
+
 async function uidAtual(): Promise<string | null> {
   const { data } = await supabase.auth.getUser();
   return data.user?.id ?? null;
+}
+
+async function roleAtual(uid: string | null): Promise<string | null> {
+  if (!uid) return null;
+  const { data } = await supabase.from('profiles').select('role').eq('id', uid).single();
+  return (data as { role: string } | null)?.role ?? null;
 }
 
 // Lista materiais ATIVOS da disciplina (RLS filtra: aluno só vê 'aprovado').
@@ -69,9 +82,13 @@ export async function listarMateriais(disciplinaId: string): Promise<Material[]>
   return data as Material[];
 }
 
-// Cria um material (status 'pendente'; criado_por = usuário atual).
+// Cria um material. Staff: entra 'pendente' e aprova depois (curadoria).
+// Professor: entra 'aprovado' direto (MATERIAL_PROFESSOR_AUTO_APROVA) — o RLS da 056
+// já restringe o INSERT à disciplina do contrato ativo dele.
 export async function criarMaterial(input: MaterialInput): Promise<ServiceResult> {
   const criado_por = await uidAtual();
+  const role = await roleAtual(criado_por);
+  const autoAprova = MATERIAL_PROFESSOR_AUTO_APROVA && role === 'professor';
 
   const { error } = await supabase
     .from('materiais_disciplina')
@@ -84,8 +101,9 @@ export async function criarMaterial(input: MaterialInput): Promise<ServiceResult
       arquivo_url: input.arquivo_url,
       tamanho_bytes: input.tamanho_bytes ?? null,
       eh_resumo: input.eh_resumo ?? false,
-      status: 'pendente',
+      status: autoAprova ? 'aprovado' : 'pendente',
       criado_por,
+      ...(autoAprova ? { aprovado_por: criado_por, aprovado_em: new Date().toISOString() } : {}),
     });
 
   if (error) return { error: error.message };
