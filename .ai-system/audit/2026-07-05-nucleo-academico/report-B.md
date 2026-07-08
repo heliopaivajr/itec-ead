@@ -111,7 +111,7 @@ USING (bucket_id = 'materiais-disciplina');   -- e 'manuais-aluno'
 
 **Recomendação:** replicar o gate na policy do Storage — ex.: `USING (bucket_id='materiais-disciplina' AND (aluno_ve_disciplina((storage.foldername(name))[1]::uuid) OR <staff>))` (o path já começa com `disciplinaId/`), ou servir downloads exclusivamente por signed URL emitida por caminho autorizado e remover o SELECT amplo.
 
-## 1.5 SEC-04 — Escrita nos buckets 049/050 restrita a admin/superadmin — BAIXA (gap funcional) · melhoria pré-agosto → 🔵 PARCIAL 2026-07-07 (migração 055 adicionou `administracao`; professor da cadeira pendente — sprint com UI)
+## 1.5 SEC-04 — Escrita nos buckets 049/050 restrita a admin/superadmin — BAIXA (gap funcional) · melhoria pré-agosto → ✅ RESOLVIDO POR COMPLETO (055: `administracao`; 056: professor da cadeira via `professor_leciona_disciplina` + tela "Meus Materiais" + fecha gap da tabela)
 
 A matriz de permissões (Plano §5) diz que **professor da cadeira re-sobe manual** e **secretaria/coordenador sobem manual do aluno** — mas as policies de INSERT/UPDATE/DELETE dos dois buckets só aceitam `admin/superadmin` (nem `administracao`). O fluxo de aprovação de manuais (§4.2) não funciona para professor/secretaria: upload falhará. Não é furo de segurança (é restritivo demais, não permissivo demais) — é feature quebrada para essas personas.
 

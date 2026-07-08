@@ -1135,10 +1135,13 @@ Auditoria de Storage (report-B) + diagnóstico dedicado (queries em `pg_policies
 - SEC-05 ✅ — `aluno_ve_disciplina` passa a exigir `m.status IN ('ativa','concluida')`.
 - SEC-03 ✅ — `materiais_obj_select` gateado por disciplina (`foldername[1]::uuid` via
   `aluno_ve_disciplina`) + staff/professor leem tudo.
-- SEC-04 🔵 **PARCIAL** — escrita de materiais e do manual do aluno agora inclui
-  `administracao`. Falta a outra metade: **professor subir material/manual da SUA cadeira**
-  (restrito por `contratos_professor`/`CONTRATO_ATIVO`) — adiado para sprint próprio, que
-  entrega também a TELA do professor. Registrado no IDEAS-BACKLOG.
+- SEC-04 ✅ **RESOLVIDO POR COMPLETO** — metade 1 (055): escrita de materiais e do manual
+  do aluno inclui `administracao`. Metade 2 (056, sprint "Material do Professor",
+  2026-07-08): professor sobe/gerencia material da SUA cadeira, restrito por
+  `professor_leciona_disciplina()` (contrato ativo/`CONTRATO_ATIVO`), nas DUAS camadas
+  (tabela `materiais_disciplina` + Storage) + tela "Meus Materiais". A 056 também fechou o
+  gap remanescente da 055 (`administracao` no `staff_all` da TABELA — antes só o Storage
+  tinha; a linha falhava). Bônus: bucket `contratos-professor` para o PDF do contrato assinado.
 
 **Como evitar no futuro:**
 Toda policy de Storage `FOR SELECT` num bucket com dado gateável deve replicar o gate da
@@ -1146,8 +1149,8 @@ tabela (via `storage.foldername(name)` + função SECURITY DEFINER), nunca `USIN
 sozinho. Funções usadas como gate de acesso devem filtrar o STATUS da relação (matrícula
 ativa), não só a existência.
 
-**Status:** SEC-03 ✅ RESOLVIDO · SEC-05 ✅ RESOLVIDO · SEC-04 🔵 parcial (professor pendente)
-**Aprovado pelo Hélio:** Sim (fluxo de auditoria → PR `fix/storage-055-rls`)
+**Status:** SEC-03 ✅ RESOLVIDO · SEC-05 ✅ RESOLVIDO · SEC-04 ✅ RESOLVIDO POR COMPLETO (055 + 056)
+**Aprovado pelo Hélio:** Sim (fluxo de auditoria → PRs `fix/storage-055-rls` + `feat/material-professor`)
 
 > ⚠️ **Achado correlato NÃO tratado na 055 — bucket `comprovantes-pagamento`:** `Financeiro.tsx`
 > tenta upload direto (viola services-only) num bucket **sem migração/policy** usando

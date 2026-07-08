@@ -246,9 +246,11 @@ Sistema completo (R0→R4) → travar mudanças e auditar antes de novas feature
 **PROGRESSO DA REMEDIAÇÃO PÓS-AUDITORIA** (etapa 1 ✅ concluída em 2026-07-05/06 — relatórios `report-A.md` + `report-B.md` em `.ai-system/audit/2026-07-05-nucleo-academico/`, ambos aprovados):
 - ✅ **SEC-01** (2026-07-06) — escalação de privilégio na VIEW `user_roles` fechada (migração 054 aplicada + PR `fix/sec01-user-roles` mergeado).
 - ✅ **PERF-01** (2026-07-07) — verificação de pré-requisito corrigida (join `matriculas!inner`; single morta removida; regra aprovado/convalidado testada; PR `fix/perf01-prerequisito-batch` mergeado). Falhas da suíte: 9 → **8** (a do academico resolvida; restam as 8 do ProtectedRoute → sprint auth).
-- **→ Os 2 BLOQUEADORES do report-B estão fechados (2/2).**
-- 🟠 Próximos (leva pré-agosto, report-B): **SEC-03/SEC-04** (policies de Storage: SELECT amplo em materiais/manuais + escrita que impede professor/secretaria) · **LGPD-01** (professor lê CPF/RG de todos) · **LGPD-02** (exclusão/retenção) · versionar migrações 051✅/054✅ (feito) e limpar upserts mortos (SEC-02, backlog).
-- 🔴 Depois: **Sprint de AUTH** (item 4 acima — também zera as 8 falhas restantes da suíte via correção dos testes do ProtectedRoute) e itens 2-3 do bloco (QA + caça a bugs).
+- ✅ **SEC-03 + SEC-05** (2026-07-07) — Storage hardening (migração 055 + PR `fix/storage-055-rls`): `materiais_obj_select` gateado por disciplina; `aluno_ve_disciplina` filtra matrícula ativa/concluida.
+- ✅ **SEC-04** (2026-07-08) — RESOLVIDO POR COMPLETO. Metade 1 (055): `administracao` na escrita. Metade 2 — sprint **"Material do Professor + Contrato Assinado"** (migração 056 + PR `feat/material-professor`): professor gerencia material da própria cadeira (`professor_leciona_disciplina`, contrato ativo) nas duas camadas + tela "Meus Materiais" (auto-aprovado) + upload do contrato assinado (bucket privado `contratos-professor`); fecha também o gap da 055 na tabela.
+- **→ Placar report-B: SEC-01 ✅ · PERF-01 ✅ · SEC-03 ✅ · SEC-04 ✅ · SEC-05 ✅ (bloqueadores 2/2 + toda a leva de Storage).**
+- 🟠 Restam pré-agosto (report-B, grupo A): **LGPD-01** (professor lê CPF/RG de todos) · **LGPD-02** (exclusão/retenção). Backlog: SEC-02 (upserts mortos em `user_roles`) · `comprovantes-pagamento` (bucket quebrado / PII — revisão financeira).
+- 🔴 Depois (grupo C): **Sprint de AUTH** (item 4 acima — também zera as 8 falhas restantes da suíte via correção dos testes do ProtectedRoute) e itens 2-3 do bloco (QA + caça a bugs).
 
 ---
 
