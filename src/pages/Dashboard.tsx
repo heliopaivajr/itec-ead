@@ -63,7 +63,7 @@ const menuByRole: Record<string, { icon: React.ElementType; label: string; href:
   professor: [
     { icon: LayoutDashboard, label: 'Dashboard',           href: '/dashboard',                       tooltip: 'Visão geral',                     end: true },
     { icon: BookOpen,        label: 'Minhas Disciplinas',  href: '/dashboard/professor',             tooltip: 'Disciplinas, frequência e notas' },
-    { icon: Users,           label: 'Meus Alunos',         href: '/dashboard/professor/alunos',      tooltip: 'Lista de alunos das suas turmas' },
+    { icon: Users,           label: 'Meus Alunos',         href: '/dashboard/professor/meus-alunos', tooltip: 'Lista de alunos das suas turmas' },
     { icon: ClipboardCheck,  label: 'Frequência',          href: '/dashboard/professor/frequencia',  tooltip: 'Lance presença por aula' },
     { icon: BookOpen,        label: 'Notas',               href: '/dashboard/professor/notas',       tooltip: 'Notas e avaliações por disciplina' },
     { icon: CalendarDays,    label: 'Calendário',          href: '/dashboard/calendario',            tooltip: 'Calendário de aulas e eventos (somente leitura)' },
