@@ -11,7 +11,7 @@ import {
   calcularResumosPorAluno,
   type RegistroFrequencia,
 } from '@/services/frequencia.service';
-import { getProfessorByUserId } from '@/services/professor.service';
+import { getProfessorByUserId, getAlunosOperacional } from '@/services/professor.service';
 import type { Disciplina } from '@/services/academico.service';
 import type { DashboardContext } from '../Dashboard';
 
@@ -51,28 +51,32 @@ export default function LancarFrequencia() {
     init();
   }, [disciplinaId, profile.id]);
 
-  // Carrega chamada + frequências ao mudar data
+  // Carrega chamada ao mudar data.
+  // A lista de alunos vem do ROSTER (alunos MATRICULADOS via get_alunos_operacional/057),
+  // não dos registros de frequência já existentes — assim uma turma sem chamada lançada
+  // ainda mostra todos os matriculados. A frequência existente é sobreposta por aluno.
   const carregarChamada = useCallback(async () => {
     if (!disciplinaId) return;
     setLoading(true);
 
-    // Busca registros do dia selecionado
-    const registros = await getFrequenciaByDisciplina(disciplinaId);
-    const doDia     = registros.filter(r => r.data_aula === data);
+    const [roster, registros] = await Promise.all([
+      getAlunosOperacional(disciplinaId),
+      getFrequenciaByDisciplina(disciplinaId),
+    ]);
+    const doDia   = registros.filter(r => r.data_aula === data);
+    const resumos = calcularResumosPorAluno(registros); // % ao vivo por aluno (2026)
 
-    // Calcula resumos em memória — sem queries extras (N+1 eliminado)
-    const alunosUnicos = [...new Set(registros.map(r => r.aluno_id))];
-    const nomeMap  = new Map(registros.map(r => [r.aluno_id, r.aluno?.full_name ?? r.aluno_id]));
-    const resumos  = calcularResumosPorAluno(registros);
-
-    const rows: AlunoRow[] = alunosUnicos.map((alunoId): AlunoRow => {
-      const resumo      = resumos.get(alunoId);
-      const registroDia = doDia.find(r => r.aluno_id === alunoId);
+    const rows: AlunoRow[] = roster.map((al): AlunoRow => {
+      const resumo      = resumos.get(al.aluno_id);
+      const registroDia = doDia.find(r => r.aluno_id === al.aluno_id);
+      // % ao vivo se já há chamada; senão o consolidado da matrícula (retroativo); senão 100.
+      const pct = resumo?.percentual_presenca
+        ?? (al.frequencia_percentual !== null ? Math.round(al.frequencia_percentual) : 100);
       return {
-        aluno_id:         alunoId,
-        nome:             nomeMap.get(alunoId) ?? alunoId,
+        aluno_id:         al.aluno_id,
+        nome:             al.full_name,
         presente:         registroDia?.presente ?? true,
-        percentual_atual: resumo?.percentual_presenca ?? 100,
+        percentual_atual: pct,
       };
     });
 

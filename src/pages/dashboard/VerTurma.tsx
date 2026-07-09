@@ -5,7 +5,17 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { getDisciplinaById } from '@/services/academico.service';
 import { getFrequenciaByDisciplina, calcularResumosPorAluno } from '@/services/frequencia.service';
+import { getAlunosOperacional } from '@/services/professor.service';
 import type { Disciplina } from '@/services/academico.service';
+
+// Mesmos limiares de frequencia.service.calcularStatus (não exportada p/ evitar
+// conflito de barrel com notas.service.calcularStatus). Usado só p/ alunos do
+// roster sem registros de chamada ainda.
+function statusPorPercentual(pct: number): AlunoTurma['status'] {
+  if (pct >= 75) return 'ok';
+  if (pct >= 60) return 'alerta';
+  return 'reprovado';
+}
 
 type Filtro = 'todos' | 'risco' | 'ok';
 
@@ -32,31 +42,31 @@ export default function VerTurma() {
       if (!disciplinaId) return;
       setLoading(true);
 
-      const [disc, registros] = await Promise.all([
+      // A lista vem do ROSTER (matriculados via get_alunos_operacional/057), não dos
+      // registros de frequência — turma sem chamada ainda mostra os matriculados.
+      const [disc, roster, registros] = await Promise.all([
         getDisciplinaById(disciplinaId),
+        getAlunosOperacional(disciplinaId),
         getFrequenciaByDisciplina(disciplinaId),
       ]);
 
       setDisciplina(disc);
 
-      // Mapa aluno_id → nome via join já incluso nos registros
-      const nomeMap = new Map(
-        registros.map(r => [r.aluno_id, r.aluno?.full_name ?? r.aluno_id])
-      );
-
-      // Calcula resumos em memória — sem queries extras (N+1 eliminado)
-      const alunosUnicos = [...new Set(registros.map(r => r.aluno_id))];
+      // Resumo de frequência ao vivo por aluno (a partir dos registros existentes)
       const resumos = calcularResumosPorAluno(registros);
 
-      const rows: AlunoTurma[] = alunosUnicos.map((alunoId): AlunoTurma => {
-        const resumo = resumos.get(alunoId);
+      const rows: AlunoTurma[] = roster.map((al): AlunoTurma => {
+        const resumo = resumos.get(al.aluno_id);
+        // % ao vivo se há chamada; senão o consolidado da matrícula (retroativo); senão 100.
+        const pct = resumo?.percentual_presenca
+          ?? (al.frequencia_percentual !== null ? Math.round(al.frequencia_percentual) : 100);
         return {
-          aluno_id:    alunoId,
-          nome:        nomeMap.get(alunoId) ?? alunoId,
-          percentual:  resumo?.percentual_presenca ?? 100,
+          aluno_id:    al.aluno_id,
+          nome:        al.full_name,
+          percentual:  pct,
           total_aulas: resumo?.total_aulas ?? 0,
           presencas:   resumo?.presencas ?? 0,
-          status:      resumo?.status ?? 'ok',
+          status:      resumo?.status ?? statusPorPercentual(pct),
         };
       });
 
