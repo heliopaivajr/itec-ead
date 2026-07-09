@@ -426,6 +426,25 @@ Este documento registra todas as ideias, melhorias e funcionalidades discutidas 
 
 ---
 
+## 11. CENTRAL DE AJUDA & SUPORTE
+
+### 11.1 [MÓDULO] Central de Ajuda & Suporte ITEC (todas as personas)
+**Descrição**: Uma área acessível no dashboard de **cada persona** (aluno, professor, secretaria, coordenação) reunindo ajuda, documentação e canais de contato do ITEC.
+**Recursos previstos**:
+- **Manual**: ler online + baixar (aluno baixa o manual do aluno; professor o manual da cadeira/institucional). Reusa os buckets `manuais-aluno` / `materiais-disciplina` já existentes.
+- **FAQ / Dúvidas frequentes**: perguntas e respostas já prontas, organizadas por tema.
+- **"Pergunte ao ITEC"**: canal para novas dúvidas, com direcionamento (secretaria, coordenador ou reitor conforme o assunto).
+- **Agendar atendimento**: marcar horário com coordenador (Prof. Andrea) ou reitor (Pr. Eliel).
+- **Contato direto**: link de WhatsApp institucional.
+- Conteúdo organizado/curado pelo ITEC (texto institucional a definir).
+**Escopo a dimensionar em diagnóstico próprio quando chegar a vez** — envolve: modelo de dados de FAQ, roteamento de dúvidas, possível integração de agenda e link WhatsApp.
+**Prioridade**: Média — **DEPOIS do Financeiro** (não é para agora; registro para não perder).
+**Versão alvo**: pós-Financeiro (a definir).
+**Status**: Registrado — aguarda diagnóstico próprio.
+**Origem**: pedido do Hélio (2026-07-09).
+
+---
+
 ## REGRA CRÍTICA — Camada Analítica
 
 **APENAS avaliar após lançamento de agosto 2026.**
