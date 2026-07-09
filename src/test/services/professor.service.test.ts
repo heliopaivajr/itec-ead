@@ -18,6 +18,7 @@ import {
   uploadContratoAssinado,
   getContratoAssinadoUrl,
   MAX_CONTRATO_BYTES,
+  getAlunosOperacional,
 } from '@/services/professor.service';
 
 beforeEach(() => { vi.clearAllMocks(); });
@@ -702,5 +703,35 @@ describe('getContratoAssinadoUrl', () => {
     const { url, error } = await getContratoAssinadoUrl('x');
     expect(url).toBeNull();
     expect(error).toBe('not found');
+  });
+});
+
+describe('getAlunosOperacional (roster via RPC get_alunos_operacional / 057)', () => {
+  it('chama a RPC com p_disciplina_id e retorna os alunos', async () => {
+    const rpcSpy = vi.fn().mockResolvedValue({
+      data: [
+        { aluno_id: 'a1', full_name: 'João Silva', avatar_url: null, matricula_id: 'm1',
+          nota: 8.5, faltas: 2, frequencia_percentual: 90, status_disciplina: 'cursando' },
+      ],
+      error: null,
+    });
+    (supabase as any).rpc = rpcSpy;
+
+    const alunos = await getAlunosOperacional('disc-apologetica');
+
+    expect(rpcSpy).toHaveBeenCalledWith('get_alunos_operacional', { p_disciplina_id: 'disc-apologetica' });
+    expect(alunos).toHaveLength(1);
+    expect(alunos[0].full_name).toBe('João Silva');
+    expect(alunos[0].status_disciplina).toBe('cursando');
+  });
+
+  it('retorna [] quando a RPC dá erro (ex.: gate nega / sem permissão)', async () => {
+    (supabase as any).rpc = vi.fn().mockResolvedValue({ data: null, error: { message: 'permission denied' } });
+    expect(await getAlunosOperacional('outra-disc')).toEqual([]);
+  });
+
+  it('retorna [] quando não há alunos matriculados (turma vazia)', async () => {
+    (supabase as any).rpc = vi.fn().mockResolvedValue({ data: [], error: null });
+    expect(await getAlunosOperacional('disc-sem-alunos')).toEqual([]);
   });
 });

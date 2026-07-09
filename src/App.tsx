@@ -50,6 +50,7 @@ const VerTurma           = lazy(() => import("./pages/dashboard/VerTurma"));
 const ContratoForm       = lazy(() => import("./pages/dashboard/ContratoForm"));
 const MeusContratos      = lazy(() => import("./pages/dashboard/MeusContratos"));
 const MateriaisProfessor = lazy(() => import("./pages/dashboard/MateriaisProfessor"));
+const MeusAlunos         = lazy(() => import("./pages/dashboard/MeusAlunos"));
 const ProfessoresAdmin   = lazy(() => import("./pages/dashboard/ProfessoresAdmin"));
 const EquipeITEC         = lazy(() => import("./pages/dashboard/EquipeITEC"));
 const GestaoTurmas       = lazy(() => import("./pages/dashboard/GestaoTurmas"));
@@ -157,7 +158,8 @@ const App = () => (
               <Route path="seguranca"     element={<ComingSoon title="Segurança & LGPD" icon={ShieldAlert} description="Logs de acesso, controle de permissões e conformidade LGPD em desenvolvimento." />} />
 
               {/* Professor — rotas de lista (sem parâmetros) */}
-              <Route path="professor/alunos"     element={<ComingSoonPage titulo="Meus Alunos"    descricao="Veja a lista de alunos das suas turmas e acesse as fichas individuais." previsao="Agosto 2026" icone={Users} />} />
+              <Route path="professor/meus-alunos" element={<RoleGuard allowedRoles={['professor','admin','superadmin','administracao']}><MeusAlunos /></RoleGuard>} />
+              <Route path="professor/alunos"     element={<Navigate to="/dashboard/professor/meus-alunos" replace />} />
               <Route path="professor/frequencia" element={<ComingSoonPage titulo="Frequência"     descricao="Lance a presença dos alunos por aula de forma rápida."                previsao="Agosto 2026" icone={ClipboardCheck} />} />
               <Route path="professor/notas"      element={<ComingSoonPage titulo="Notas"          descricao="Registre e gerencie as avaliações e notas por disciplina."            previsao="Agosto 2026" icone={BookOpen} />} />
               <Route path="professor/materiais"  element={<RoleGuard allowedRoles={['professor','admin','superadmin','administracao']}><MateriaisProfessor /></RoleGuard>} />

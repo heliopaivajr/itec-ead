@@ -215,6 +215,30 @@ export async function getContratoAssinadoUrl(
   return { url: data.signedUrl, error: null };
 }
 
+// ─── Roster operacional (RPC get_alunos_operacional — migração 057) ─────────────
+// Alunos matriculados de uma disciplina com SÓ campos operacionais (nome/foto —
+// sem email/cpf/rg por minimização LGPD) + snapshot acadêmico. O gate está na
+// função (professor da cadeira OU staff): quem não pode ver recebe [] sem erro.
+export interface AlunoOperacional {
+  aluno_id: string;
+  full_name: string;
+  avatar_url: string | null;
+  matricula_id: string;
+  nota: number | null;
+  faltas: number | null;
+  frequencia_percentual: number | null;
+  status_disciplina: string;
+}
+
+export async function getAlunosOperacional(disciplinaId: string): Promise<AlunoOperacional[]> {
+  const { data, error } = await supabase.rpc('get_alunos_operacional', { p_disciplina_id: disciplinaId });
+  if (error) {
+    console.error('[getAlunosOperacional]', error.message);
+    return [];
+  }
+  return (data as AlunoOperacional[]) ?? [];
+}
+
 export async function updateStatusContrato(
   id: string,
   status: ContratoProfessor['status']
