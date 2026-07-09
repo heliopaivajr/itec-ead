@@ -70,6 +70,15 @@ Este documento registra todas as ideias, melhorias e funcionalidades discutidas 
 
 **Nota (menu Frequência):** o item de menu `professor/frequencia` (sem `:disciplinaId`) segue `ComingSoonPage` de propósito — o acesso real a `LancarFrequencia` já funciona pelo **card** do `ProfessorHome` (`professor/frequencia/:disciplinaId`). Uma tela-picker do menu só vale a pena junto do roster (2.05), senão abriria vazia. Decisão do Hélio (2026-07-08): deixar o menu como está por ora.
 
+### 2.07 [ONDA — MIGRAÇÃO] Roster turma-aware para Notas
+**Descrição**: A tela de Notas (`LancarNotas`) e o `getConsolidadoTurma` têm o mesmo gap de roster das telas de Frequência (turma sem nota lançada não mostra os alunos), **mas são escopo-TURMA** (`getConsolidadoTurma` filtra `turma_id`). O roster `get_alunos_operacional(disciplina_id)` (057) é **escopo-DISCIPLINA** — semear a tela de notas com ele **incluiria alunos de outra turma** da mesma disciplina.
+**Solução técnica**: dar à função um `p_turma_id` (ou criar variante turma-aware) — filtrando pela cadeia `matriculas_disciplina → matriculas.turma_id`. Depois, semear `getConsolidadoTurma`/`LancarNotas` pelo roster (LICAO-026: merge por `aluno_id`). Cuidado: `getConsolidadoTurma` também alimenta `ConsolidadoNotas` — a mudança afeta as duas telas.
+**Por que ficou de fora da onda "semear roster" (2026-07-09)**: LancarFrequencia/VerTurma são escopo-disciplina → o roster atual encaixou direto; Notas exige o filtro por turma, que é migração (novo parâmetro na função) — onda própria.
+**Prioridade**: Média (o lançamento de notas ainda funciona para alunos que já têm nota; o gap é só o "abre vazia" da turma nova).
+**Versão alvo**: onda do professor, com migração da função.
+**Status**: Registrado — sinalizado no relatório da onda "semear roster" (2026-07-09).
+**Origem**: SDD "Semear roster nas telas de Frequência/Notas" (2026-07-09).
+
 ### 2.1 Gestão Dinâmica de Permissões
 **Descrição**: Tela administrativa para superadmin gerenciar quais roles acessam quais módulos/rotas.  
 **Solução técnica**: Criar tabela `permissoes_modulos` no banco + interface de configuração.  
