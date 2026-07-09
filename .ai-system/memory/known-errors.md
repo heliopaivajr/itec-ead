@@ -1160,4 +1160,40 @@ ativa), não só a existência.
 
 ---
 
+## ERR-ESCOPO-001 — Premissa "tela já existe" falsa: `MeusAlunos.tsx` + gap de roster
+
+**Data:** 2026-07-08
+**Sprint:** "Onda 1 — ligar telas prontas do professor" (CANCELADA por premissa falsa)
+**Tipo de erro:** planejamento / premissa não verificada contra o repositório
+**Gravidade:** baixa (detectado antes de qualquer código — nenhum dano)
+
+**Descrição:**
+O modo de trabalho da Onda 1 assumiu que `MeusAlunos.tsx` "já existe e funciona, só reapontar
+a rota". Verificação no `main`: **a tela não existe** — em `src/pages/dashboard/` só há
+`Alunos.tsx` (tela ADMIN de alunos) e `FichaAluno.tsx`. Reapontar `professor/alunos` para um
+componente inexistente só trocaria o `ComingSoon` por um erro de import.
+
+**Achado estrutural associado (o motivo de não dar para "só ligar"):**
+Não existe função que liste os alunos **matriculados** de uma disciplina com o nome
+(`matriculas_disciplina` não tem `aluno_id` — precisa de `matriculas` → `profiles`). As telas
+de Frequência (`LancarFrequencia`) e Notas (`LancarNotas`/`VerTurma`) montam a lista de alunos
+a partir de **registros de frequência/nota já existentes** → **turma nova abre VAZIA**. O
+alicerce que falta é `get_alunos_operacional(disciplina_id)` (ver IDEAS-BACKLOG 2.05), que
+também é a fase 1 do LGPD-01.
+
+**Correção aplicada:**
+Onda 1 cancelada antes de codar (parei e confirmei com o Hélio). Decisões: Meus Alunos e o
+menu de Frequência ficam para a onda com a migração do roster. Registrado em IDEAS-BACKLOG
+(itens 2.05 alicerce + 2.06 Meus Alunos).
+
+**Como evitar no futuro:**
+Antes de "reapontar rota para tela existente", **confirmar no repositório que o componente
+existe** (`ls`/glob) — nunca assumir pelo texto do modo. Premissa de existência de artefato é
+verificável em segundos e evita fabricar arquivo ou quebrar import.
+
+**Status:** ✅ resolvido (premissa corrigida; trabalho realocado para a onda do roster)
+**Aprovado pelo Hélio:** Sim (decisão de adiar Meus Alunos + manter menu de Frequência)
+
+---
+
 *Mantido pelo agente-Osabio · ITEC-EAD · 2025*

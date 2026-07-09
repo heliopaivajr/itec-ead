@@ -46,8 +46,29 @@ Este documento registra todas as ideias, melhorias e funcionalidades discutidas 
 **Dependências**: contratos de professor cadastrados (ERR-DATA-F2) — mesma trava da migração 037 §2.
 **Prioridade**: Média (não bloqueia agosto — admin/secretaria já sobem material)
 **Versão alvo**: pós-agosto (sprint próprio, com UI)
-**Status**: Registrado — remediação pós-auditoria (SEC-04 metade 2)
+**Status**: ✅ CONCLUÍDO (2026-07-08, migração 056 + PR `feat/material-professor`) — tela "Meus Materiais" + `professor_leciona_disciplina` + bucket `contratos-professor`. SEC-04 fechado por completo.
 **Origem**: report-B SEC-04; migração 055 fez a parte de `administracao`.
+
+### 2.05 [SPRINT — ALICERCE] Roster do professor: `get_alunos_operacional(disciplina_id)`
+**Descrição**: **Não existe** nenhuma função que liste os alunos **matriculados** de uma disciplina com o nome. Cadeia necessária: `matriculas_disciplina` (não tem `aluno_id`) → `matriculas` (`aluno_id`) → `profiles` (nome). Hoje as telas de **Frequência** (`LancarFrequencia`) e **Notas** (`LancarNotas`/`VerTurma`) montam a lista de alunos a partir de **registros de frequência/nota já existentes** — então **turma nova abre VAZIA** (problema do ovo-e-galinha: precisa de registro para ver aluno, precisa ver aluno para criar registro).
+**Solução técnica**: função `get_alunos_operacional(disciplina_id)` — SECURITY DEFINER, gateada por `professor_leciona_disciplina` (já existe, 056), retornando SÓ campos operacionais (`id, full_name, email, avatar_url`) dos alunos matriculados. Telas de Frequência/Notas/VerTurma passam a semear o roster por ela (LICAO-026: query separada + merge).
+**Por que é o alicerce**: destrava **três** frentes de uma vez — (1) **Meus Alunos** do professor (roster real); (2) **Frequência/Notas usáveis** com dados reais (fim do "abre vazia"); (3) **LGPD-01 fase 1** (professor obtém nomes SEM acesso à PII de `profiles`, permitindo depois remover `professor` de `profiles_select_staff` na fase 2).
+**Dependências**: migração (função). Dado: só mostra conteúdo após `matriculas_disciplina` populada (F1 — lançamento retroativo) e contratos de professor (F2).
+**Prioridade**: ALTA — pré-requisito das ondas operacionais do professor + remediação LGPD-01.
+**Versão alvo**: próxima onda do professor (antes de "Meus Alunos" e do endurecimento LGPD).
+**Status**: Registrado — recomendação nº 1 do diagnóstico "Telas operacionais do professor" (2026-07-08).
+**Origem**: diagnósticos LGPD-01 + Telas operacionais do professor.
+
+### 2.06 [TELA] Meus Alunos do professor — construir do ZERO
+**Descrição**: A tela **`MeusAlunos.tsx` NÃO existe** (em `src/pages/dashboard/` só há `Alunos.tsx`, que é a tela ADMIN de alunos, e `FichaAluno.tsx`). A rota `professor/alunos` é `ComingSoonPage`. Precisa ser **construída do zero** — não é reroteamento.
+**Solução técnica**: tela que lista os alunos das disciplinas do professor via `get_alunos_operacional` (item 2.05) — com estado-vazio amigável quando não há matrícula na turma. Ponto de entrada: menu lateral (`Dashboard.tsx`) + card do `ProfessorHome`.
+**Dependências**: **item 2.05** (`get_alunos_operacional`) é pré-requisito — sem ele, só daria para linkar ao `VerTurma` (que herda o mesmo gap de roster).
+**Prioridade**: Média (depende do alicerce 2.05).
+**Versão alvo**: onda do professor, após 2.05.
+**Status**: Registrado — a "Onda 1 (reroteamento)" foi cancelada em 2026-07-08 porque a premissa ("tela já existe") era falsa; correto é construir com o roster.
+**Origem**: diagnóstico Telas operacionais do professor (2026-07-08).
+
+**Nota (menu Frequência):** o item de menu `professor/frequencia` (sem `:disciplinaId`) segue `ComingSoonPage` de propósito — o acesso real a `LancarFrequencia` já funciona pelo **card** do `ProfessorHome` (`professor/frequencia/:disciplinaId`). Uma tela-picker do menu só vale a pena junto do roster (2.05), senão abriria vazia. Decisão do Hélio (2026-07-08): deixar o menu como está por ora.
 
 ### 2.1 Gestão Dinâmica de Permissões
 **Descrição**: Tela administrativa para superadmin gerenciar quais roles acessam quais módulos/rotas.  
