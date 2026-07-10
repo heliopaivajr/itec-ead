@@ -450,6 +450,15 @@ Este documento registra todas as ideias, melhorias e funcionalidades discutidas 
 
 ## 11. CENTRAL DE AJUDA & SUPORTE
 
+### 11.0 [TELA] Manual do Aluno no dashboard do aluno
+**Descrição**: O aluno precisa poder **LER e BAIXAR o manual do aluno pelo próprio dashboard**. A infraestrutura **já existe por completo**: bucket privado `manuais-aluno` (migração 050, leitura para qualquer authenticated) + coluna `cursos.manual_aluno_url` + `curso.service.getManualAlunoUrl()` (signed URL 1h). A secretaria já sobe/atualiza o handbook (055 deu escrita à `administracao`; UI no `ManualAlunoCard` do CursosAdmin). **O que falta é só o ponto de acesso NO dashboard do aluno**: card/seção "Manual do Aluno" → ler online (abrir o PDF na signed URL) + botão baixar.
+**Solução técnica**: componente pequeno no dashboard do aluno (AlunoView/MeusCursos ou item de menu) consumindo `getManualAlunoUrl()` — estado vazio amigável se o curso ainda não tem manual.
+**Esforço**: **P** (a infra está pronta; é UI + link).
+**Prioridade**: Média — **DEPOIS do Financeiro**, junto/antes da Central de Ajuda.
+**Versão alvo**: pós-Financeiro; **precede/compõe a Central de Ajuda (item 11.1)** — vira a aba "Manual" dela.
+**Status**: Registrado — pedido do Hélio (2026-07-10).
+**Origem**: visão da Central de Ajuda (11.1); infra das migrações 050/055.
+
 ### 11.1 [MÓDULO] Central de Ajuda & Suporte ITEC (todas as personas)
 **Descrição**: Uma área acessível no dashboard de **cada persona** (aluno, professor, secretaria, coordenação) reunindo ajuda, documentação e canais de contato do ITEC.
 **Recursos previstos**:
