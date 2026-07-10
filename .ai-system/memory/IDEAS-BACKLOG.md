@@ -85,7 +85,7 @@ Este documento registra todas as ideias, melhorias e funcionalidades discutidas 
 **Fatiamento**:
 - **Camada 0 — destravar já (P; 1 migração pequena de policies)**: UPDATE de `frequencia` p/ professor (corrigir chamada / justificar falta) + `administracao` lança/corrige nota + **fecha o SEC-06** + menu-picker de disciplina p/ Frequência/Notas.
 - **Camada 1 — mínimo operável p/ AGOSTO (P/M; sem migração)**: chamada por data (existe) + correção + % automática (existe) + **Notas turma-aware** (código do 2.07 sobre a 058) + linkar o **R02** no painel do professor (imprimir p/ preencher no papel).
-- **Camada 2 — planilha completa (G; migração)**: grade multi-data aluno×aulas com **PP/FP/FF** (`tipo_presenca` + backfill) + regra de faltas (⚠️ **TRAVADA pela D-FALTAS** — Plano Mestre §10: FF=2? FP=1? teto 7 substitui ou convive com ≥75%?) + datas editáveis (update em lote) + persistência do consolidado.
+- **Camada 2 — planilha completa (G; migração)**: grade multi-data aluno×aulas com **PP/FP/FF** (`tipo_presenca` + backfill) + regra de faltas (✅ **D-FALTAS DEFINIDA** — Plano Mestre §10: **FF=2 · FP=1 · teto=7 (8+ reprova) · teto absoluto, % é derivada**) + datas editáveis (update em lote) + persistência do consolidado. **Destravada para v1.1.**
 - **Camada 3 — refino (M)**: multi-turma/cadeira empilhadas · PDF de notas (reusa @react-pdf) · média ponderada configurável (D2) · vista histórica (2025 = consolidado do retroativo; por-aula só de 2026 em diante).
 **Prioridade**: Camadas **0+1 = essencial para abrir (agosto)**; Camadas **2+3 = v1.1**.
 **Dependências**: D-FALTAS (trava a Camada 2) · dados F1/F2 populados para conteúdo real.

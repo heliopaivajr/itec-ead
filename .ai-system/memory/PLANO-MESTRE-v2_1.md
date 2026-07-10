@@ -287,10 +287,11 @@ Sistema completo (R0→R4) → travar mudanças e auditar antes de novas feature
 - Missiologia II/III/IV: área **P** (assumido) ou **T**? — confirmar.
 - Tipo `corequisito` (cursar junto obrigatório): criar agora ou só `formal`/`recomendado` por enquanto?
 - Upgrade Supabase Pro (elimina cold start do bug de login): quando?
-- **🔒 D-FALTAS (TRAVA a Camada 2 da planilha de frequência — grade PP/FP/FF):** definir com o ITEC a semântica das faltas antes de qualquer código da grade:
-  1. **FF (falta cheia) = quantas faltas?** (a regra citada "4×FF = 8 faltas" sugere FF = 2 faltas — confirmar);
-  2. **FP (meia-falta: atraso/saída antecipada) = quantas?** (presumível 1 — confirmar);
-  3. **O teto de 7 faltas SUBSTITUI ou CONVIVE com a regra de presença ≥75% (D2)?** Hoje o sistema só conhece o percentual (`freq < 75% → reprovado_falta`); não existe contagem absoluta de faltas nem peso de FF/FP em lugar nenhum.
-  A grade PP/FP/FF, o cálculo automático e o `reprovado_falta` por contagem **não podem ser construídos** sem estas 3 respostas. Responsável: **Hélio** (com a direção acadêmica). Registrado no diagnóstico do módulo Frequência/Notas (2026-07-09); fatiamento em IDEAS-BACKLOG 2.08.
+- **✅ D-FALTAS — DEFINIDA pelo Hélio (2026-07-09)** (destrava a Camada 2 da planilha PP/FP/FF — IDEAS-BACKLOG 2.08):
+  1. **FF (falta cheia) = 2 faltas.**
+  2. **FP (meia-falta: atraso / saída antecipada) = 1 falta + 1 presença** (esteve em parte da aula).
+  3. **Teto = 7 faltas.** **8+ reprova** (e `4×FF = 8 = reprova`). Cálculo **automático** a partir das marcações PP/FP/FF.
+  4. **Convivência com 75%:** o **teto de 7 faltas é a régua ABSOLUTA do ITEC**; a % é calculada automaticamente a partir das marcações (informativa/derivada, não a regra de corte).
+  → A Camada 2 (grade PP/FP/FF, cálculo e `reprovado_falta` por contagem) **está destravada para v1.1**. Modelo de dados: precisa de `tipo_presenca` (PP/FP/FF) em `frequencia` + a lógica de contagem (FF=2, FP=1, teto 7).
 
 **Fim do Plano Mestre v2.1.** Trabalhar um sprint por vez. Cada sprint: spec → auditoria → execução → testes → validação → PR/merge → Osábio → atualizar o Tracker.
