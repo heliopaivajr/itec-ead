@@ -76,8 +76,21 @@ Este documento registra todas as ideias, melhorias e funcionalidades discutidas 
 **Por que ficou de fora da onda "semear roster" (2026-07-09)**: LancarFrequencia/VerTurma são escopo-disciplina → o roster atual encaixou direto; Notas exige o filtro por turma, que é migração (novo parâmetro na função) — onda própria.
 **Prioridade**: Média (o lançamento de notas ainda funciona para alunos que já têm nota; o gap é só o "abre vazia" da turma nova).
 **Versão alvo**: onda do professor, com migração da função.
-**Status**: Registrado — sinalizado no relatório da onda "semear roster" (2026-07-09).
+**Status**: 🔵 Parcial — a MIGRAÇÃO está pronta e aplicada (058, `p_turma_id DEFAULT NULL`, 2026-07-09); **falta o código** (LancarNotas/getConsolidadoTurma passarem a semear pelo roster com turma). Entra na Camada 1 do item 2.08.
 **Origem**: SDD "Semear roster nas telas de Frequência/Notas" (2026-07-09).
+
+### 2.08 [MÓDULO] Frequência & Notas completo — fatiamento em Camadas 0/1/2/3
+**Descrição**: Visão completa do Hélio: FREQUÊNCIA em grade tipo planilha (aluno × datas de aula, datas editáveis), marcação **PP/FP/FF** (presente / meia-falta / falta cheia), % automática, regra ITEC de faltas (>7 reprova; 4×FF=8), visão por turma E por cadeira (empilháveis), editável por professor/secretaria/coordenação, histórico desde o início, impressão. NOTAS: lista com colunas, média automática, impressão. Tudo acessível pelo MENU (seletor) além do card. Diagnóstico dimensionado em 2026-07-09.
+**Estado atual (resumo do diagnóstico)**: registro por (aluno, disciplina, data) ✅ · PP/FP/FF ❌ (`presente` é BOOLEAN — precisa migração `tipo_presenca`) · tabela de "aulas" ❌ (a data vive no registro; `aulas_recorrentes` é agenda semanal, não instância) · consolidação de freq% sem trigger (manual/retroativo) · média simples no service (ponderada do D2 não implementada) · regra das 7 faltas ❌ (só a régua 75%) · **R02 Lista de Presença JÁ imprime grade alunos×datas (PDF/Excel, professor tem acesso)** · ConsolidadoNotas já é a lista com média · policies: professor SEM UPDATE de frequência (não corrige chamada); administracao SEM INSERT/UPDATE de nota; **SEC-06** (aluno pode inserir a própria nota — known-errors, 🔴 BLOQUEADOR).
+**Fatiamento**:
+- **Camada 0 — destravar já (P; 1 migração pequena de policies)**: UPDATE de `frequencia` p/ professor (corrigir chamada / justificar falta) + `administracao` lança/corrige nota + **fecha o SEC-06** + menu-picker de disciplina p/ Frequência/Notas.
+- **Camada 1 — mínimo operável p/ AGOSTO (P/M; sem migração)**: chamada por data (existe) + correção + % automática (existe) + **Notas turma-aware** (código do 2.07 sobre a 058) + linkar o **R02** no painel do professor (imprimir p/ preencher no papel).
+- **Camada 2 — planilha completa (G; migração)**: grade multi-data aluno×aulas com **PP/FP/FF** (`tipo_presenca` + backfill) + regra de faltas (⚠️ **TRAVADA pela D-FALTAS** — Plano Mestre §10: FF=2? FP=1? teto 7 substitui ou convive com ≥75%?) + datas editáveis (update em lote) + persistência do consolidado.
+- **Camada 3 — refino (M)**: multi-turma/cadeira empilhadas · PDF de notas (reusa @react-pdf) · média ponderada configurável (D2) · vista histórica (2025 = consolidado do retroativo; por-aula só de 2026 em diante).
+**Prioridade**: Camadas **0+1 = essencial para abrir (agosto)**; Camadas **2+3 = v1.1**.
+**Dependências**: D-FALTAS (trava a Camada 2) · dados F1/F2 populados para conteúdo real.
+**Status**: Registrado — diagnóstico 2026-07-09.
+**Origem**: visão do Hélio + diagnóstico "Módulo completo de Frequência e Notas".
 
 ### 2.1 Gestão Dinâmica de Permissões
 **Descrição**: Tela administrativa para superadmin gerenciar quais roles acessam quais módulos/rotas.  

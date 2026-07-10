@@ -250,6 +250,7 @@ Sistema completo (R0→R4) → travar mudanças e auditar antes de novas feature
 - ✅ **SEC-04** (2026-07-08) — RESOLVIDO POR COMPLETO. Metade 1 (055): `administracao` na escrita. Metade 2 — sprint **"Material do Professor + Contrato Assinado"** (migração 056 + PR `feat/material-professor`): professor gerencia material da própria cadeira (`professor_leciona_disciplina`, contrato ativo) nas duas camadas + tela "Meus Materiais" (auto-aprovado) + upload do contrato assinado (bucket privado `contratos-professor`); fecha também o gap da 055 na tabela.
 - **→ Placar report-B: SEC-01 ✅ · PERF-01 ✅ · SEC-03 ✅ · SEC-04 ✅ · SEC-05 ✅ (bloqueadores 2/2 + toda a leva de Storage).**
 - 🟠 Restam pré-agosto (report-B, grupo A): **LGPD-01** (professor lê CPF/RG de todos) · **LGPD-02** (exclusão/retenção). Backlog: SEC-02 (upserts mortos em `user_roles`) · `comprovantes-pagamento` (bucket quebrado / PII — revisão financeira).
+- 🔴 **SEC-06** (achado 2026-07-09, known-errors): aluno pode INSERIR a própria nota (`notas_aluno_insert` aceita `auth.uid()=lancado_por` p/ qualquer authenticated) — **BLOQUEADOR pré-lançamento**; corrigir na migração de policies da Camada 0 do módulo Frequência/Notas (IDEAS-BACKLOG 2.08). Decisão **D-FALTAS** pendente no §10 (trava a Camada 2).
 - 🔴 Depois (grupo C): **Sprint de AUTH** (item 4 acima — também zera as 8 falhas restantes da suíte via correção dos testes do ProtectedRoute) e itens 2-3 do bloco (QA + caça a bugs).
 
 ---
@@ -286,5 +287,10 @@ Sistema completo (R0→R4) → travar mudanças e auditar antes de novas feature
 - Missiologia II/III/IV: área **P** (assumido) ou **T**? — confirmar.
 - Tipo `corequisito` (cursar junto obrigatório): criar agora ou só `formal`/`recomendado` por enquanto?
 - Upgrade Supabase Pro (elimina cold start do bug de login): quando?
+- **🔒 D-FALTAS (TRAVA a Camada 2 da planilha de frequência — grade PP/FP/FF):** definir com o ITEC a semântica das faltas antes de qualquer código da grade:
+  1. **FF (falta cheia) = quantas faltas?** (a regra citada "4×FF = 8 faltas" sugere FF = 2 faltas — confirmar);
+  2. **FP (meia-falta: atraso/saída antecipada) = quantas?** (presumível 1 — confirmar);
+  3. **O teto de 7 faltas SUBSTITUI ou CONVIVE com a regra de presença ≥75% (D2)?** Hoje o sistema só conhece o percentual (`freq < 75% → reprovado_falta`); não existe contagem absoluta de faltas nem peso de FF/FP em lugar nenhum.
+  A grade PP/FP/FF, o cálculo automático e o `reprovado_falta` por contagem **não podem ser construídos** sem estas 3 respostas. Responsável: **Hélio** (com a direção acadêmica). Registrado no diagnóstico do módulo Frequência/Notas (2026-07-09); fatiamento em IDEAS-BACKLOG 2.08.
 
 **Fim do Plano Mestre v2.1.** Trabalhar um sprint por vez. Cada sprint: spec → auditoria → execução → testes → validação → PR/merge → Osábio → atualizar o Tracker.

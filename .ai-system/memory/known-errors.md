@@ -1196,4 +1196,55 @@ verificável em segundos e evita fabricar arquivo ou quebrar import.
 
 ---
 
+## SEC-06 — Aluno pode inserir a própria nota (policy notas_aluno_insert permissiva)
+
+**Data:** 2026-07-09 (achado, diagnóstico do módulo Frequência/Notas)
+**Agente envolvido:** 11-security-auditor / 14-auditor
+**Tipo de erro:** segurança / RLS — escalação de privilégio de escrita
+**Gravidade:** ALTA — 🔴 **BLOQUEADOR PRÉ-LANÇAMENTO**
+
+**Descrição:**
+A policy `notas_aluno_insert` (migração 031) é:
+```sql
+WITH CHECK (
+  auth.uid() = lancado_por OR
+  EXISTS (SELECT 1 FROM user_roles WHERE user_id = auth.uid() AND role IN ('admin','superadmin'))
+)
+```
+aplicada `TO authenticated` — ou seja, **QUALQUER usuário autenticado** (incluindo role
+`aluno`) consegue inserir linhas em `notas_aluno`, bastando setar `lancado_por = ele
+mesmo`. Um aluno pode **se auto-avaliar via API** (`POST /rest/v1/notas_aluno` com
+`aluno_id = ele`, `lancado_por = ele`, `nota = 10`). Como a **média é calculada a partir
+de `notas_aluno`** (getConsolidadoTurma/calcularMedia), a nota forjada entra no
+consolidado. A policy de UPDATE tem a mesma forma (`auth.uid() = lancado_por`), então o
+aluno também edita as linhas que ele próprio forjou.
+
+**Como foi descoberto:**
+Diagnóstico READ-ONLY do módulo completo de Frequência/Notas (2026-07-09), ao revisar as
+policies da 031 para a matriz "edição por 3 perfis". O report-B (§1.3) tinha lido a policy
+como "professor lança as próprias" sem notar que o `TO authenticated` sem checagem de role
+no primeiro ramo abre o INSERT a qualquer papel.
+
+**Impacto:**
+Integridade acadêmica: aluno pode criar/alterar as próprias notas parciais. Nenhum
+incidente conhecido (alunos reais ainda não usam a plataforma) — por isso é bloqueador
+de LANÇAMENTO, não incidente.
+
+**Correção planejada:**
+Na **migração de policies do módulo Frequência/Notas** (Camada 0 do fatiamento — ver
+IDEAS-BACKLOG 2.08): restringir o primeiro ramo do INSERT/UPDATE a quem pode lançar —
+`professor_leciona_disciplina(disciplina_id)` (056) ou role professor/staff — e incluir
+`administracao` (a matriz §5 diz que a secretaria corrige nota, e hoje ela nem lança).
+Mesma migração adiciona UPDATE de `frequencia` para o professor (hoje ele não corrige
+chamada nem justifica falta).
+
+**Como evitar no futuro:**
+Em policies com ramo `auth.uid() = <coluna>`, verificar SEMPRE se o ramo precisa também
+de checagem de ROLE — "é o autor" não implica "pode ser autor". Checklist do Agente 04.
+
+**Status:** 🔴 aberto — BLOQUEADOR pré-lançamento (corrigir na migração de policies da Camada 0)
+**Aprovado pelo Hélio:** Sim (registro solicitado em 2026-07-10)
+
+---
+
 *Mantido pelo agente-Osabio · ITEC-EAD · 2025*
