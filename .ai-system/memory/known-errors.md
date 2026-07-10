@@ -1230,20 +1230,21 @@ Integridade acadêmica: aluno pode criar/alterar as próprias notas parciais. Ne
 incidente conhecido (alunos reais ainda não usam a plataforma) — por isso é bloqueador
 de LANÇAMENTO, não incidente.
 
-**Correção planejada:**
-Na **migração de policies do módulo Frequência/Notas** (Camada 0 do fatiamento — ver
-IDEAS-BACKLOG 2.08): restringir o primeiro ramo do INSERT/UPDATE a quem pode lançar —
-`professor_leciona_disciplina(disciplina_id)` (056) ou role professor/staff — e incluir
-`administracao` (a matriz §5 diz que a secretaria corrige nota, e hoje ela nem lança).
-Mesma migração adiciona UPDATE de `frequencia` para o professor (hoje ele não corrige
-chamada nem justifica falta).
+**Correção aplicada (migração 059, aplicada e validada 2026-07-10):**
+`notas_aluno_insert/update` reescritas — gate real: `professor_leciona_disciplina(disciplina_id)`
+(056, contrato ativo/decisão C) OU staff **incluindo `administracao`** (matriz §5 — a
+secretaria agora lança e corrige nota, antes nem lançava) + `lancado_por = auth.uid()`
+no WITH CHECK (autoria travada). A mesma migração criou `frequencia_professor_update`
+(professor da cadeira corrige chamada já lançada e justifica falta — antes só staff).
+Validação: 3 policies conferidas via `pg_policies`; **auditoria de dados: 0 notas
+forjadas** por role aluno. Versionada via PR `fix/059-policies-sec06`.
 
 **Como evitar no futuro:**
 Em policies com ramo `auth.uid() = <coluna>`, verificar SEMPRE se o ramo precisa também
 de checagem de ROLE — "é o autor" não implica "pode ser autor". Checklist do Agente 04.
 
-**Status:** 🔴 aberto — BLOQUEADOR pré-lançamento (corrigir na migração de policies da Camada 0)
-**Aprovado pelo Hélio:** Sim (registro solicitado em 2026-07-10)
+**Status:** ✅ RESOLVIDO (migração 059 — Camada 0 do módulo Frequência/Notas)
+**Aprovado pelo Hélio:** Sim (fluxo: registro 2026-07-10 → migração 059 → PR `fix/059-policies-sec06`)
 
 ---
 
