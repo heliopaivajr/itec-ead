@@ -1,5 +1,20 @@
-import { describe, it, expect } from 'vitest';
-import { calcularStatus } from '@/services/notas.service';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { supabase } from '@/lib/supabase';
+import { calcularStatus, getConsolidadoTurma } from '@/services/notas.service';
+import { getAlunosOperacional } from '@/services/professor.service';
+import { getResumoFrequenciaPorTurma } from '@/services/frequencia.service';
+
+// getConsolidadoTurma semeia pela RPC do roster (058) + sobrepõe notas/frequência.
+// Mockamos as duas dependências de service e a query de notas_aluno.
+vi.mock('@/services/professor.service', () => ({ getAlunosOperacional: vi.fn() }));
+vi.mock('@/services/frequencia.service', () => ({ getResumoFrequenciaPorTurma: vi.fn() }));
+
+// notas_aluno: from().select().eq().eq().limit() → { data, error }
+function mockNotasQuery(data: unknown[], error: unknown = null) {
+  vi.mocked(supabase.from).mockReturnValue({
+    select: () => ({ eq: () => ({ eq: () => ({ limit: () => Promise.resolve({ data, error }) }) }) }),
+  } as any);
+}
 
 describe('calcularStatus — regras de negócio aprovadas (Hélio, 2026-05-28)', () => {
   // Casos-limite de APROVAÇÃO
@@ -65,5 +80,69 @@ describe('calcularStatus — regras de negócio aprovadas (Hélio, 2026-05-28)',
 
   it('média null + frequência 0 → cursando (frequência só importa com nota)', () => {
     expect(calcularStatus(null, 0)).toBe('cursando');
+  });
+});
+
+describe('getConsolidadoTurma — semeado pelo roster turma-aware (058)', () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it('turma nova SEM nota → lista os matriculados (não vazia) + passa turmaId ao roster', async () => {
+    vi.mocked(getAlunosOperacional).mockResolvedValue([
+      { aluno_id: 'a1', full_name: 'João Silva', avatar_url: null, matricula_id: 'm1',
+        nota: null, faltas: null, frequencia_percentual: null, status_disciplina: 'cursando' },
+    ] as any);
+    vi.mocked(getResumoFrequenciaPorTurma).mockResolvedValue(new Map());
+    mockNotasQuery([]); // nenhuma nota lançada
+
+    const r = await getConsolidadoTurma('t1', 'd1');
+
+    expect(r).toHaveLength(1);               // ANTES do fix: vazia
+    expect(r[0].nome).toBe('João Silva');    // nome vem do roster (sem embed profiles)
+    expect(r[0].n1).toBeNull();
+    expect(r[0].media).toBeNull();
+    expect(r[0].frequencia).toBe(100);       // sem chamada e sem consolidado → 100
+    expect(r[0].status).toBe('cursando');
+    // escopo TURMA: a RPC recebe disciplina E turma
+    expect(getAlunosOperacional).toHaveBeenCalledWith('d1', 't1');
+  });
+
+  it('aluno COM nota → n1/n2/média aparecem (merge por aluno_id) + freq ao vivo', async () => {
+    vi.mocked(getAlunosOperacional).mockResolvedValue([
+      { aluno_id: 'a1', full_name: 'João', avatar_url: null, matricula_id: 'm1',
+        nota: null, faltas: null, frequencia_percentual: 80, status_disciplina: 'cursando' },
+    ] as any);
+    vi.mocked(getResumoFrequenciaPorTurma).mockResolvedValue(
+      new Map([['a1', { percentual_presenca: 90 } as any]]),
+    );
+    mockNotasQuery([
+      { aluno_id: 'a1', nota: 8, avaliacao: { tipo: 'N1' } },
+      { aluno_id: 'a1', nota: 6, avaliacao: { tipo: 'N2' } },
+    ]);
+
+    const r = await getConsolidadoTurma('t1', 'd1');
+
+    expect(r[0].n1).toBe(8);
+    expect(r[0].n2).toBe(6);
+    expect(r[0].media).toBe(7);              // (8+6)/2
+    expect(r[0].frequencia).toBe(90);        // freq ao vivo sobrepõe o consolidado (80)
+    expect(r[0].status).toBe('aprovado');    // média 7 + freq 90
+  });
+
+  it('sem chamada mas COM consolidado da matrícula → usa frequencia_percentual do roster', async () => {
+    vi.mocked(getAlunosOperacional).mockResolvedValue([
+      { aluno_id: 'a1', full_name: 'Maria', avatar_url: null, matricula_id: 'm1',
+        nota: null, faltas: null, frequencia_percentual: 60, status_disciplina: 'cursando' },
+    ] as any);
+    vi.mocked(getResumoFrequenciaPorTurma).mockResolvedValue(new Map()); // sem registros ao vivo
+    mockNotasQuery([]);
+
+    const r = await getConsolidadoTurma('t1', 'd1');
+    expect(r[0].frequencia).toBe(60);        // cai no consolidado (retroativo)
+  });
+
+  it('roster vazio (turma sem matrícula) → []', async () => {
+    vi.mocked(getAlunosOperacional).mockResolvedValue([]);
+    const r = await getConsolidadoTurma('t1', 'd1');
+    expect(r).toEqual([]);
   });
 });
