@@ -76,8 +76,8 @@ Este documento registra todas as ideias, melhorias e funcionalidades discutidas 
 **Por que ficou de fora da onda "semear roster" (2026-07-09)**: LancarFrequencia/VerTurma são escopo-disciplina → o roster atual encaixou direto; Notas exige o filtro por turma, que é migração (novo parâmetro na função) — onda própria.
 **Prioridade**: Média (o lançamento de notas ainda funciona para alunos que já têm nota; o gap é só o "abre vazia" da turma nova).
 **Versão alvo**: onda do professor, com migração da função.
-**Status**: 🔵 Parcial — a MIGRAÇÃO está pronta e aplicada (058, `p_turma_id DEFAULT NULL`, 2026-07-09); **falta o código** (LancarNotas/getConsolidadoTurma passarem a semear pelo roster com turma). Entra na Camada 1 do item 2.08.
-**Origem**: SDD "Semear roster nas telas de Frequência/Notas" (2026-07-09).
+**Status**: ✅ **FEITO** (2026-07-11) — migração 058 (`p_turma_id DEFAULT NULL`) + código: `getConsolidadoTurma` refatorado para semear pelo roster turma-aware (`getAlunosOperacional(disciplinaId, turmaId)`); `LancarNotas`/`ConsolidadoNotas` intocados (mesmo shape `ConsolidadoAluno`). Turma sem nota deixa de abrir vazia. PR `feat/notas-turma-aware` merged. **Bônus LGPD-01 fase 2:** removido o embed `profiles!...` do `getConsolidadoTurma` — **caiu 1 dos 3 joins do professor a `profiles`; restam 2** (`frequencia.service:63` getFrequenciaByDisciplina e `frequencia.service:139` getAlunosAbaixoLimite).
+**Origem**: SDD "Semear roster nas telas de Frequência/Notas" (2026-07-09) + Camada 1a (2026-07-11).
 
 ### 2.08 [MÓDULO] Frequência & Notas completo — fatiamento em Camadas 0/1/2/3
 **Descrição**: Visão completa do Hélio: FREQUÊNCIA em grade tipo planilha (aluno × datas de aula, datas editáveis), marcação **PP/FP/FF** (presente / meia-falta / falta cheia), % automática, regra ITEC de faltas (>7 reprova; 4×FF=8), visão por turma E por cadeira (empilháveis), editável por professor/secretaria/coordenação, histórico desde o início, impressão. NOTAS: lista com colunas, média automática, impressão. Tudo acessível pelo MENU (seletor) além do card. Diagnóstico dimensionado em 2026-07-09.

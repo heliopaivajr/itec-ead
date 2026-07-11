@@ -165,7 +165,9 @@ Achado durante a varredura de queries (é bug de domínio, não de velocidade �
 
 ## 3.3 Os 9 joins aninhados `!fkey` (persistem apesar da LICAO-026)
 
-Localização (Parte A P-02): `matriculas.service.ts:34` · `frequencia.service.ts:63,139,256` · `financeiro.service.ts:116` · `turmas.service.ts:123` · `notas.service.ts:199` · `academico.service.ts:312` · `matricula-academica.service.ts:79`.
+Localização (Parte A P-02): `matriculas.service.ts:34` · `frequencia.service.ts:63,139,256` · `financeiro.service.ts:116` · `turmas.service.ts:123` · ~~`notas.service.ts:199`~~ **✅ removido 2026-07-11** (getConsolidadoTurma semeado pelo roster — nome vem da RPC, sem embed profiles) · `academico.service.ts:312` · `matricula-academica.service.ts:79`.
+
+> 📌 **Atualização LGPD-01 fase 2 (2026-07-11):** dos **3** embeds a `profiles` em telas do PROFESSOR, **1 caiu** (`notas:199`). **Restam 2:** `frequencia.service:63` (getFrequenciaByDisciplina) e `frequencia.service:139` (getAlunosAbaixoLimite). Após convertê-los, o professor pode sair do P2 de `profiles_select_staff` (fase 2). Os embeds staff/admin/financeiro (matriculas:34, turmas:123, financeiro:116, frequencia:256) permanecem.
 
 **Risco real:** não é lentidão (PostgREST resolve embeds com joins eficientes; volumetria pequena) — é o **vazio silencioso sob RLS** já ocorrido duas vezes (BUG-RLS-001, LICAO-033). Todos os 9 funcionam **hoje** porque as duas pontas de cada join são legíveis pelo perfil que os usa (staff lê profiles; aluno lê as próprias matriculas). O perigo é **regressão futura**: qualquer endurecimento de policy (ex.: LGPD-01 tirando professor do P2 de profiles!) quebra em silêncio os embeds de `frequencia.service:63,139,256` e `notas.service:199` usados nas telas do professor. **Recomendação:** tratar a conversão desses 9 para query-separada+merge como **pré-requisito técnico** de qualquer mudança de RLS (amarrar no checklist do sprint que implementar SEC-01/LGPD-01).
 
