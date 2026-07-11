@@ -230,8 +230,17 @@ export interface AlunoOperacional {
   status_disciplina: string;
 }
 
-export async function getAlunosOperacional(disciplinaId: string): Promise<AlunoOperacional[]> {
-  const { data, error } = await supabase.rpc('get_alunos_operacional', { p_disciplina_id: disciplinaId });
+// turmaId opcional (058): NULL/ausente = todos os matriculados da disciplina (todas as
+// turmas); com turmaId = só os alunos daquela turma. MeusAlunos/Frequência chamam sem
+// turma; Notas (escopo-turma) passa o turmaId.
+export async function getAlunosOperacional(
+  disciplinaId: string,
+  turmaId?: string,
+): Promise<AlunoOperacional[]> {
+  const { data, error } = await supabase.rpc('get_alunos_operacional', {
+    p_disciplina_id: disciplinaId,
+    ...(turmaId ? { p_turma_id: turmaId } : {}),
+  });
   if (error) {
     console.error('[getAlunosOperacional]', error.message);
     return [];

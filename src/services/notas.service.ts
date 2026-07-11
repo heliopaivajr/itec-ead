@@ -1,5 +1,6 @@
 import { supabase } from '@/lib/supabase';
 import { getResumoFrequenciaPorTurma } from './frequencia.service';
+import { getAlunosOperacional } from './professor.service';
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 
@@ -193,51 +194,60 @@ export async function getConsolidadoTurma(
   turmaId: string,
   disciplinaId: string
 ): Promise<ConsolidadoAluno[]> {
-  // 1 query: todas as notas da disciplina/turma com join de aluno
+  // A LISTA de alunos vem do ROSTER (matriculados na turma via get_alunos_operacional/058),
+  // não de notas_aluno — assim uma turma sem nota lançada ainda mostra todos os alunos.
+  // As notas são SOBREPOSTAS por aluno_id (merge LICAO-026). O nome vem do roster, então
+  // a query de notas dispensa o embed de profiles (bônus LGPD-01 fase 2).
+  const roster = await getAlunosOperacional(disciplinaId, turmaId);
+  if (roster.length === 0) return [];
+
+  // Notas da disciplina/turma (sem join de profiles — nome vem do roster)
   const { data: notasData, error } = await supabase
     .from('notas_aluno')
-    .select('aluno_id, nota, aluno:profiles!notas_aluno_aluno_id_fkey(full_name, email), avaliacao:avaliacoes(tipo)')
+    .select('aluno_id, nota, avaliacao:avaliacoes(tipo)')
     .eq('disciplina_id', disciplinaId)
     .eq('turma_id', turmaId)
     .limit(500);
 
-  if (error) return [];
+  if (error) console.error('[getConsolidadoTurma] notas:', error.message);
 
   type NotaRow = {
     aluno_id: string;
     nota: number | null;
-    aluno: { full_name: string; email: string } | null;
     avaliacao: { tipo: string } | null;
   };
 
-  // Agrupa por aluno
-  const byAluno = new Map<string, { nome: string; email: string; n1: number | null; n2: number | null; rec: number | null }>();
+  // Agrupa notas por aluno (n1/n2/recuperacao)
+  const notasByAluno = new Map<string, { n1: number | null; n2: number | null; rec: number | null }>();
   for (const r of (notasData ?? []) as unknown as NotaRow[]) {
     const tipo = r.avaliacao?.tipo ?? '';
-    const aluno = Array.isArray(r.aluno) ? r.aluno[0] : r.aluno;
-    const entry = byAluno.get(r.aluno_id) ?? {
-      nome: aluno?.full_name ?? r.aluno_id,
-      email: aluno?.email ?? '',
-      n1: null, n2: null, rec: null,
-    };
+    const entry = notasByAluno.get(r.aluno_id) ?? { n1: null, n2: null, rec: null };
     if (tipo === 'N1') entry.n1 = r.nota;
     else if (tipo === 'N2') entry.n2 = r.nota;
     else if (tipo === 'recuperacao') entry.rec = r.nota;
-    byAluno.set(r.aluno_id, entry);
+    notasByAluno.set(r.aluno_id, entry);
   }
 
-  // 1 query batch para frequências de todos os alunos
-  const alunoIds = [...byAluno.keys()];
-  const resumos = alunoIds.length > 0
-    ? await getResumoFrequenciaPorTurma(disciplinaId, alunoIds)
-    : new Map();
+  // Frequência ao vivo (por aluno do roster)
+  const alunoIds = roster.map(a => a.aluno_id);
+  const resumos = await getResumoFrequenciaPorTurma(disciplinaId, alunoIds);
 
-  return [...byAluno.entries()].map(([aluno_id, { nome, email, n1, n2, rec }]) => {
-    const frequencia = resumos.get(aluno_id)?.percentual_presenca ?? 100;
-    const media = calcularMedia(n1, n2);
+  // Base = roster; sobrepõe notas + frequência por aluno_id
+  return roster.map((al): ConsolidadoAluno => {
+    const notas = notasByAluno.get(al.aluno_id) ?? { n1: null, n2: null, rec: null };
+    // % ao vivo se há chamada; senão o consolidado da matrícula (retroativo); senão 100.
+    const frequencia = resumos.get(al.aluno_id)?.percentual_presenca
+      ?? (al.frequencia_percentual !== null ? Math.round(al.frequencia_percentual) : 100);
+    const media = calcularMedia(notas.n1, notas.n2);
     return {
-      aluno_id, nome, email, n1, n2,
-      recuperacao: rec, media, frequencia,
+      aluno_id: al.aluno_id,
+      nome: al.full_name,
+      email: '',                       // roster não expõe email (minimização LGPD); campo mantido no shape
+      n1: notas.n1,
+      n2: notas.n2,
+      recuperacao: notas.rec,
+      media,
+      frequencia,
       status: calcularStatus(media, frequencia),
     };
   });
