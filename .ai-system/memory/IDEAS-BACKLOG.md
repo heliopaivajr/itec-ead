@@ -92,6 +92,37 @@ Este documento registra todas as ideias, melhorias e funcionalidades discutidas 
 **Status**: 🔵 Em andamento — **Camadas 0 e 1 ✅ concluídas (agosto coberto)**; Camadas 2/3 = v1.1.
 **Origem**: visão do Hélio + diagnóstico "Módulo completo de Frequência e Notas" (2026-07-09).
 
+### 2.09 [SEGURANÇA — LGPD] LGPD-01 fase 2 — tirar `professor` de `profiles_select_staff`
+**Objetivo**: encerrar a exposição em que o professor lê **PII de TODOS os alunos** (CPF, RG, endereço, telefone…) diretamente de `profiles`, removendo o role `professor` da policy `profiles_select_staff` (migração 033). A **fase 1** (roster `get_alunos_operacional`, SECURITY DEFINER — nome/foto só dos alunos da cadeira) já está em produção e é o substituto seguro.
+
+**⚠️ Escopo CORRIGIDO (diagnóstico 2026-07-12)**: o item estava dimensionado como *"2 embeds mortos + 1 migração"*. **É maior.** O RoleGuard do professor alcança **4 telas que leem `profiles` DIRETO** (não pelos 2 embeds). Remover `professor` do P2 hoje **quebra**:
+| Tela | Origem | Colunas | Gravidade |
+|---|---|---|---|
+| **Ficha do Aluno** (`/dashboard/aluno/:id`) | `ficha-aluno.service:76` | **cpf, rg, endereço completo, telefone, observações internas** | 🔴 exposição central |
+| **R06 Histórico** | `relatorios.service:1073` | full_name, codigo_itec, **cpf** | 🔴 puxa CPF |
+| **R02 Lista de Presença** | `relatorios.service:416` | id, full_name, codigo_itec | 🟡 só nome+código |
+| **R03 Disciplinas por Aluno** | `relatorios.service:911` | id, full_name, codigo_itec | 🟡 só nome+código |
+
+Além dos **2 embeds MORTOS** (já substituídos pelo roster, remoção trivial): `frequencia.service:63` (`getFrequenciaByDisciplina` — VerTurma/LancarFrequencia já usam `al.full_name` do roster) e `frequencia.service:139` (`getAlunosAbaixoLimite` — consumidor `useProfessorDisciplinas` só usa `.length`).
+
+**NÃO afeta**: admin/superadmin/administracao/financeiro (continuam no P2); leitura do **próprio** perfil do professor (`profiles_select_own`); e tudo que passa pelo roster (SECURITY DEFINER ignora a RLS do chamador). `getAlunosEmRiscoByTurma` (freq:256) é só `AdminView` — não é caminho do professor.
+
+**Decisões do Hélio (2026-07-12)**:
+1. Professor **NÃO** vê **Ficha do Aluno** (CPF/RG/endereço) nem **R06** (CPF) → **remover `professor` do RoleGuard** dessas rotas (`App.tsx:189` FichaAluno e `:148` R06).
+2. Professor **VÊ R02** (lista de presença) e **R03** (disciplinas por aluno), **só das disciplinas que leciona** (contrato ativo) → **subir R02/R03 para o roster** + escopar por `professor_leciona_disciplina`. Requer o roster expor **`codigo_itec`** (hoje só retorna full_name/avatar_url) — 1 ALTER na função.
+3. Secretaria/coordenação (**administracao/admin/superadmin**) veem **tudo** — inalterado.
+
+**Ordem segura (converter → só depois endurecer)**:
+- **Mov.1** — tirar `professor` do RoleGuard de **Ficha do Aluno + R06** (App.tsx). Sem migração.
+- **Mov.2** — **escopar R02/R03 pelo roster**: ALTER `get_alunos_operacional` para retornar `codigo_itec` + refatorar R02/R03 a puxar nome/código do roster (gate `professor_leciona_disciplina` já embutido na função).
+- **Mov.3** — remover os **2 embeds mortos** (freq:63, freq:139) + ajustar os 2 testes que assertam o shape do embed (`frequencia.service.test` :117 e :286) + **migração** removendo `professor` do `IN (...)` do `profiles_select_staff`.
+- Só executar a migração da Mov.3 **depois** que Mov.1+Mov.2 estejam em produção (senão as telas quebram).
+
+**Esforço**: 2 migrações (ALTER roster +codigo_itec na Mov.2; ALTER P2 na Mov.3) + código **S–M** (RoleGuards triviais + refactor R02/R03 + 2 embeds + 2 testes).
+**Prioridade**: Média-Alta — não bloqueia agosto (exposição existe mas o acesso é autenticado e auditável), mas é remediação LGPD prioritária pós-lançamento.
+**Status**: 📋 Especificado — escopo corrigido + decisões tomadas; pronto para SDD em 3 movimentos.
+**Origem**: diagnóstico "LGPD-01 fase 2: endurecer profiles_select_staff" (2026-07-12). Fase 1 = item 2.05; bônus (embed de notas removido) = item 2.07.
+
 ### 2.1 Gestão Dinâmica de Permissões
 **Descrição**: Tela administrativa para superadmin gerenciar quais roles acessam quais módulos/rotas.  
 **Solução técnica**: Criar tabela `permissoes_modulos` no banco + interface de configuração.  
