@@ -894,4 +894,28 @@ O Supabase MCP conectado **não enxerga o projeto ITEC** (conta diferente; só B
 
 ---
 
+## LICAO-040 — Dois mundos de ID do professor: cada write usa o ID que a FK daquela tabela espera
+
+**Data:** 2026-07-14
+**Contexto:** Bug A1 (auditoria de integração dos 4 dashboards). O professor não conseguia salvar a chamada: `LancarFrequencia` gravava `professores.id` em `frequencia.professor_id`, mas a FK dessa coluna aponta para **`profiles(id)`** → violação no upsert ("new row violates row-level security policy for frequencia"). O sistema tem **dois mundos de ID** para o professor e a coluna `professor_id` NÃO significa sempre a mesma coisa:
+
+| Mundo | Tabela.coluna | FK aponta para | Valor a gravar |
+|---|---|---|---|
+| **profiles.id** (= auth.uid()) | `frequencia.professor_id` | `profiles(id)` ⚠️ exceção | `profile.id` do logado |
+| | `notas_aluno.lancado_por` | `profiles(id)` | `profile.id` do logado |
+| | `avaliacoes.criado_por` | `profiles(id)` | `profile.id` do logado |
+| **professores.id** (cadastro docente) | `contratos_professor.professor_id` | `professores(id)` | `getProfessorByUserId().id` |
+| | `solicitacoes_disciplina.professor_id` | `professores(id)` | idem |
+| | `matriculas_disciplina.professor_id` (052) | `professores(id)` | idem |
+| | `aulas_recorrentes.professor_id` / calendário (029) | `professores(id)` | idem |
+
+A ponte entre os mundos é `professores.user_id = auth.uid()` (é o que `professor_leciona_disciplina` usa).
+**Decisão / regra:** Todo write que grava "quem é o professor" deve **conferir a FK real da coluna no schema antes de escolher o ID**. Autoria de lançamento (quem clicou salvar) = `profiles.id`; vínculo docente (contrato/atribuição) = `professores.id`. `frequencia.professor_id` é a **exceção nomeada**: parece vínculo docente, mas é autoria (FK → profiles).
+**Evidência:** seed `seed_testes.sql` grava `u_prof1` (auth id) em `frequencia.professor_id` — nunca `p_prof1`.
+**Agentes impactados:** 04-db-architect, 05-backend-engineer, 12-code-reviewer, 11-security-auditor
+**Como aplicar no futuro:** ao criar tela/service que grava professor em tabela nova: (1) ler a migração para ver a FK real; (2) se a coluna registra autoria, padronizar o NOME como `lancado_por`/`criado_por` (não `professor_id`) para não repetir a ambiguidade; (3) em code review, qualquer `professor_id:` no payload exige confirmação do mundo certo.
+**Status:** aplicado (branch `fix/a1-professor-id-frequencia`); interface `RegistroFrequencia` documentada com a exceção.
+
+---
+
 *Mantido pelo agente-Osabio · ITEC-EAD · 2025*
