@@ -1,8 +1,11 @@
 import React, { useState, useEffect } from 'react';
+import { useOutletContext } from 'react-router-dom';
 import { Loader2, AlertCircle } from 'lucide-react';
 import { RelatorioLayout } from './RelatorioLayout';
 import { getTurmasAtivas } from '@/services/turmas.service';
 import { getListaPresencaRelatorio } from '@/services/relatorios.service';
+import { useProfessorDisciplinas } from '@/hooks/useProfessorDisciplinas';
+import type { DashboardContext } from '@/pages/Dashboard';
 import { exportToExcel } from './exporters/excelExporter';
 import type { Turma } from '@/services/turmas.service';
 import type { ListaPresencaRelatorio } from '@/services/relatorios.service';
@@ -33,6 +36,14 @@ const MENSAGENS_ERRO: Record<string, string> = {
 };
 
 export default function R02_ListaPresenca() {
+  // Escopo por role (LGPD-01 fase 2 · Mov.2): o professor só enxerga/seleciona as
+  // turmas e disciplinas dos SEUS contratos ativos; staff (admin/superadmin/
+  // administracao) continua vendo tudo. O gate do roster já bloqueia dados de
+  // disciplina alheia — isto aqui é a camada de UI (não oferecer a escolha).
+  const { profile } = useOutletContext<DashboardContext>();
+  const ehProfessor = profile.role === 'professor';
+  const prof = useProfessorDisciplinas(profile.id);
+
   const [turmas, setTurmas] = useState<Turma[]>([]);
   const [turmaId, setTurmaId] = useState<string>('');
   const [disciplinas, setDisciplinas] = useState<Disciplina[]>([]);
@@ -45,16 +56,26 @@ export default function R02_ListaPresenca() {
   const [loadingTurmas, setLoadingTurmas] = useState(true);
   const [loadingDisciplinas, setLoadingDisciplinas] = useState(false);
 
-  // Carregar turmas ao montar
+  // Carregar turmas ao montar (staff = todas; professor = só as dos seus contratos)
   useEffect(() => {
+    // Professor: espera as disciplinas do contrato antes de montar a lista de turmas.
+    if (ehProfessor && prof.loading) return;
+
     async function load() {
       setLoadingTurmas(true);
       const data = await getTurmasAtivas();
-      setTurmas(data);
+      if (ehProfessor) {
+        const minhasTurmas = new Set(
+          prof.disciplinas.map((d) => d.turma_id).filter(Boolean) as string[]
+        );
+        setTurmas(data.filter((t) => minhasTurmas.has(t.id)));
+      } else {
+        setTurmas(data);
+      }
       setLoadingTurmas(false);
     }
     load();
-  }, []);
+  }, [ehProfessor, prof.loading, prof.disciplinas]);
 
   // Carregar disciplinas quando turma mudar
   useEffect(() => {
@@ -64,9 +85,26 @@ export default function R02_ListaPresenca() {
       return;
     }
 
+    // Professor: disciplinas vêm dos SEUS contratos filtrados pela turma escolhida —
+    // sem tocar em aulas_recorrentes (que listaria todas as disciplinas da turma).
+    if (ehProfessor) {
+      const discsUnicas = new Map<string, Disciplina>();
+      for (const d of prof.disciplinas) {
+        if (d.turma_id === turmaId) {
+          discsUnicas.set(d.disciplina.id, {
+            id: d.disciplina.id,
+            nome: d.disciplina.nome,
+            codigo: d.disciplina.codigo,
+          });
+        }
+      }
+      setDisciplinas(Array.from(discsUnicas.values()));
+      return;
+    }
+
     async function loadDisciplinas() {
       setLoadingDisciplinas(true);
-      // Query para buscar disciplinas da turma via aulas_recorrentes
+      // Staff: buscar disciplinas da turma via aulas_recorrentes
       const { supabase } = await import('@/lib/supabase');
       const { data } = await supabase
         .from('aulas_recorrentes')
@@ -91,7 +129,7 @@ export default function R02_ListaPresenca() {
     }
 
     loadDisciplinas();
-  }, [turmaId]);
+  }, [turmaId, ehProfessor, prof.disciplinas]);
 
   // Buscar lista de presença quando filtros mudarem
   useEffect(() => {
