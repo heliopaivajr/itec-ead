@@ -109,18 +109,19 @@ Além dos **2 embeds MORTOS** (já substituídos pelo roster, remoção trivial)
 
 **Decisões do Hélio (2026-07-12)**:
 1. Professor **NÃO** vê **Ficha do Aluno** (CPF/RG/endereço) nem **R06** (CPF) → **remover `professor` do RoleGuard** dessas rotas (`App.tsx:189` FichaAluno e `:148` R06).
-2. Professor **VÊ R02** (lista de presença) e **R03** (disciplinas por aluno), **só das disciplinas que leciona** (contrato ativo) → **subir R02/R03 para o roster** + escopar por `professor_leciona_disciplina`. Requer o roster expor **`codigo_itec`** (hoje só retorna full_name/avatar_url) — 1 ALTER na função.
-3. Secretaria/coordenação (**administracao/admin/superadmin**) veem **tudo** — inalterado.
+2. **R02** (lista de presença): professor **VÊ**, **só das disciplinas que leciona** (contrato ativo) → **subir R02 para o roster** + escopar por `professor_leciona_disciplina`. Requer o roster expor **`codigo_itec`** (hoje só retorna full_name/avatar_url) — 1 ALTER na função.
+3. **R03** (disciplinas por aluno): **é aluno-cêntrico cross-matéria** (lista TODAS as disciplinas de cada aluno, de todas as turmas) — **não escopável por disciplina**; escopá-lo ao professor o colapsaria no que ele já tem (ConsolidadoNotas + VerTurma da cadeira). **DECISÃO DO HÉLIO (2026-07-12): R03-B — remover `professor` do RoleGuard do R03** (não vira tela do roster). Diagnóstico Mov.2 (2026-07-12).
+4. Secretaria/coordenação (**administracao/admin/superadmin**) veem **R02/R03 completos** — inalterado.
 
 **Ordem segura (converter → só depois endurecer)**:
-- **Mov.1** — tirar `professor` do RoleGuard de **Ficha do Aluno + R06** (App.tsx). Sem migração.
-- **Mov.2** — **escopar R02/R03 pelo roster**: ALTER `get_alunos_operacional` para retornar `codigo_itec` + refatorar R02/R03 a puxar nome/código do roster (gate `professor_leciona_disciplina` já embutido na função).
+- **Mov.1** — ✅ **CONCLUÍDO (2026-07-12, PR #41)**: tirado `professor` do RoleGuard de **Ficha do Aluno + R06** (App.tsx). Sem migração.
+- **Mov.2** — **R02 pelo roster + R03-B**: (a) ALTER `get_alunos_operacional` para retornar `codigo_itec` (DROP+CREATE, espelha 058); (b) refatorar **R02** para puxar a lista de alunos do roster (remove as queries de `profiles`; gate `professor_leciona_disciplina` já embutido) + escopar os selects de turma/disciplina por `useProfessorDisciplinas` quando `role='professor'`; (c) **R03**: só **remover `professor` do RoleGuard** (R03-B — trivial, mesmo padrão do Mov.1; **não** vai pro roster). Staff mantém R02/R03 completos (ramo `OR staff` do roster).
 - **Mov.3** — remover os **2 embeds mortos** (freq:63, freq:139) + ajustar os 2 testes que assertam o shape do embed (`frequencia.service.test` :117 e :286) + **migração** removendo `professor` do `IN (...)` do `profiles_select_staff`.
 - Só executar a migração da Mov.3 **depois** que Mov.1+Mov.2 estejam em produção (senão as telas quebram).
 
-**Esforço**: 2 migrações (ALTER roster +codigo_itec na Mov.2; ALTER P2 na Mov.3) + código **S–M** (RoleGuards triviais + refactor R02/R03 + 2 embeds + 2 testes).
+**Esforço**: 2 migrações (ALTER roster +codigo_itec na Mov.2; ALTER P2 na Mov.3) + código **S–M** (RoleGuards triviais + refactor **só do R02** pelo roster; R03 é 1 linha de RoleGuard; 2 embeds + 2 testes). R03-B derrubou o custo do R03 de M→trivial.
 **Prioridade**: Média-Alta — não bloqueia agosto (exposição existe mas o acesso é autenticado e auditável), mas é remediação LGPD prioritária pós-lançamento.
-**Status**: 📋 Especificado — escopo corrigido + decisões tomadas; pronto para SDD em 3 movimentos.
+**Status**: 🔵 Em andamento — **Mov.1 ✅ concluído (PR #41)**; Mov.2 especificado (R02 roster + R03-B) pronto p/ SDD; Mov.3 pendente (após Mov.2 em produção).
 **Origem**: diagnóstico "LGPD-01 fase 2: endurecer profiles_select_staff" (2026-07-12). Fase 1 = item 2.05; bônus (embed de notas removido) = item 2.07.
 
 ### 2.1 Gestão Dinâmica de Permissões
