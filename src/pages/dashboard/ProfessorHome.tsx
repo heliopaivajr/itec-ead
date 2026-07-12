@@ -3,7 +3,7 @@ import { useOutletContext, useNavigate } from 'react-router-dom';
 import {
   BookOpen, Users, AlertTriangle, CheckCircle2,
   FileText, ClipboardList, RefreshCw, Star, PlusCircle, Clock, XCircle,
-  FolderOpen, Upload, Loader2,
+  FolderOpen, Upload, Loader2, Printer,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { uploadContratoAssinado } from '@/services/professor.service';
@@ -305,6 +305,17 @@ export default function ProfessorHome() {
                   {manual_disponivel ? 'Manual ✓' : 'Contrato'}
                 </Button>
               </div>
+              {/* Impressão da lista de presença (R02). Abordagem A: abre o relatório;
+                  o professor seleciona turma/disciplina/período na própria tela. */}
+              <Button
+                size="sm"
+                variant="ghost"
+                className="w-full text-muted-foreground hover:text-primary"
+                onClick={() => navigate('/dashboard/relatorios/lista-presenca')}
+                title="Gere a lista para imprimir e preencher no papel"
+              >
+                <Printer className="h-4 w-4 mr-2" /> Imprimir Lista de Presença
+              </Button>
             </div>
           </div>
         ))}
