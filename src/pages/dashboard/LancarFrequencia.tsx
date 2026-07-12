@@ -93,12 +93,17 @@ export default function LancarFrequencia() {
     setAlunos(prev => prev.map(a => ({ ...a, presente: true })));
 
   const salvar = async () => {
+    // professorId (professores.id) só valida que o cadastro de professor existe.
     if (!disciplinaId || !professorId) return;
     setSalvando(true);
     const registros: Omit<RegistroFrequencia, 'id' | 'registrado_em'>[] = alunos.map(a => ({
       disciplina_id: disciplinaId,
       aluno_id:      a.aluno_id,
-      professor_id:  professorId,
+      // FK: frequencia.professor_id → profiles(id) — vai o id do usuário logado
+      // (auth.uid()), NÃO professores.id (que quebrava a FK/RLS). Único professor_id
+      // do sistema que aponta para profiles; os demais (contratos, solicitações,
+      // matriculas_disciplina) apontam para professores.
+      professor_id:  profile.id,
       data_aula:     data,
       presente:      a.presente,
       justificada:   false,

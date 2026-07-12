@@ -11,6 +11,8 @@ export interface RegistroFrequencia {
   disciplina_id: string;
   aluno_id: string;
   aluno?: AlunoBasico;
+  // ⚠️ FK → profiles(id): é o auth.uid() de quem lançou, NÃO professores.id
+  // (exceção do schema — as demais tabelas de professor apontam para professores).
   professor_id: string;
   data_aula: string;
   presente: boolean;
