@@ -5,6 +5,7 @@
 
 import { supabase } from '@/lib/supabase';
 import { getHistoricoAluno, type HistoricoAluno } from './academico.service';
+import { getAlunosOperacional } from './professor.service';
 
 // ===== TIPOS =====
 
@@ -376,51 +377,25 @@ export async function getListaPresencaRelatorio(
     };
   }
 
-  // Query 3: buscar matrículas ativas da turma
-  const { data: matriculas, error: errorMatriculas } = await supabase
-    .from('matriculas')
-    .select('id, aluno_id')
-    .eq('turma_id', turmaId)
-    .eq('status', 'ativa')
-    .limit(100);
+  // Lista de alunos via ROSTER (get_alunos_operacional — 057/058/060), no lugar das
+  // antigas Q3 (matriculas) + Q4 (matriculas_disciplina) + Q5 (profiles). O roster já
+  // devolve aluno_id, full_name e codigo_itec (060), é gated por professor_leciona_
+  // disciplina OR staff (SECURITY DEFINER) e é a MESMA fonte de LancarFrequencia/
+  // VerTurma — o R02 deixa de ler profiles direto (LGPD-01 fase 2 · Mov.2) e passa a
+  // exibir exatamente o conjunto de alunos das telas operacionais.
+  const roster = await getAlunosOperacional(disciplinaId, turmaId);
 
-  if (errorMatriculas || !matriculas || matriculas.length === 0) {
-    console.error('[R02] Erro ao buscar matrículas:', errorMatriculas?.message);
+  if (roster.length === 0) {
+    // Vazio = sem matrícula na disciplina/turma OU disciplina fora do escopo do
+    // professor (gate do roster). Em ambos os casos não há lista a montar.
+    console.error('[R02] Roster vazio para a disciplina/turma (sem matriculados ou fora do escopo)');
     return {
       erro: 'sem_alunos',
     };
   }
 
-  const matriculaIds = matriculas.map((m) => m.id);
-  const alunoIdsPorMatricula = new Map(matriculas.map((m) => [m.id, m.aluno_id]));
-
-  // Query 4: buscar matriculas_disciplina
-  const { data: matsDisc, error: errorMatsDisc } = await supabase
-    .from('matriculas_disciplina')
-    .select('matricula_id')
-    .eq('disciplina_id', disciplinaId)
-    .in('matricula_id', matriculaIds);
-
-  if (errorMatsDisc || !matsDisc || matsDisc.length === 0) {
-    console.error('[R02] Nenhum aluno matriculado na disciplina');
-    return {
-      erro: 'sem_alunos_disciplina',
-    };
-  }
-
-  const alunoIds = matsDisc
-    .map((md) => alunoIdsPorMatricula.get(md.matricula_id))
-    .filter(Boolean) as string[];
-
-  // Query 5: buscar profiles dos alunos
-  const { data: profiles, error: errorProfiles } = await supabase
-    .from('profiles')
-    .select('id, full_name, codigo_itec')
-    .in('id', alunoIds);
-
-  if (errorProfiles) {
-    console.error('[R02] Erro ao buscar profiles:', errorProfiles.message);
-  }
+  const alunoIds = roster.map((r) => r.aluno_id);
+  const perfilPorAluno = new Map(roster.map((r) => [r.aluno_id, r]));
 
   // Query 6: buscar frequências do período
   const { data: frequencias, error: errorFreq } = await supabase
@@ -479,7 +454,7 @@ export async function getListaPresencaRelatorio(
   };
 
   for (const alunoId of alunoIds) {
-    const profile = profiles?.find((p) => p.id === alunoId);
+    const perfil = perfilPorAluno.get(alunoId);
     const presencas: {
       data_aula: string;
       status: 'P' | 'F' | null;
@@ -517,8 +492,8 @@ export async function getListaPresencaRelatorio(
 
     resultado.alunos.push({
       aluno_id: alunoId,
-      nome_aluno: profile?.full_name || 'Nome não disponível',
-      codigo_itec: profile?.codigo_itec || null,
+      nome_aluno: perfil?.full_name || 'Nome não disponível',
+      codigo_itec: perfil?.codigo_itec || null,
       presencas,
       resumo: {
         total_aulas: datasFinais.length,

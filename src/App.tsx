@@ -142,7 +142,8 @@ const App = () => (
               <Route path="relatorios"    element={<RoleGuard allowedRoles={['superadmin','admin','administracao']}><Relatorios /></RoleGuard>} />
               <Route path="relatorios/alunos-turma" element={<RoleGuard allowedRoles={['superadmin','admin','administracao']}><R01_AlunosPorTurma /></RoleGuard>} />
               <Route path="relatorios/lista-presenca" element={<RoleGuard allowedRoles={['superadmin','admin','administracao','professor']}><R02_ListaPresenca /></RoleGuard>} />
-              <Route path="relatorios/disciplinas-aluno" element={<RoleGuard allowedRoles={['superadmin','admin','administracao','professor']}><R03_DisciplinasPorAluno /></RoleGuard>} />
+              {/* LGPD-01 fase 2 · Mov.2 (R03-B): R03 é aluno-cêntrico cross-matéria, não escopável por disciplina → professor fica de fora (usa ConsolidadoNotas + VerTurma da cadeira). */}
+              <Route path="relatorios/disciplinas-aluno" element={<RoleGuard allowedRoles={['superadmin','admin','administracao']}><R03_DisciplinasPorAluno /></RoleGuard>} />
               <Route path="relatorios/situacao-financeira" element={<RoleGuard allowedRoles={['superadmin','admin','administracao','financeiro']}><R04_SituacaoFinanceira /></RoleGuard>} />
               <Route path="relatorios/inadimplentes" element={<RoleGuard allowedRoles={['superadmin','admin','administracao']}><R05_Inadimplentes /></RoleGuard>} />
               <Route path="relatorios/historico-academico" element={<RoleGuard allowedRoles={['superadmin','admin','administracao']}><R06_HistoricoAcademico /></RoleGuard>} />
