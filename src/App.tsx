@@ -145,7 +145,7 @@ const App = () => (
               <Route path="relatorios/disciplinas-aluno" element={<RoleGuard allowedRoles={['superadmin','admin','administracao','professor']}><R03_DisciplinasPorAluno /></RoleGuard>} />
               <Route path="relatorios/situacao-financeira" element={<RoleGuard allowedRoles={['superadmin','admin','administracao','financeiro']}><R04_SituacaoFinanceira /></RoleGuard>} />
               <Route path="relatorios/inadimplentes" element={<RoleGuard allowedRoles={['superadmin','admin','administracao']}><R05_Inadimplentes /></RoleGuard>} />
-              <Route path="relatorios/historico-academico" element={<RoleGuard allowedRoles={['superadmin','admin','administracao','professor']}><R06_HistoricoAcademico /></RoleGuard>} />
+              <Route path="relatorios/historico-academico" element={<RoleGuard allowedRoles={['superadmin','admin','administracao']}><R06_HistoricoAcademico /></RoleGuard>} />
               <Route path="calendario"    element={<CalendarioAcademico />} />
               <Route path="nova-matricula" element={<RoleGuard allowedRoles={['superadmin','admin','administracao']}><NovaMatricula /></RoleGuard>} />
               <Route path="financeiro"    element={<RoleGuard allowedRoles={['superadmin','admin','administracao','financeiro']}><FinanceiroPage /></RoleGuard>} />
@@ -186,7 +186,8 @@ const App = () => (
 
               {/* Secretaria/Admin — Lista e ficha do aluno */}
               <Route path="alunos"         element={<RoleGuard allowedRoles={['superadmin','admin','administracao']}><Alunos /></RoleGuard>} />
-              <Route path="aluno/:alunoId" element={<RoleGuard allowedRoles={['superadmin','admin','administracao','professor']}><FichaAluno /></RoleGuard>} />
+              {/* LGPD-01 fase 2 · Mov.1: professor NÃO vê Ficha do Aluno (CPF/RG/endereço) nem R06 (CPF). */}
+              <Route path="aluno/:alunoId" element={<RoleGuard allowedRoles={['superadmin','admin','administracao']}><FichaAluno /></RoleGuard>} />
 
               {/* All roles */}
               <Route path="perfil" element={<Perfil />} />
