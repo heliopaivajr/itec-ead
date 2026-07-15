@@ -918,4 +918,24 @@ A ponte entre os mundos é `professores.user_id = auth.uid()` (é o que `profess
 
 ---
 
+## LICAO-041 — RLS-MANUAL: DROP POLICY isolado no SQL Editor apaga policies silenciosamente
+
+**Data:** 2026-07-15
+**Contexto:** As policies de `frequencia` (INSERT/SELECT/ALL da 031) e de `notas_aluno` (SELECT/DELETE) **sumiram de produção sem que nenhuma migração versionada as derrubasse** — auditoria por SQL achou `frequencia` com UMA policy (só UPDATE) e `notas_aluno` só com insert+update. A 059 dropava/recriava apenas o que declarava; nenhum `.sql` do repo tem DROP sem CREATE correspondente. **Causa: execução manual no SQL Editor — bloco de DROPs/rollback rodado parcialmente** (os DROPs executam, os CREATEs não). Efeito: com RLS ativo e sem policy, a operação é negada por padrão — professor não salvava chamada ("new row violates row-level security") e ninguém lia notas (telas vazias **sem erro**). Correção: migrações 061 (frequencia, 5 policies) e 062 (notas_aluno SELECT+DELETE).
+**Decisão / regra:**
+1. **NUNCA rodar `DROP POLICY` isolado no SQL Editor** — DROP e CREATE andam juntos, sempre.
+2. **Todo rollback executa INTEIRO**: bloco completo (DROP+CREATE) dentro de `BEGIN/COMMIT` — transação garante tudo-ou-nada; rodar "só um pedaço" de um bloco de rollback é o modo de falha desta lição.
+3. **Após QUALQUER sessão manual em policies**, rodar o levantamento de contagem por tabela e comparar com o esperado das migrações versionadas:
+   ```sql
+   SELECT tablename, count(*) FROM pg_policies
+   WHERE schemaname='public' GROUP BY tablename ORDER BY tablename;
+   ```
+   (Query completa com conjunto esperado por tabela: seção 3 da verificação da 062.)
+**Sintoma para diagnóstico futuro:** "new row violates row-level security policy" em operação que sempre funcionou, OU telas que abrem **vazias sem nenhum erro** (SELECT negado por default-deny não lança exceção — LICAO-027 manda logar, mas RLS sem policy retorna 0 linhas "com sucesso").
+**Agentes impactados:** 04-db-architect, 11-security-auditor, 14-auditor
+**Como aplicar no futuro:** toda migração de policies deve ser um bloco único BEGIN/COMMIT (padrão já seguido); rollbacks comentados no fim do arquivo também completos e transacionais; depois de qualquer mexida manual, contagem via pg_policies antes de encerrar a sessão.
+**Status:** aplicado — 061 ✅ aplicada/validada (professor salva chamada); 062 criada (aguardando run + levantamento geral).
+
+---
+
 *Mantido pelo agente-Osabio · ITEC-EAD · 2025*
