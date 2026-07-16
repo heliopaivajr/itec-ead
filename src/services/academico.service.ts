@@ -270,18 +270,68 @@ export async function verificarPrerequisitoBatch(
   return result;
 }
 
-export async function getTurmaIdByDisciplina(disciplinaId: string): Promise<string | null> {
-  const { data } = await supabase
-    .from('matriculas_disciplina')
-    .select('matricula_id, matriculas!inner(turma_id)')
+// Turmas em que a disciplina é lecionada. DUAS fontes, NENHUM join aninhado:
+//
+// A versão anterior fazia `matriculas!inner(turma_id)` — join aninhado sob RLS
+// (LICAO-026). Para o PROFESSOR o embed voltava vazio (ele não tem NENHUMA policy
+// de SELECT em `matriculas` — nem a 035 original incluía professor), o !inner
+// derrubava todas as linhas, o `.single()` virava erro 406 e o erro era engolido
+// → null silencioso → "Sem turma vinculada" mesmo com a turma existindo no banco.
+// (No SQL Editor a mesma query funciona porque service_role bypassa a RLS.)
+//
+// Fonte 1 — aulas_recorrentes (grade horária): liga disciplina→turma direto,
+//   SELECT é `USING (true)` p/ authenticated (029) → o professor LÊ. É a fonte
+//   oficial do vínculo e pré-requisito do R02 (grade cadastrada).
+// Fonte 2 — fallback via matrículas em 2 queries SEPARADAS (LICAO-026):
+//   matriculas_disciplina (professor lê, 010) → matriculas.in(ids) (staff lê).
+//   Para professor esta fonte pode voltar vazia por RLS — por isso é fallback.
+// Erros são LOGADOS (LICAO-027), nunca engolidos.
+export async function getTurmasByDisciplina(disciplinaId: string): Promise<string[]> {
+  // Fonte 1: grade horária (legível por qualquer authenticated)
+  const { data: aulas, error: errAulas } = await supabase
+    .from('aulas_recorrentes')
+    .select('turma_id')
     .eq('disciplina_id', disciplinaId)
-    .not('matriculas.turma_id', 'is', null)
-    .limit(1)
-    .single();
+    .eq('ativo', true)
+    .limit(10);
 
-  if (!data) return null;
-  const m = (data as unknown as { matriculas: { turma_id: string } }).matriculas;
-  return m?.turma_id ?? null;
+  if (errAulas) console.error('[getTurmasByDisciplina] aulas_recorrentes:', errAulas.message);
+  const daGrade = [...new Set(((aulas ?? []) as { turma_id: string }[])
+    .map(a => a.turma_id).filter(Boolean))];
+  if (daGrade.length > 0) return daGrade;
+
+  // Fonte 2 (fallback): matriculas_disciplina → matriculas, sem join aninhado
+  const { data: matsDisc, error: errMd } = await supabase
+    .from('matriculas_disciplina')
+    .select('matricula_id')
+    .eq('disciplina_id', disciplinaId)
+    .limit(100);
+
+  if (errMd) console.error('[getTurmasByDisciplina] matriculas_disciplina:', errMd.message);
+  const matriculaIds = ((matsDisc ?? []) as { matricula_id: string }[]).map(m => m.matricula_id);
+  if (matriculaIds.length === 0) return [];
+
+  const { data: mats, error: errM } = await supabase
+    .from('matriculas')
+    .select('turma_id')
+    .in('id', matriculaIds)
+    .not('turma_id', 'is', null)
+    .limit(100);
+
+  if (errM) console.error('[getTurmasByDisciplina] matriculas:', errM.message);
+  return [...new Set(((mats ?? []) as { turma_id: string }[])
+    .map(m => m.turma_id).filter(Boolean))];
+}
+
+// Wrapper compatível (consumidor atual: useProfessorDisciplinas → habilita Notas).
+// Multi-turma: loga aviso e devolve a primeira — quando houver disciplina em
+// 2+ turmas, o caller deve migrar para getTurmasByDisciplina (lista completa).
+export async function getTurmaIdByDisciplina(disciplinaId: string): Promise<string | null> {
+  const turmas = await getTurmasByDisciplina(disciplinaId);
+  if (turmas.length > 1) {
+    console.warn(`[getTurmaIdByDisciplina] disciplina ${disciplinaId} em ${turmas.length} turmas — usando a primeira`);
+  }
+  return turmas[0] ?? null;
 }
 
 // ─── Histórico Acadêmico ──────────────────────────────────────────────────────
