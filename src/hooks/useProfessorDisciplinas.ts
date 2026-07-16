@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import {
   getProfessorByUserId,
   getContratosByProfessor,
+  getAlunosOperacional,
   type Professor,
   type ContratoProfessor,
 } from '@/services/professor.service';
@@ -54,10 +55,26 @@ export function useProfessorDisciplinas(userId: string): ProfessorDisciplinasDat
             const disciplina = await getDisciplinaById(contrato.disciplina_id);
             if (!disciplina) return null;
 
-            const [emRisco, turmaId] = await Promise.all([
+            const [emRisco, roster] = await Promise.all([
               getAlunosAbaixoLimite(disciplina.id, 75),
-              getTurmaIdByDisciplina(disciplina.id),
+              getAlunosOperacional(disciplina.id),
             ]);
+
+            // Turma pelo ROSTER (fonte prioritária — 064): SECURITY DEFINER, o
+            // professor sempre lê; não depende de grade em aulas_recorrentes nem
+            // de policy de matriculas. No modelo atual todos os matriculados da
+            // disciplina são da mesma turma; se vierem 2+, warn e usa a primeira
+            // (multi-turma futuro usa a lista completa).
+            const turmasDistintas = [...new Set(
+              roster.map(r => r.turma_id).filter(Boolean)
+            )] as string[];
+            if (turmasDistintas.length > 1) {
+              console.warn(`[useProfessorDisciplinas] disciplina ${disciplina.id} com ${turmasDistintas.length} turmas no roster — usando a primeira`);
+            }
+            // Fallback: disciplina SEM matriculados (roster vazio) mas COM grade
+            // em aulas_recorrentes (getTurmasByDisciplina via wrapper).
+            const turmaId = turmasDistintas[0]
+              ?? await getTurmaIdByDisciplina(disciplina.id);
 
             return {
               contrato,

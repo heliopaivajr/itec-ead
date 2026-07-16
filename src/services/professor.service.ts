@@ -223,7 +223,9 @@ export interface AlunoOperacional {
   aluno_id: string;
   full_name: string;
   avatar_url: string | null;
+  codigo_itec: string | null;   // 060
   matricula_id: string;
+  turma_id: string | null;      // 064 — turma da matrícula (habilita Notas)
   nota: number | null;
   faltas: number | null;
   frequencia_percentual: number | null;
