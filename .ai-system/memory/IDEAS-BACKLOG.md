@@ -124,6 +124,23 @@ Além dos **2 embeds MORTOS** (já substituídos pelo roster, remoção trivial)
 **Status**: 🔵 Em andamento — **Mov.1 ✅ concluído (PR #41)**; Mov.2 especificado (R02 roster + R03-B) pronto p/ SDD; Mov.3 pendente (após Mov.2 em produção).
 **Origem**: diagnóstico "LGPD-01 fase 2: endurecer profiles_select_staff" (2026-07-12). Fase 1 = item 2.05; bônus (embed de notas removido) = item 2.07.
 
+### 2.10 [TELA] Impressão na tela de Notas do professor
+**Descrição**: Botões **Imprimir / PDF / Excel** nas telas `LancarNotas` e `ConsolidadoNotas`, espelhando o **R02** (que já gera PDF/Excel/CSV da grade de presença). O professor imprime a planilha de notas da turma direto da tela onde lança.
+**Solução técnica**: reusa `@react-pdf/renderer` + `xlsx` já no projeto e o padrão dos exporters do R02 (`excelExporter`, componente `*_PDF`).
+**Esforço**: **P** (padrão pronto, é replicação).
+**Prioridade**: após a integração (Fases B/C/E da auditoria de integração — aluno/secretaria/consolidado primeiro).
+**Status**: Registrado — pedido do Hélio (2026-07-16).
+**Origem**: QA do fluxo do professor pós-A1/A2 (fluxo lançar-nota funcional ponta a ponta).
+
+### 2.11 [TELA] Planilha visual de Frequência no dashboard do professor
+**Descrição**: Grade **aluno × datas de aula** (presente/falta) no dashboard do professor, com **cálculo de % automático** e **impressão no mesmo local** — a visão-planilha que hoje só existe no R02 impresso passa a ser tela operável.
+**Solução técnica**: reusa a estrutura de grade do R02 (`R02_ListaPresenca` — tabela alunos×datas com sticky columns + resumo P/F/total/%). Fonte: roster + `frequencia` (mesmas do R02).
+**Fatiamento**: esta é a **Etapa A da Camada 2** do módulo Freq/Notas (item 2.08) — só visual P/F, **sem migração**. A Etapa B (**PP/FP/FF** com `tipo_presenca` + regra D-FALTAS, exige migração) permanece **v1.1** como registrado no 2.08.
+**Esforço**: **M**.
+**Prioridade**: após a integração (Fases B/C/E).
+**Status**: Registrado — pedido do Hélio (2026-07-16).
+**Origem**: visão da Camada 2 (2.08) destravada por partes.
+
 ### 2.1 Gestão Dinâmica de Permissões
 **Descrição**: Tela administrativa para superadmin gerenciar quais roles acessam quais módulos/rotas.  
 **Solução técnica**: Criar tabela `permissoes_modulos` no banco + interface de configuração.  
@@ -485,10 +502,11 @@ Além dos **2 embeds MORTOS** (já substituídos pelo roster, remoção trivial)
 ### 11.0 [TELA] Manual do Aluno no dashboard do aluno
 **Descrição**: O aluno precisa poder **LER e BAIXAR o manual do aluno pelo próprio dashboard**. A infraestrutura **já existe por completo**: bucket privado `manuais-aluno` (migração 050, leitura para qualquer authenticated) + coluna `cursos.manual_aluno_url` + `curso.service.getManualAlunoUrl()` (signed URL 1h). A secretaria já sobe/atualiza o handbook (055 deu escrita à `administracao`; UI no `ManualAlunoCard` do CursosAdmin). **O que falta é só o ponto de acesso NO dashboard do aluno**: card/seção "Manual do Aluno" → ler online (abrir o PDF na signed URL) + botão baixar.
 **Solução técnica**: componente pequeno no dashboard do aluno (AlunoView/MeusCursos ou item de menu) consumindo `getManualAlunoUrl()` — estado vazio amigável se o curso ainda não tem manual.
-**Esforço**: **P** (a infra está pronta; é UI + link).
+**Reforço (2026-07-16, decisão do Hélio)**: a leitura online deve ser **organizada em PARTES** (seções/capítulos navegáveis, leitura fácil no dashboard — não só o PDF cru embutido) + **botão de download em PDF** do manual completo. Infra pronta (bucket `manuais-aluno` + signed URL); o conteúdo em partes é camada de apresentação sobre o mesmo manual.
+**Esforço**: **P** (a infra está pronta; é UI + link; a organização em partes pode subir para P/M conforme o formato do conteúdo).
 **Prioridade**: Média — **DEPOIS do Financeiro**, junto/antes da Central de Ajuda.
 **Versão alvo**: pós-Financeiro; **precede/compõe a Central de Ajuda (item 11.1)** — vira a aba "Manual" dela.
-**Status**: Registrado — pedido do Hélio (2026-07-10).
+**Status**: Registrado — pedido do Hélio (2026-07-10); reforçado em 2026-07-16 (partes + PDF).
 **Origem**: visão da Central de Ajuda (11.1); infra das migrações 050/055.
 
 ### 11.1 [MÓDULO] Central de Ajuda & Suporte ITEC (todas as personas)
