@@ -9,7 +9,7 @@ import {
   Tv, Users, CalendarDays, FileText,
   CreditCard, HelpCircle, ClipboardList, BookOpen,
   Bell, ShieldAlert,
-  Star, CalendarCheck, Award, UserCog, BarChart2,
+  Award, UserCog, BarChart2,
 } from 'lucide-react';
 
 import Index from "./pages/Index";
@@ -52,6 +52,8 @@ const MeusContratos      = lazy(() => import("./pages/dashboard/MeusContratos"))
 const MateriaisProfessor = lazy(() => import("./pages/dashboard/MateriaisProfessor"));
 const MeusAlunos         = lazy(() => import("./pages/dashboard/MeusAlunos"));
 const SelecionarDisciplinaProfessor = lazy(() => import("./pages/dashboard/SelecionarDisciplinaProfessor"));
+const MinhaFrequencia    = lazy(() => import("./pages/dashboard/MinhaFrequencia"));
+const MinhasNotas        = lazy(() => import("./pages/dashboard/MinhasNotas"));
 const ProfessoresAdmin   = lazy(() => import("./pages/dashboard/ProfessoresAdmin"));
 const EquipeITEC         = lazy(() => import("./pages/dashboard/EquipeITEC"));
 const GestaoTurmas       = lazy(() => import("./pages/dashboard/GestaoTurmas"));
@@ -119,8 +121,9 @@ const App = () => (
               {/* Aluno */}
               <Route path="cursos"            element={<MeusCursos />} />
               <Route path="meu-historico"     element={<RoleGuard allowedRoles={['aluno','superadmin']}><MeuHistorico /></RoleGuard>} />
-              <Route path="minhas-notas"      element={<ComingSoonPage titulo="Minhas Notas"      descricao="Acompanhe suas notas por disciplina e avaliação em tempo real."        previsao="Agosto 2026" icone={Star} />} />
-              <Route path="minha-frequencia"  element={<ComingSoonPage titulo="Minha Frequência"  descricao="Veja seu histórico de presença e o percentual por disciplina."         previsao="Agosto 2026" icone={CalendarCheck} />} />
+              {/* Fase C1 — telas reais do aluno (RLS 061/062 + consolidado 065) */}
+              <Route path="minhas-notas"      element={<RoleGuard allowedRoles={['aluno']}><MinhasNotas /></RoleGuard>} />
+              <Route path="minha-frequencia"  element={<RoleGuard allowedRoles={['aluno']}><MinhaFrequencia /></RoleGuard>} />
               <Route path="meus-certificados" element={<ComingSoonPage titulo="Meus Certificados" descricao="Baixe e compartilhe seus certificados de conclusão de curso."          previsao="Agosto 2026" icone={Award} />} />
               <Route path="ao-vivo"     element={<ComingSoon title="Ao Vivo" icon={Tv} description="As transmissões ao vivo das aulas estarão disponíveis em breve." />} />
               <Route path="comunidade"  element={<ComingSoon title="Comunidade" icon={Users} description="Fóruns, grupos de oração e mural de avisos em desenvolvimento." />} />
