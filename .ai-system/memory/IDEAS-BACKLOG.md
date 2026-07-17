@@ -526,6 +526,31 @@ Além dos **2 embeds MORTOS** (já substituídos pelo roster, remoção trivial)
 
 ---
 
+## 12. CAPTAÇÃO & LANDING PAGE — 🔴 prioridade ALTA (matrículas de agosto)
+
+### 12.0 [BUG] 🔴 Formulário "Reservar minha vaga" da LP falha ao enviar — leads perdidos em silêncio
+**Descrição**: O formulário da landing page mostra **"Erro ao enviar. Tente novamente ou entre em contato pelo WhatsApp."** e o lead **NÃO é gravado** → o ITEC **perde interessados em silêncio** (a pessoa acha que enviou e vai embora). Evidência do outro lado: o dashboard da secretaria mostra **"Leads 0"** e "Leads por Curso: Nenhum lead ainda".
+**Investigar**: a LP grava em qual tabela/endpoint? (`leads_cursos` existe; `leads.service` tem `createLead` + fallback localStorage). **Provável causa: RLS bloqueando INSERT de `anon`** na tabela de leads (padrão dos danos LICAO-041 — conferir policies de `leads_cursos` no levantamento pg_policies), ou endpoint quebrado.
+**Impacto**: captação para AGOSTO — cada dia do bug é lead perdido.
+**Prioridade**: 🔴 **ALTA** — entra **após a integração (Fases C2/E), antes do Financeiro**.
+**Status**: Registrado — reportado pelo Hélio (2026-07-17).
+
+### 12.1 [MELHORIA] Funil de leads no dashboard da secretaria
+**Descrição**: O lead da LP deve chegar no painel (o menu "Leads" existe mas está zerado pelo bug 12.0). **Depois do fix**: visão de **funil** (interessado → contato feito → matriculado), **origem** (Instagram/indicação/etc.) e **curso de interesse**. Reusa os campos que a LP já coleta (nome, email, WhatsApp, cidade, curso, como conheceu, mensagem).
+**Dependências**: 12.0 (sem o fix não há lead para exibir).
+**Esforço**: **M**.
+**Prioridade**: Alta (segue o 12.0).
+**Status**: Registrado (2026-07-17).
+
+### 12.2 [MELHORIA] Newsletter do rodapé da LP — separar do fluxo de matrícula
+**Descrição**: Hoje o campo de e-mail do Newsletter **leva ao fluxo de reservar matrícula** — comportamento errado: quem quer newsletter não quer se matricular. Separar: newsletter grava **só o e-mail** numa lista própria, sem abrir o formulário de matrícula.
+**Decidir**: destino do e-mail — tabela `newsletter` própria OU tag/origem em `leads_cursos` (decisão do Hélio no SDD).
+**Esforço**: **P**.
+**Prioridade**: Alta (mesma onda da captação).
+**Status**: Registrado (2026-07-17).
+
+---
+
 ## REGRA CRÍTICA — Camada Analítica
 
 **APENAS avaliar após lançamento de agosto 2026.**
