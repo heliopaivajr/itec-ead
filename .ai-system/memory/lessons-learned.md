@@ -938,4 +938,23 @@ A ponte entre os mundos é `professores.user_id = auth.uid()` (é o que `profess
 
 ---
 
+## LICAO-042 — O ELO: bruto (professor) × consolidado (todos) sincronizados pelo trigger do banco
+
+**Data:** 2026-07-16
+**Contexto:** Auditoria de integração dos 4 dashboards ("não falam a mesma língua"). Arquitetura de dados do acadêmico:
+- **Professor ESCREVE no bruto**: `frequencia` (chamada por aula) e `notas_aluno` (nota por avaliação).
+- **Secretaria/coordenação/aluno LEEM o consolidado**: `matriculas_disciplina` (`nota`, `faltas`, `frequencia_percentual`, `status`) — via roster (057/058/060/064), R03, histórico G4, Ficha 360, Meu Histórico.
+- Até a 065, **ninguém sincronizava os dois**: o consolidado só era escrito pelo lançamento retroativo manual — o professor lançava e os outros dashboards mostravam números diferentes (ou nada).
+**Decisão / regra:** O **trigger `recalcular_consolidado` (migração 065)** é o **ELO** que mantém bruto e consolidado em sincronia: qualquer INSERT/UPDATE/DELETE em `frequencia`/`notas_aluno` recalcula a linha de `matriculas_disciplina` do par (aluno, disciplina). Consequências permanentes:
+1. **Toda regra de cálculo (média, %, status) vive NA FUNÇÃO do banco; o front espelha** — nunca o contrário. Mudança de régua (ex.: Camada 2 — D-FALTAS FF=2/FP=1/teto=7) altera **a função**, não N telas.
+2. Telas novas que precisem de nota/frequência do aluno leem o **consolidado** (ou o roster, que o expõe) — não recalculam em JS.
+3. O guard do trigger preserva decisão administrativa (`trancado`/`convalidado` nunca são recalculados).
+4. Se banco e front divergirem num número, o bug está no **front** (espelho desatualizado) — a função é a fonte canônica.
+**Validação:** João em Apologética — professor lançou; trigger consolidou nota 7.30 · faltas 0 · freq 100 · `aprovado`; visível para secretaria/coordenação/aluno sem qualquer refactor de tela.
+**Agentes impactados:** 02-domain-designer, 04-db-architect, 05-backend-engineer, 06-frontend
+**Como aplicar no futuro:** ao criar qualquer feature que produza dado acadêmico por evento (presença, nota, atividade EAD), perguntar primeiro: "qual é o consolidado que os outros dashboards leem, e quem o recalcula?" — a resposta deve ser um trigger/função no banco, nunca "cada tela calcula".
+**Status:** aplicado (migração 065 ✅, 2026-07-16).
+
+---
+
 *Mantido pelo agente-Osabio · ITEC-EAD · 2025*
