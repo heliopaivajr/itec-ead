@@ -147,6 +147,70 @@ export async function getAlunosByTurma(turmaId: string): Promise<AlunoTurma[]> {
   });
 }
 
+export interface DisciplinaTurma {
+  id: string;
+  nome: string;
+  codigo: string;
+}
+
+// Disciplinas lecionadas numa turma — porta de Acompanhamento da secretaria (C2/E4).
+// Fonte 1: grade horária (aulas_recorrentes). Fallback: matrículas da turma →
+// matriculas_disciplina (queries SEPARADAS, LICAO-026) — caminho REAL quando a
+// grade não está cadastrada (ex.: Apologética tem aulas_recorrentes count=0).
+// Erros logados (LICAO-027).
+export async function getDisciplinasDaTurma(turmaId: string): Promise<DisciplinaTurma[]> {
+  type AulaRow = { disciplina_id: string; disciplinas_v2: DisciplinaTurma | DisciplinaTurma[] | null };
+
+  // Fonte 1: grade horária
+  const { data: aulas, error: errAulas } = await supabase
+    .from('aulas_recorrentes')
+    .select('disciplina_id, disciplinas_v2(id, nome, codigo)')
+    .eq('turma_id', turmaId)
+    .eq('ativo', true)
+    .limit(60);
+
+  if (errAulas) console.error('[getDisciplinasDaTurma] aulas_recorrentes:', errAulas.message);
+
+  const unicas = new Map<string, DisciplinaTurma>();
+  for (const r of ((aulas ?? []) as unknown as AulaRow[])) {
+    const d = Array.isArray(r.disciplinas_v2) ? r.disciplinas_v2[0] : r.disciplinas_v2;
+    if (d) unicas.set(d.id, { id: d.id, nome: d.nome, codigo: d.codigo });
+  }
+  if (unicas.size > 0) {
+    return [...unicas.values()].sort((a, b) => a.nome.localeCompare(b.nome));
+  }
+
+  // Fallback: matrículas da turma → matriculas_disciplina → disciplinas_v2
+  const { data: mats, error: errMats } = await supabase
+    .from('matriculas')
+    .select('id')
+    .eq('turma_id', turmaId)
+    .limit(100);
+
+  if (errMats) console.error('[getDisciplinasDaTurma] matriculas:', errMats.message);
+  const matriculaIds = ((mats ?? []) as { id: string }[]).map(m => m.id);
+  if (matriculaIds.length === 0) return [];
+
+  const { data: mds, error: errMds } = await supabase
+    .from('matriculas_disciplina')
+    .select('disciplina_id')
+    .in('matricula_id', matriculaIds)
+    .limit(500);
+
+  if (errMds) console.error('[getDisciplinasDaTurma] matriculas_disciplina:', errMds.message);
+  const discIds = [...new Set(((mds ?? []) as { disciplina_id: string }[]).map(m => m.disciplina_id))];
+  if (discIds.length === 0) return [];
+
+  const { data: discs, error: errDiscs } = await supabase
+    .from('disciplinas_v2')
+    .select('id, nome, codigo')
+    .in('id', discIds)
+    .limit(60);
+
+  if (errDiscs) console.error('[getDisciplinasDaTurma] disciplinas_v2:', errDiscs.message);
+  return (((discs ?? []) as DisciplinaTurma[])).sort((a, b) => a.nome.localeCompare(b.nome));
+}
+
 export async function getVagasDisponiveis(turmaId: string): Promise<number> {
   const { data: turma } = await supabase
     .from('turmas')

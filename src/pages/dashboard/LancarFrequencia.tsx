@@ -93,8 +93,22 @@ export default function LancarFrequencia() {
     setAlunos(prev => prev.map(a => ({ ...a, presente: true })));
 
   const salvar = async () => {
-    // professorId (professores.id) só valida que o cadastro de professor existe.
-    if (!disciplinaId || !professorId) return;
+    if (!disciplinaId) return;
+    // professorId (professores.id) valida o cadastro docente — mas SÓ para o role
+    // professor. Staff (administracao/admin/superadmin) não está em `professores`
+    // e salva direto: a 061 (frequencia_staff_all) autoriza e a FK aceita qualquer
+    // profiles.id. Antes o guard exigia professorId de todos → clique do staff era
+    // no-op SILENCIOSO (achado da auditoria C2/E4). Nunca falhar em silêncio
+    // (LICAO-027): professor sem cadastro recebe erro visível.
+    if (profile.role === 'professor' && !professorId) {
+      console.error('[LancarFrequencia] professor sem cadastro em `professores` — chamada não salva');
+      toast({
+        title: 'Cadastro de professor não encontrado',
+        description: 'Peça à secretaria para concluir seu cadastro docente antes de lançar a chamada.',
+        variant: 'destructive',
+      });
+      return;
+    }
     setSalvando(true);
     const registros: Omit<RegistroFrequencia, 'id' | 'registrado_em'>[] = alunos.map(a => ({
       disciplina_id: disciplinaId,

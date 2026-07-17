@@ -110,7 +110,9 @@ export default function VerTurma() {
     <div className="p-6 space-y-6">
       {/* Cabeçalho */}
       <div className="flex items-center gap-3">
-        <button onClick={() => navigate('/dashboard/professor')} className="text-muted-foreground hover:text-foreground">
+        {/* Voltar genérico (C2/E4): a tela é compartilhada professor+staff — o
+            staff chega pelo GestaoTurmas, não pelo painel do professor. */}
+        <button onClick={() => navigate(-1)} className="text-muted-foreground hover:text-foreground">
           <ArrowLeft className="h-5 w-5" />
         </button>
         <div>
