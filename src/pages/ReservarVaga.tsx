@@ -44,6 +44,8 @@ export default function ReservarVaga() {
 
     setLoading(false);
     if (!result.success) {
+      // Erro técnico no console (LICAO-027); mensagem amigável na tela.
+      console.error('[ReservarVaga] createLead falhou:', result.error, '· savedLocally:', result.savedLocally);
       setErro('Erro ao enviar. Tente novamente ou entre em contato pelo WhatsApp.');
     } else {
       setEnviado(true);

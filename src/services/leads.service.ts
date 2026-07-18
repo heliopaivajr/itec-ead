@@ -34,6 +34,14 @@ export async function createLead(payload: LeadPayload): Promise<LeadResult> {
   const { error } = await supabase.from('leads_cursos').insert(leadData);
 
   if (error) {
+    // LICAO-027: NUNCA engolir o erro — o objeto completo do Supabase vai pro
+    // console (message/code/details/hint) para diagnóstico do 12.0.
+    console.error('[createLead] erro Supabase:', {
+      message: error.message,
+      code:    error.code,
+      details: error.details,
+      hint:    error.hint,
+    });
     try {
       const pendentes = JSON.parse(localStorage.getItem('leads_pendentes') ?? '[]');
       pendentes.push({ ...leadData, tentativa_em: new Date().toISOString() });

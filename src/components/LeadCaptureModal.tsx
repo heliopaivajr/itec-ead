@@ -42,7 +42,12 @@ export function LeadCaptureModal({ course, onClose }: LeadCaptureModalProps) {
 
     setLoading(true);
     try {
-      await createLead({ ...form, curso_interesse: course.id });
+      const result = await createLead({ ...form, curso_interesse: course.id });
+      // 12.0 diagnóstico (LICAO-027): o modal ignora o result — se o insert
+      // falhou, ao menos o erro real fica no console (fluxo inalterado).
+      if (!result.success) {
+        console.error('[LeadCaptureModal] createLead falhou:', result.error, '· savedLocally:', result.savedLocally);
+      }
       generateCoursePdf(course.id);
       toast({ title: 'Grade baixada com sucesso!', description: `A grade do curso ${course.nome} foi gerada.`, duration: 4000 });
       onClose();
