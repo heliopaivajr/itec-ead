@@ -951,6 +951,7 @@ A ponte entre os mundos é `professores.user_id = auth.uid()` (é o que `profess
 3. O guard do trigger preserva decisão administrativa (`trancado`/`convalidado` nunca são recalculados).
 4. Se banco e front divergirem num número, o bug está no **front** (espelho desatualizado) — a função é a fonte canônica.
 **Validação:** João em Apologética — professor lançou; trigger consolidou nota 7.30 · faltas 0 · freq 100 · `aprovado`; visível para secretaria/coordenação/aluno sem qualquer refactor de tela.
+**Validado em produção (QA Fase E, 2026-07-17):** professor lança → trigger recalcula → aluno/secretaria/coordenação leem o **MESMO número**. Caso João/Apologética: N1 7.5 + N2 9.0 → **8.30 aprovado**, freq 100% — idêntico em Minhas Notas (aluno), Acompanhar→ConsolidadoNotas (secretaria), Ficha/R03 (coordenação) e no banco. A auditoria de integração dos 4 dashboards foi **fechada** com este teste (IDEAS-BACKLOG 2.12).
 **Agentes impactados:** 02-domain-designer, 04-db-architect, 05-backend-engineer, 06-frontend
 **Como aplicar no futuro:** ao criar qualquer feature que produza dado acadêmico por evento (presença, nota, atividade EAD), perguntar primeiro: "qual é o consolidado que os outros dashboards leem, e quem o recalcula?" — a resposta deve ser um trigger/função no banco, nunca "cada tela calcula".
 **Status:** aplicado (migração 065 ✅, 2026-07-16).

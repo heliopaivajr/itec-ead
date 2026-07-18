@@ -141,6 +141,28 @@ Além dos **2 embeds MORTOS** (já substituídos pelo roster, remoção trivial)
 **Status**: Registrado — pedido do Hélio (2026-07-16).
 **Origem**: visão da Camada 2 (2.08) destravada por partes.
 
+### 2.12 [AUDITORIA] Integração dos 4 dashboards — ✅ CONCLUÍDA (2026-07-17)
+**Descrição**: A auditoria "os 4 dashboards devem falar a mesma língua" (professor/aluno/secretaria/coordenação) foi executada por fases e **fechada com QA de integração validado**:
+- **Fase A — professor lança**: 061 (policies de `frequencia` restauradas — chamada salva) · **A1** (`professor_id` = profiles.id, LICAO-040) · **A2/A2b + 064** (turma das Notas pelo roster) · 062/063 (SELECT de notas + policies de avaliacoes/matriculas/profiles restauradas, LICAO-041).
+- **Fase B — o elo**: **trigger 065** `recalcular_consolidado` (LICAO-042) — professor lança → `matriculas_disciplina` atualiza sozinho.
+- **Fase C1 — aluno vê**: Minhas Notas + Minha Frequência reais (fim dos placeholders "Agosto 2026"), mesma fonte do Meu Histórico.
+- **Fase C2 — porta da secretaria**: GestaoTurmas → Acompanhar (frequência/notas/chamada por disciplina, fallback sem grade) + RoleGuard nas 7 rotas de ação + staff salva chamada (fim do no-op silencioso).
+- **Fase E — re-teste (2026-07-17)**: professor muda N2→9.0 → trigger consolida → **nota 8.30/aprovado**; **os 4 dashboards mostram o MESMO número** (aluno, secretaria via Acompanhar, coordenação via Ficha/R03).
+**Pendências que saíram da auditoria para a fila**: E6 (higiene de links do professor — cards da home apontando p/ ComingSoon) · E5 já resolvido pela 065 · seção 12 (bug leads 12.0, achado à parte).
+**Status**: ✅ CONCLUÍDA.
+**Origem**: auditoria de integração (2026-07-15) + QA Fase E (2026-07-17).
+
+### 2.13 [TELA] Painel de Acompanhamento Acadêmico da secretaria/coordenação (visão consolidada)
+**Descrição**: Hoje o staff navega Turmas → Acompanhar → escolhe disciplina → abre VerTurma/ConsolidadoNotas (**uma tela por disciplina**). Pedido do Hélio (2026-07-17): **dois painéis consolidados**, fáceis de acompanhar e **IMPRIMIR**:
+- **(a) Painel de NOTAS do aluno por matéria** — todas as disciplinas do aluno numa grade só (matéria × N1/N2/média/status), sem precisar entrar disciplina por disciplina.
+- **(b) Painel de PRESENÇA** — frequência por aluno/turma numa visão única (aluno × disciplina × % / faltas), com **destaque de quem está em risco**.
+Ambos com impressão (**PDF/Excel**), reusando `@react-pdf` + `xlsx` do R02.
+**Fonte**: `matriculas_disciplina` (consolidado **vivo** pós-trigger 065) — o dado já está certo e atualizado; é **UI de agregação, não regra nova** (LICAO-042).
+**Relação com itens existentes**: o **R03** (Disciplinas por Aluno) já faz parte de (a) em formato de relatório — **avaliar no SDD se é evoluir o R03 ou tela nova**. **2.10** (impressão nas Notas) e **2.11** (planilha visual de frequência) são os equivalentes do professor — **verificar reuso de componentes**.
+**Esforço**: **M**.
+**Prioridade**: acabamentos (**após integração ✅, Auth, Financeiro**). **Não bloqueia agosto** — o staff já consegue ver tudo pelo Acompanhar.
+**Status**: Registrado (2026-07-17).
+
 ### 2.1 Gestão Dinâmica de Permissões
 **Descrição**: Tela administrativa para superadmin gerenciar quais roles acessam quais módulos/rotas.  
 **Solução técnica**: Criar tabela `permissoes_modulos` no banco + interface de configuração.  
