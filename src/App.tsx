@@ -170,14 +170,16 @@ const App = () => (
               <Route path="professor/materiais"  element={<RoleGuard allowedRoles={['professor','admin','superadmin','administracao']}><MateriaisProfessor /></RoleGuard>} />
               <Route path="professor/avaliacoes" element={<ComingSoonPage titulo="Avaliações"     descricao="Crie e gerencie provas, trabalhos e atividades das suas turmas."      previsao="Agosto 2026" icone={FileText} />} />
 
-              {/* Professor — rotas de ação (com parâmetros) */}
+              {/* Professor — rotas de ação (com parâmetros). C2/E4: RoleGuard
+                  (estavam sem guard — qualquer logado abria a UI); staff incluído
+                  (secretaria/coordenação veem e editam — telas compartilhadas). */}
               <Route path="professor"                              element={<ProfessorHome />} />
-              <Route path="professor/frequencia/:disciplinaId"              element={<LancarFrequencia />} />
-              <Route path="professor/turma/:disciplinaId"                   element={<VerTurma />} />
-              <Route path="professor/notas/:turmaId/:disciplinaId"          element={<LancarNotas />} />
-              <Route path="professor/consolidado/:turmaId/:disciplinaId"    element={<ConsolidadoNotas />} />
-              <Route path="professor/contratos"                             element={<MeusContratos />} />
-              <Route path="professor/contrato/:contratoId"        element={<ContratoForm />} />
+              <Route path="professor/frequencia/:disciplinaId"              element={<RoleGuard allowedRoles={['professor','admin','superadmin','administracao']}><LancarFrequencia /></RoleGuard>} />
+              <Route path="professor/turma/:disciplinaId"                   element={<RoleGuard allowedRoles={['professor','admin','superadmin','administracao']}><VerTurma /></RoleGuard>} />
+              <Route path="professor/notas/:turmaId/:disciplinaId"          element={<RoleGuard allowedRoles={['professor','admin','superadmin','administracao']}><LancarNotas /></RoleGuard>} />
+              <Route path="professor/consolidado/:turmaId/:disciplinaId"    element={<RoleGuard allowedRoles={['professor','admin','superadmin','administracao']}><ConsolidadoNotas /></RoleGuard>} />
+              <Route path="professor/contratos"                             element={<RoleGuard allowedRoles={['professor','admin','superadmin','administracao']}><MeusContratos /></RoleGuard>} />
+              <Route path="professor/contrato/:contratoId"        element={<RoleGuard allowedRoles={['professor','admin','superadmin','administracao']}><ContratoForm /></RoleGuard>} />
 
               {/* Admin — Professores e Equipe */}
               <Route path="professores-admin"          element={<RoleGuard allowedRoles={['superadmin','admin','administracao']}><ProfessoresAdmin /></RoleGuard>} />
@@ -186,7 +188,7 @@ const App = () => (
 
               {/* Admin — Turmas */}
               <Route path="turmas-admin" element={<RoleGuard allowedRoles={['superadmin','admin','administracao']}><GestaoTurmas /></RoleGuard>} />
-              <Route path="notas/:turmaId/:disciplinaId"                 element={<ConsolidadoNotas />} />
+              <Route path="notas/:turmaId/:disciplinaId"                 element={<RoleGuard allowedRoles={['professor','admin','superadmin','administracao']}><ConsolidadoNotas /></RoleGuard>} />
 
               {/* Secretaria/Admin — Lista e ficha do aluno */}
               <Route path="alunos"         element={<RoleGuard allowedRoles={['superadmin','admin','administracao']}><Alunos /></RoleGuard>} />

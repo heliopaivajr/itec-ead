@@ -1,13 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Users, Plus, Pencil, Trash2, Loader2, RefreshCw, GraduationCap, Printer } from 'lucide-react';
+import { Users, Plus, Pencil, Trash2, Loader2, RefreshCw, GraduationCap, Printer, ClipboardCheck, CalendarCheck, Star, BookOpen } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog';
-import { getTurmas, deleteTurma, getAlunosByTurma, atualizarCorTurma } from '@/services/turmas.service';
-import type { Turma, AlunoTurma } from '@/services/turmas.service';
+import { getTurmas, deleteTurma, getAlunosByTurma, atualizarCorTurma, getDisciplinasDaTurma } from '@/services/turmas.service';
+import type { Turma, AlunoTurma, DisciplinaTurma } from '@/services/turmas.service';
 import { useOutletContext } from 'react-router-dom';
 import type { DashboardContext } from '../Dashboard';
 import { TurmaModal } from '@/components/dashboard/TurmaModal';
@@ -41,6 +41,10 @@ export default function GestaoTurmas() {
   const [alunosModal, setAlunosModal] = useState<Turma | null>(null);
   const [alunos, setAlunos]       = useState<AlunoTurma[]>([]);
   const [loadingAlunos, setLoadingAlunos] = useState(false);
+  // Acompanhamento (C2/E4): porta da secretaria p/ frequência e notas por turma
+  const [acompModal, setAcompModal] = useState<Turma | null>(null);
+  const [discsTurma, setDiscsTurma] = useState<DisciplinaTurma[]>([]);
+  const [loadingDiscs, setLoadingDiscs] = useState(false);
 
   const load = async () => {
     setLoading(true);
@@ -55,6 +59,13 @@ export default function GestaoTurmas() {
     setLoadingAlunos(true);
     setAlunos(await getAlunosByTurma(t.id));
     setLoadingAlunos(false);
+  };
+
+  const handleAcompanhar = async (t: Turma) => {
+    setAcompModal(t);
+    setLoadingDiscs(true);
+    setDiscsTurma(await getDisciplinasDaTurma(t.id));
+    setLoadingDiscs(false);
   };
 
   const handlePrintAlunos = () => {
@@ -187,6 +198,10 @@ export default function GestaoTurmas() {
                   <Users className="h-3.5 w-3.5 mr-1.5" />
                   Alunos
                 </Button>
+                <Button variant="outline" size="sm" className="flex-1" onClick={() => handleAcompanhar(t)} title="Frequência e notas por disciplina">
+                  <ClipboardCheck className="h-3.5 w-3.5 mr-1.5" />
+                  Acompanhar
+                </Button>
                 <Button variant="outline" size="sm" onClick={() => setModal(t)}>
                   <Pencil className="h-3.5 w-3.5" />
                 </Button>
@@ -270,6 +285,55 @@ export default function GestaoTurmas() {
               </table>
             )}
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal Acompanhamento (C2/E4) — frequência e notas por disciplina da turma */}
+      <Dialog open={!!acompModal} onOpenChange={open => !open && setAcompModal(null)}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Acompanhamento — {acompModal?.nome}</DialogTitle>
+          </DialogHeader>
+
+          {loadingDiscs ? (
+            <div className="flex items-center justify-center py-10">
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            </div>
+          ) : discsTurma.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              <BookOpen className="h-8 w-8 mx-auto mb-2 opacity-30" />
+              <p className="text-sm">Nenhuma disciplina em andamento nesta turma.</p>
+              <p className="text-xs mt-1">Disciplinas aparecem após grade cadastrada ou alunos matriculados nelas.</p>
+            </div>
+          ) : (
+            <div className="space-y-2 max-h-[55vh] overflow-y-auto">
+              {discsTurma.map(d => (
+                <div key={d.id} className="flex items-center gap-3 p-3 rounded-lg border border-border bg-muted/10">
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[11px] font-mono text-[#BF9000] font-semibold">{d.codigo}</p>
+                    <p className="font-medium text-sm truncate">{d.nome}</p>
+                  </div>
+                  <div className="flex gap-1.5 shrink-0">
+                    <Button asChild variant="outline" size="sm" title="Frequência da turma nesta disciplina">
+                      <Link to={`/dashboard/professor/turma/${d.id}`} onClick={() => setAcompModal(null)}>
+                        <CalendarCheck className="h-3.5 w-3.5 mr-1" /> Frequência
+                      </Link>
+                    </Button>
+                    <Button asChild variant="outline" size="sm" title="Notas consolidadas da turma nesta disciplina">
+                      <Link to={`/dashboard/notas/${acompModal?.id}/${d.id}`} onClick={() => setAcompModal(null)}>
+                        <Star className="h-3.5 w-3.5 mr-1" /> Notas
+                      </Link>
+                    </Button>
+                    <Button asChild variant="ghost" size="sm" title="Lançar/corrigir chamada">
+                      <Link to={`/dashboard/professor/frequencia/${d.id}`} onClick={() => setAcompModal(null)}>
+                        <ClipboardCheck className="h-3.5 w-3.5" />
+                      </Link>
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </DialogContent>
       </Dialog>
 
