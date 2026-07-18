@@ -54,7 +54,7 @@ beforeEach(() => {
 
 describe('Formulário /reservar-vaga', () => {
   it('não submete com campos obrigatórios vazios — botão desabilitado sem LGPD', async () => {
-    mockCreateLead({ success: true, error: null, savedLocally: false });
+    mockCreateLead({ success: true, error: null });
     render(<ReservarVaga />);
 
     const btn = screen.getByRole('button', { name: /reservar minha vaga/i });
@@ -66,7 +66,7 @@ describe('Formulário /reservar-vaga', () => {
   });
 
   it('não submete sem aceitar o checkbox LGPD — botão permanece desabilitado', async () => {
-    mockCreateLead({ success: true, error: null, savedLocally: false });
+    mockCreateLead({ success: true, error: null });
     const user = userEvent.setup();
     render(<ReservarVaga />);
 
@@ -78,7 +78,7 @@ describe('Formulário /reservar-vaga', () => {
   });
 
   it('valida formato de e-mail inválido — input não aceita valor fora do tipo email', async () => {
-    mockCreateLead({ success: true, error: null, savedLocally: false });
+    mockCreateLead({ success: true, error: null });
     const user = userEvent.setup();
     render(<ReservarVaga />);
 
@@ -90,7 +90,7 @@ describe('Formulário /reservar-vaga', () => {
   });
 
   it('submete com dados válidos e chama createLead com os campos corretos', async () => {
-    mockCreateLead({ success: true, error: null, savedLocally: false });
+    mockCreateLead({ success: true, error: null });
     const user = userEvent.setup();
     render(<ReservarVaga />);
 
@@ -113,7 +113,7 @@ describe('Formulário /reservar-vaga', () => {
   });
 
   it('exibe mensagem de sucesso após envio bem-sucedido', async () => {
-    mockCreateLead({ success: true, error: null, savedLocally: false });
+    mockCreateLead({ success: true, error: null });
     const user = userEvent.setup();
     render(<ReservarVaga />);
 
@@ -126,7 +126,7 @@ describe('Formulário /reservar-vaga', () => {
   });
 
   it('exibe mensagem de erro quando createLead retorna falha', async () => {
-    mockCreateLead({ success: false, error: 'insert error', savedLocally: false });
+    mockCreateLead({ success: false, error: 'insert error' });
     const user = userEvent.setup();
     render(<ReservarVaga />);
 

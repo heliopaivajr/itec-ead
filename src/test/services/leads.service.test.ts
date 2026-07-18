@@ -40,11 +40,11 @@ describe('leads.service', () => {
 
       const result = await createLead(payload);
 
-      expect(result).toEqual({ success: true, error: null, savedLocally: false });
+      expect(result).toEqual({ success: true, error: null });
       expect(supabase.from).toHaveBeenCalledWith('leads_cursos');
     });
 
-    it('injeta interesse=candidato e lgpd_aceite=true automaticamente no payload', async () => {
+    it('injeta interesse=candidato e lgpd_aceite=true; NÃO envia criado_em (default no banco)', async () => {
       const insertFn = mockInsert({ error: null });
 
       await createLead(payload);
@@ -52,39 +52,23 @@ describe('leads.service', () => {
       const chamadaPayload = insertFn.mock.calls[0][0];
       expect(chamadaPayload.interesse).toBe('candidato');
       expect(chamadaPayload.lgpd_aceite).toBe(true);
+      // 12.0: id/criado_em ficam por conta dos DEFAULTs do banco
+      expect(chamadaPayload).not.toHaveProperty('criado_em');
       // Garante que o chamador não consegue sobrescrever lgpd_aceite
       expect(chamadaPayload.nome).toBe('João Silva');
       expect(chamadaPayload.email).toBe('joao@teste.com');
     });
 
-    it('salva no localStorage quando Supabase retorna erro', async () => {
+    it('retorna success=false + error e LOGA o erro real quando o Supabase falha (12.0/LICAO-027)', async () => {
       mockInsert({ error: { message: 'connection failed' } });
+      const spyErro = vi.spyOn(console, 'error').mockImplementation(() => {});
 
       const result = await createLead(payload);
 
-      expect(result.success).toBe(false);
-      expect(result.savedLocally).toBe(true);
-      expect(result.error).toBe('connection failed');
-
-      const pendentes = JSON.parse(localStorage.getItem('leads_pendentes') ?? '[]');
-      expect(pendentes).toHaveLength(1);
-      expect(pendentes[0].nome).toBe('João Silva');
-      expect(pendentes[0].lgpd_aceite).toBe(true);
-    });
-
-    it('retorna savedLocally=false quando localStorage também falha', async () => {
-      mockInsert({ error: { message: 'db error' } });
-
-      // Força localStorage.setItem a lançar erro
-      vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
-        throw new Error('storage full');
-      });
-
-      const result = await createLead(payload);
-
-      expect(result.success).toBe(false);
-      expect(result.savedLocally).toBe(false);
-      expect(result.error).toBe('db error');
+      expect(result).toEqual({ success: false, error: 'connection failed' });
+      expect(spyErro).toHaveBeenCalled();
+      // Sem fallback localStorage (removido no 12.0 — gravava no navegador do visitante)
+      expect(localStorage.getItem('leads_pendentes')).toBeNull();
     });
   });
 
