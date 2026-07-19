@@ -1,12 +1,37 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { screen, waitFor } from '@testing-library/react';
+import { screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
 import { render } from '@testing-library/react';
-import { supabase } from '@/lib/supabase';
 import ProtectedRoute from '@/components/ProtectedRoute';
+import { useAuth } from '@/contexts/AuthProvider';
+import type { AuthStatus } from '@/contexts/AuthProvider';
 
-// Helper: monta o ProtectedRoute num router com rotas de destino reais
-// para que os <Navigate> possam resolver sem crash.
+// Contrato ATUAL (refactor e9b5946/b6fc4e6, jun/2026): ProtectedRoute é
+// consumidor PURO de useAuth() — não faz getSession/onAuthStateChange/getRole
+// próprios. O teste antigo mockava esse fluxo interno (que não existe mais) e
+// renderizava sem provider → 8 falhas baseline. Aqui mockamos o módulo
+// @/contexts/AuthProvider e testamos os 5 status do contrato.
+vi.mock('@/contexts/AuthProvider', () => ({
+  useAuth: vi.fn(),
+}));
+
+const retryMock   = vi.fn();
+const signOutMock = vi.fn().mockResolvedValue(undefined);
+
+function mockStatus(status: AuthStatus) {
+  vi.mocked(useAuth).mockReturnValue({
+    status,
+    session: null,
+    user: null,
+    profile: null,
+    role: null,
+    retry: retryMock,
+    signOut: signOutMock,
+  });
+}
+
+// Router com rotas de destino reais para os <Navigate> resolverem sem crash.
 function renderProtectedRoute() {
   return render(
     <MemoryRouter initialEntries={['/dashboard']}>
@@ -15,112 +40,76 @@ function renderProtectedRoute() {
           path="/dashboard"
           element={<ProtectedRoute><div>conteudo protegido</div></ProtectedRoute>}
         />
-        <Route path="/login"     element={<div>pagina login</div>} />
+        <Route path="/login"      element={<div>pagina login</div>} />
         <Route path="/aguardando" element={<div>pagina aguardando</div>} />
       </Routes>
     </MemoryRouter>
   );
 }
 
-// Mocka sessão + role para cada teste
-// Quando session=null, simula o INITIAL_SESSION com null que o Supabase real sempre dispara.
-function mockAuth(session: any, role: string | null) {
-  const mockSingle = vi.fn().mockResolvedValue({ data: role ? { role } : null, error: null });
-  const mockEq     = vi.fn().mockReturnValue({ single: mockSingle });
-
-  vi.mocked(supabase.auth.getSession).mockResolvedValue({
-    data: { session },
-    error: null,
-  } as any);
-
-  // Simula o comportamento real do Supabase: onAuthStateChange sempre dispara
-  // INITIAL_SESSION (com session ou null) logo após o registro do listener.
-  vi.mocked(supabase.auth.onAuthStateChange).mockImplementation((handler) => {
-    const event = session ? 'SIGNED_IN' : 'INITIAL_SESSION';
-    setTimeout(() => handler(event as any, session), 0);
-    return { data: { subscription: { unsubscribe: vi.fn() } } } as any;
-  });
-
-  // warmup: from('profiles').select('id').limit(1) → resolve vazio
-  // role:   from('profiles').select('role').eq(...).single() → resolve { role }
-  vi.mocked(supabase.from).mockReturnValue({
-    select: vi.fn().mockReturnValue({
-      eq: mockEq,
-      limit: vi.fn().mockResolvedValue({ data: [], error: null }),
-    }),
-  } as any);
-}
-
-function makeSession(userId = 'user-123') {
-  return { user: { id: userId, email: 'test@example.com' } };
-}
-
 beforeEach(() => {
   vi.clearAllMocks();
 });
 
-describe('ProtectedRoute', () => {
-  it('redireciona para /login quando não há sessão', async () => {
-    mockAuth(null, null);
+describe('ProtectedRoute (consumidor de useAuth — 5 status)', () => {
+  it('loading → mostra o spinner "Validando acesso" e NÃO renderiza o conteúdo', () => {
+    mockStatus('loading');
     renderProtectedRoute();
-    await waitFor(() => {
-      expect(screen.getByText('pagina login')).toBeInTheDocument();
-    });
+
+    expect(screen.getByText(/validando acesso/i)).toBeInTheDocument();
+    expect(screen.queryByText('conteudo protegido')).not.toBeInTheDocument();
   });
 
-  it('redireciona para /aguardando quando role é pendente', async () => {
-    mockAuth(makeSession(), 'pendente');
+  it('error → tela recuperável (sem redirect) com as duas saídas', () => {
+    mockStatus('error');
     renderProtectedRoute();
-    await waitFor(() => {
-      expect(screen.getByText('pagina aguardando')).toBeInTheDocument();
-    });
+
+    expect(screen.getByText(/não conseguimos validar seu acesso/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /tentar novamente/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /ir para login/i })).toBeInTheDocument();
+    // SEM redirect automático — não navegou para /login nem /aguardando
+    expect(screen.queryByText('pagina login')).not.toBeInTheDocument();
+    expect(screen.queryByText('pagina aguardando')).not.toBeInTheDocument();
   });
 
-  it('renderiza o conteúdo quando role é aluno', async () => {
-    mockAuth(makeSession(), 'aluno');
+  it('error → "Tentar novamente" chama retry()', async () => {
+    mockStatus('error');
+    const user = userEvent.setup();
     renderProtectedRoute();
-    await waitFor(() => {
-      expect(screen.getByText('conteudo protegido')).toBeInTheDocument();
-    });
+
+    await user.click(screen.getByRole('button', { name: /tentar novamente/i }));
+    expect(retryMock).toHaveBeenCalledTimes(1);
   });
 
-  it('renderiza o conteúdo quando role é professor', async () => {
-    mockAuth(makeSession(), 'professor');
+  it('error → "Ir para login" chama signOut()', async () => {
+    mockStatus('error');
+    const user = userEvent.setup();
     renderProtectedRoute();
-    await waitFor(() => {
-      expect(screen.getByText('conteudo protegido')).toBeInTheDocument();
-    });
+
+    await user.click(screen.getByRole('button', { name: /ir para login/i }));
+    expect(signOutMock).toHaveBeenCalledTimes(1);
   });
 
-  it('renderiza o conteúdo quando role é administracao', async () => {
-    mockAuth(makeSession(), 'administracao');
+  it('unauthenticated → redireciona para /login', () => {
+    mockStatus('unauthenticated');
     renderProtectedRoute();
-    await waitFor(() => {
-      expect(screen.getByText('conteudo protegido')).toBeInTheDocument();
-    });
+
+    expect(screen.getByText('pagina login')).toBeInTheDocument();
+    expect(screen.queryByText('conteudo protegido')).not.toBeInTheDocument();
   });
 
-  it('renderiza o conteúdo quando role é admin', async () => {
-    mockAuth(makeSession(), 'admin');
+  it('pending → redireciona para /aguardando', () => {
+    mockStatus('pending');
     renderProtectedRoute();
-    await waitFor(() => {
-      expect(screen.getByText('conteudo protegido')).toBeInTheDocument();
-    });
+
+    expect(screen.getByText('pagina aguardando')).toBeInTheDocument();
+    expect(screen.queryByText('conteudo protegido')).not.toBeInTheDocument();
   });
 
-  it('renderiza o conteúdo quando role é superadmin', async () => {
-    mockAuth(makeSession(), 'superadmin');
+  it('authenticated → renderiza o conteúdo protegido', () => {
+    mockStatus('authenticated');
     renderProtectedRoute();
-    await waitFor(() => {
-      expect(screen.getByText('conteudo protegido')).toBeInTheDocument();
-    });
-  });
 
-  it('redireciona para /login quando role é desconhecido', async () => {
-    mockAuth(makeSession(), 'desconhecido');
-    renderProtectedRoute();
-    await waitFor(() => {
-      expect(screen.getByText('pagina login')).toBeInTheDocument();
-    });
+    expect(screen.getByText('conteudo protegido')).toBeInTheDocument();
   });
 });
