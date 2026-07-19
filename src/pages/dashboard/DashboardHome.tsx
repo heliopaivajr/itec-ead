@@ -3,7 +3,7 @@ import { useOutletContext } from 'react-router-dom';
 import { Link } from 'react-router-dom';
 import {
   GraduationCap, BookOpen, Book, UserCheck,
-  CalendarDays, ClipboardCheck, FileText, Bell, Users, ClipboardList, AlertTriangle, Award,
+  CalendarDays, ClipboardCheck, FileText, Bell, Users, ClipboardList, AlertTriangle, Award, Star,
   Wallet, Unlink, CheckCircle2,
 } from 'lucide-react';
 import {
@@ -474,13 +474,15 @@ function AlunoView({ profile }: { profile: DashboardContext['profile'] }) {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {[
-          { icon: Book,          label: 'Meus Cursos',  desc: 'Acompanhe seu progresso acadêmico.',        href: '/dashboard/cursos' },
-          { icon: GraduationCap, label: 'Meu Histórico',desc: 'Notas, situação e progresso por módulo.',   href: '/dashboard/meu-historico' },
-          { icon: CalendarDays,  label: 'Eventos',      desc: 'Calendário acadêmico e próximas aulas.',    href: '/dashboard/eventos' },
-          { icon: FileText,      label: 'Documentos',   desc: 'Certificados e histórico acadêmico.',       href: '/dashboard/documentos' },
-          { icon: ClipboardCheck,label: 'Frequência',   desc: 'Seu histórico de presença por disciplina.', href: '/dashboard/cursos' },
-          { icon: Bell,          label: 'Avisos',       desc: 'Comunicados da secretaria e professores.',  href: '/dashboard/avisos' },
-          { icon: BookOpen,      label: 'Materiais',    desc: 'Apostilas e materiais de aula.',            href: '/dashboard/materiais' },
+          // E6b: cards apontam para as telas REAIS do aluno (Fase C1 incluída).
+          { icon: Book,          label: 'Meus Cursos',      desc: 'Acompanhe seu progresso acadêmico.',        href: '/dashboard/cursos' },
+          { icon: GraduationCap, label: 'Meu Histórico',    desc: 'Notas, situação e progresso por módulo.',   href: '/dashboard/meu-historico' },
+          { icon: Star,          label: 'Minhas Notas',     desc: 'Suas notas por disciplina e avaliação.',    href: '/dashboard/minhas-notas' },
+          { icon: ClipboardCheck,label: 'Minha Frequência', desc: 'Seu histórico de presença por disciplina.', href: '/dashboard/minha-frequencia' },
+          { icon: CalendarDays,  label: 'Calendário',       desc: 'Calendário acadêmico de aulas e eventos.',  href: '/dashboard/calendario' },
+          { icon: FileText,      label: 'Documentos',       desc: 'Certificados e histórico acadêmico.',       href: '/dashboard/documentos' },
+          { icon: Bell,          label: 'Avisos',           desc: 'Comunicados da secretaria e professores.',  href: '/dashboard/avisos' },
+          { icon: BookOpen,      label: 'Materiais',        desc: 'Apostilas nas suas disciplinas (Meus Cursos).', href: '/dashboard/cursos' },
         ].map(item => (
           <Link key={item.label} to={item.href}
             className="bg-card border border-border rounded-xl p-5 hover:border-primary/40 transition-all block">
