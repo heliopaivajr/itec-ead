@@ -1248,4 +1248,38 @@ de checagem de ROLE — "é o autor" não implica "pode ser autor". Checklist do
 
 ---
 
+## ERR-AUTH-002 — falso logout / cold start (registro formal retroativo)
+
+**Data do problema:** jun/2026 · **Registro formal:** 2026-07-19 (diagnóstico auth)
+**Contexto:** Free tier do Supabase hiberna; getSession()/refresh travados no cold start
+prendiam a UI e derrubavam o usuário para /login (falso logout). Havia ainda subsistemas
+de auth duplicados (ProtectedRoute com getSession/onAuthStateChange/getRole próprios +
+use-profile paralelo).
+
+**Timeline da correção (tudo já no main):**
+1. `2d79368` — patch "tolera backend lento" → QUEBROU deep routes em produção →
+   revertido em `40cdd42`. Lição: testar deep routes LOCALMENTE antes de deploy.
+2. `e9b5946` (PR #11, fix/auth-timeout-minimo, 18/06) — timeout de 15s em
+   getSession/refreshSession (comTimeout) + estado ERROR recuperável no ProtectedRoute
+   (botões Tentar novamente / Ir para login — SEM redirect automático).
+3. `b6fc4e6` → `09dede8` → `4e6846e` (fix/auth-provider-unico, 19/06) — AuthProvider
+   como FONTE ÚNICA (1 listener, 1 getSession); ProtectedRoute vira consumidor puro de
+   useAuth(); use-profile vira wrapper compatível.
+
+**Estado final (verificado 2026-07-19):** dual-subsystem eliminado · falso logout
+eliminado (timeout → error, não redireciona) · getSession travado mitigado (timeout +
+retry) · refreshSession manual convive sem conflito com autoRefreshToken (só roda na
+hidratação inicial com token expirado). Zero problema observável em produção; QA das
+4 personas (17/07) sem queixas. Cobertura de teste: ProtectedRoute 7 + AuthProvider 6
+(suíte 335/335 verde — fix/auth-testes-verde). Branches deletados (delta vazio).
+
+**Como evitar no futuro:** auth tem UMA fonte da verdade (AuthProvider); telas novas
+consomem useAuth/RoleGuard — nunca criar getSession/onAuthStateChange paralelos.
+Qualquer mudanca de contrato em componente coberto por teste ATUALIZA o teste no
+mesmo PR (as 8 falhas-baseline mascararam regressões por 1 mês).
+
+**Status:** ✅ RESOLVIDO (jun/2026; formalizado 2026-07-19 — não há sprint de auth pendente)
+
+---
+
 *Mantido pelo agente-Osabio · ITEC-EAD · 2025*

@@ -238,9 +238,9 @@ Objetivo: aluno vindo de outra instituição **não paga** a cadeira e **transfe
 ### BLOCO AUDITORIA + QA — pós-R3.4 (NÃO executar agora; só após R3.4 mergeado)
 Sistema completo (R0→R4) → travar mudanças e auditar antes de novas features. **Ordem obrigatória:**
 1. **MODO AUDITORIA** — Agente **14** (protocolo 9 etapas) + **15-debt** + **11-security** + **17-lgpd** → relatório em `.ai-system/audit/[data]/report.md`. **NÃO modificar código** até o relatório ser **aprovado pelo Hélio**.
-2. **QA** — Agente **10-test**: cobrir as regras de domínio (funil de status/acesso [LICAO-039], nota≥7 **E** freq≥75%, pré-requisitos, convalidação, lançamento retroativo, vínculo de professor [decisão C]); **resolver ou documentar as 9 falhas pré-existentes** (8 ProtectedRoute + 1 academico `verificarPrerequisitos`).
-3. **Caça a bugs** — varredura por persona (aluno/professor/secretaria/coordenação) nas **rotas profundas**.
-4. **Sprint de AUTH dedicado** — bug **ERR-AUTH-002** (falso logout / cold start): aplicar a lição do commit `2d79368` (testar deep routes **localmente ANTES** de deploy); revisar o material em `archive/v2.0-docs`. **Não tocar em auth fora deste sprint.**
+2. **QA** — Agente **10-test**: cobrir as regras de domínio (funil de status/acesso [LICAO-039], nota≥7 **E** freq≥75%, pré-requisitos, convalidação, lançamento retroativo, vínculo de professor [decisão C]). ✅ **As 9 falhas pré-existentes foram TODAS resolvidas** (1 academico no PERF-01; 8 ProtectedRoute em 2026-07-19 — **suíte 335/335 verde**).
+3. **Caça a bugs** — varredura por persona (aluno/professor/secretaria/coordenação) nas **rotas profundas**. (Parcialmente coberta pelo QA Fase E da auditoria de integração, 2026-07-17.)
+4. ~~Sprint de AUTH dedicado~~ — **✅ JÁ CONCLUÍDO (jun/2026) — removido da fila (diagnóstico auth 2026-07-19)**: o refactor aconteceu em 18-19/06 (`fix/auth-timeout-minimo` + `fix/auth-provider-unico`, 100% no main; branches deletados). **ERR-AUTH-002 = ✅ RESOLVIDO** (known-errors). Auth **estável e coberto por testes** (ProtectedRoute 7 + AuthProvider 6). Não há sprint de auth pendente.
 > Gate: **só iniciar após R3.4 mergeado.** Registrado 2026-07-05 (doc-only). Ver IDEAS-BACKLOG.
 
 **PROGRESSO DA REMEDIAÇÃO PÓS-AUDITORIA** (etapa 1 ✅ concluída em 2026-07-05/06 — relatórios `report-A.md` + `report-B.md` em `.ai-system/audit/2026-07-05-nucleo-academico/`, ambos aprovados):
