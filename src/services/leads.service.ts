@@ -14,9 +14,12 @@ export interface LeadPayload {
 export interface LeadResult {
   success: boolean;
   error: string | null;
-  savedLocally: boolean;
 }
 
+// 12.0: as 9 chaves abaixo batem 1:1 com as colunas de leads_cursos (pós-066);
+// id/criado_em ficam por conta dos DEFAULTs do banco. Antes o insert enviava
+// cidade/como_conheceu/mensagem/lgpd_aceite SEM as colunas existirem → o
+// PostgREST rejeitava o INSERT inteiro (42703) e TODO lead falhava.
 export async function createLead(payload: LeadPayload): Promise<LeadResult> {
   const leadData = {
     nome:            payload.nome,
@@ -28,23 +31,25 @@ export async function createLead(payload: LeadPayload): Promise<LeadResult> {
     mensagem:        payload.mensagem ?? null,
     interesse:       payload.interesse ?? 'candidato',
     lgpd_aceite:     true,
-    criado_em:       new Date().toISOString(),
   };
 
   const { error } = await supabase.from('leads_cursos').insert(leadData);
 
   if (error) {
-    try {
-      const pendentes = JSON.parse(localStorage.getItem('leads_pendentes') ?? '[]');
-      pendentes.push({ ...leadData, tentativa_em: new Date().toISOString() });
-      localStorage.setItem('leads_pendentes', JSON.stringify(pendentes));
-      return { success: false, error: error.message, savedLocally: true };
-    } catch {
-      return { success: false, error: error.message, savedLocally: false };
-    }
+    // LICAO-027: NUNCA engolir o erro — objeto completo no console.
+    // (O antigo fallback em localStorage foi removido: gravava no navegador do
+    // VISITANTE, dado que o ITEC nunca coleta — falsa sensação de resiliência.
+    // Em caso de erro, a UI orienta o contato via WhatsApp.)
+    console.error('[createLead] erro Supabase:', {
+      message: error.message,
+      code:    error.code,
+      details: error.details,
+      hint:    error.hint,
+    });
+    return { success: false, error: error.message };
   }
 
-  return { success: true, error: null, savedLocally: false };
+  return { success: true, error: null };
 }
 
 export async function getLeadsCount(): Promise<number> {
