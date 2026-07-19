@@ -389,11 +389,13 @@ function ProfessorView({ profile }: { profile: DashboardContext['profile'] }) {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {[
+          // E6 (auditoria de integração): cards apontavam p/ rotas ComingSoon de
+          // staff quando as telas REAIS do professor já existem.
           { icon: Users,         label: 'Minhas Disciplinas', desc: 'Acesse suas disciplinas ativas.',        href: '/dashboard/professor' },
-          { icon: BookOpen,      label: 'Materiais de Aula',  desc: 'Faça upload de apostilas e slides.',    href: '/dashboard/materiais' },
-          { icon: ClipboardList, label: 'Avaliações',         desc: 'Crie e gerencie provas e trabalhos.',   href: '/dashboard/avaliacoes' },
-          { icon: CalendarDays,  label: 'Agenda',             desc: 'Calendário de aulas e compromissos.',   href: '/dashboard/agenda' },
-          { icon: ClipboardCheck,label: 'Frequência',         desc: 'Lance a frequência das suas turmas.',   href: '/dashboard/professor' },
+          { icon: BookOpen,      label: 'Materiais de Aula',  desc: 'Faça upload de apostilas e slides.',    href: '/dashboard/professor/materiais' },
+          { icon: ClipboardList, label: 'Avaliações',         desc: 'Crie e gerencie provas e trabalhos.',   href: '/dashboard/professor/avaliacoes' },
+          { icon: CalendarDays,  label: 'Calendário',         desc: 'Calendário de aulas e eventos.',        href: '/dashboard/calendario' },
+          { icon: ClipboardCheck,label: 'Frequência',         desc: 'Lance a frequência das suas turmas.',   href: '/dashboard/professor/frequencia' },
           { icon: Bell,          label: 'Avisos',             desc: 'Crie comunicados para seus alunos.',    href: '/dashboard/avisos' },
         ].map(item => (
           <Link key={item.label} to={item.href}
