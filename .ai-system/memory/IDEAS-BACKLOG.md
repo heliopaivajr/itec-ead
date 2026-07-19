@@ -148,9 +148,10 @@ Além dos **2 embeds MORTOS** (já substituídos pelo roster, remoção trivial)
 - **Fase C1 — aluno vê**: Minhas Notas + Minha Frequência reais (fim dos placeholders "Agosto 2026"), mesma fonte do Meu Histórico.
 - **Fase C2 — porta da secretaria**: GestaoTurmas → Acompanhar (frequência/notas/chamada por disciplina, fallback sem grade) + RoleGuard nas 7 rotas de ação + staff salva chamada (fim do no-op silencioso).
 - **Fase E — re-teste (2026-07-17)**: professor muda N2→9.0 → trigger consolida → **nota 8.30/aprovado**; **os 4 dashboards mostram o MESMO número** (aluno, secretaria via Acompanhar, coordenação via Ficha/R03).
-**Pendências que saíram da auditoria para a fila**: E6 (higiene de links do professor — cards da home apontando p/ ComingSoon) · E5 já resolvido pela 065 · seção 12 (bug leads 12.0, achado à parte).
-**Status**: ✅ CONCLUÍDA.
-**Origem**: auditoria de integração (2026-07-15) + QA Fase E (2026-07-17).
+- **E6 — higiene de links ✅ CONCLUÍDO (2026-07-19)**: cards das homes do professor (E6) e do aluno (E6b) apontam para as telas reais — Materiais/Frequência/Calendário do professor; Minha Frequência + card NOVO Minhas Notas + Calendário/Materiais do aluno. PR `fix/e6-links-professor` merged.
+**Pendências que saíram da auditoria para a fila**: seção 12 (bug leads 12.0 — ✅ resolvido em 2026-07-18/19 via 066 + PR `fix/leads-log-erro`; restam 12.1 funil e 12.2 newsletter) · E5 já resolvido pela 065.
+**Status**: ✅ **100% ENCERRADA (2026-07-19)** — todas as fases fechadas: **A** (professor lança) · **B** (trigger consolida) · **C1** (aluno vê) · **C2** (porta da secretaria) · **E** (QA validado: os 4 dashboards com o mesmo número) · **E6** (higiene de links).
+**Origem**: auditoria de integração (2026-07-15) + QA Fase E (2026-07-17) + E6 (2026-07-19).
 
 ### 2.13 [TELA] Painel de Acompanhamento Acadêmico da secretaria/coordenação (visão consolidada)
 **Descrição**: Hoje o staff navega Turmas → Acompanhar → escolhe disciplina → abre VerTurma/ConsolidadoNotas (**uma tela por disciplina**). Pedido do Hélio (2026-07-17): **dois painéis consolidados**, fáceis de acompanhar e **IMPRIMIR**:
