@@ -89,9 +89,14 @@ const menuByRole: Record<string, { icon: React.ElementType; label: string; href:
     { icon: Megaphone,       label: 'Avisos',               href: '/dashboard/avisos',          tooltip: 'Mural de avisos' },
     { icon: Settings,        label: 'Configurações',        href: '/dashboard/perfil',          tooltip: 'Perfil' },
   ],
+  // Etapa 1 Financeiro (067): Breno vê o acadêmico em LEITURA + gere o financeiro.
+  // Fora do menu (fronteira): Notas, Frequência, Ficha 360, aprovação de matrícula.
   financeiro: [
-    { icon: LayoutDashboard, label: 'Dashboard',     href: '/dashboard',             tooltip: 'Painel geral', end: true },
+    { icon: LayoutDashboard, label: 'Dashboard',     href: '/dashboard',             tooltip: 'Painel financeiro', end: true },
+    { icon: User,            label: 'Alunos',        href: '/dashboard/alunos',      tooltip: 'Lista de alunos (leitura)' },
+    { icon: UserCheck,       label: 'Matrículas',    href: '/dashboard/matriculas',  tooltip: 'Funil de matrículas (leitura)' },
     { icon: DollarSign,      label: 'Financeiro',    href: '/dashboard/financeiro',  tooltip: 'Mensalidades e pagamentos' },
+    { icon: BarChart2,       label: 'Relatórios',    href: '/dashboard/relatorios',  tooltip: 'R04 Situação Financeira · R05 Inadimplentes' },
     { icon: Megaphone,       label: 'Avisos',        href: '/dashboard/avisos',      tooltip: 'Mural de avisos' },
     { icon: Settings,        label: 'Configurações', href: '/dashboard/perfil',      tooltip: 'Perfil' },
   ],

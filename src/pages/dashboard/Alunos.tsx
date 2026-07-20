@@ -186,6 +186,9 @@ export default function Alunos() {
   const { profile } = useOutletContext<DashboardContext>();
   const { toast } = useToast();
   const navigate = useNavigate();
+  // Fronteira do financeiro (067/decisão Hélio): vê a LISTA, não a Ficha 360
+  // (CPF/RG/observações) — sem link pendurado para tela negada.
+  const podeAbrirFicha = profile.role !== 'financeiro';
 
   const [page, setPage]   = useState(1);
   const [search, setSearch]   = useState('');
@@ -360,12 +363,16 @@ export default function Alunos() {
                           )}
                           <div>
                             <div className="flex items-center gap-2 flex-wrap">
-                              <button
-                                onClick={() => navigate(`/dashboard/aluno/${aluno.id}`)}
-                                className="font-medium text-left hover:text-primary hover:underline transition-colors"
-                              >
-                                {aluno.full_name}
-                              </button>
+                              {podeAbrirFicha ? (
+                                <button
+                                  onClick={() => navigate(`/dashboard/aluno/${aluno.id}`)}
+                                  className="font-medium text-left hover:text-primary hover:underline transition-colors"
+                                >
+                                  {aluno.full_name}
+                                </button>
+                              ) : (
+                                <span className="font-medium">{aluno.full_name}</span>
+                              )}
                               {aluno.exclusao_solicitada_em && (
                                 <Badge variant="outline" className="bg-red-500/20 text-red-500 border-red-500/30 text-xs">
                                   Exclusão solicitada
@@ -410,20 +417,24 @@ export default function Alunos() {
                           <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
                         ) : (
                           <div className="flex items-center gap-1">
-                            <button
-                              onClick={() => navigate(`/dashboard/aluno/${aluno.id}`)}
-                              className="p-1.5 hover:bg-muted rounded text-muted-foreground hover:text-primary transition-colors"
-                              title="Ver Ficha"
-                            >
-                              <Eye className="h-4 w-4" />
-                            </button>
-                            <button
-                              onClick={() => setEditAluno(aluno)}
-                              className="p-1.5 hover:bg-muted rounded text-muted-foreground hover:text-primary transition-colors"
-                              title="Editar dados"
-                            >
-                              <Edit className="h-4 w-4" />
-                            </button>
+                            {podeAbrirFicha && (
+                              <button
+                                onClick={() => navigate(`/dashboard/aluno/${aluno.id}`)}
+                                className="p-1.5 hover:bg-muted rounded text-muted-foreground hover:text-primary transition-colors"
+                                title="Ver Ficha"
+                              >
+                                <Eye className="h-4 w-4" />
+                              </button>
+                            )}
+                            {podeAbrirFicha && (
+                              <button
+                                onClick={() => setEditAluno(aluno)}
+                                className="p-1.5 hover:bg-muted rounded text-muted-foreground hover:text-primary transition-colors"
+                                title="Editar dados"
+                              >
+                                <Edit className="h-4 w-4" />
+                              </button>
+                            )}
                             {['administracao', 'admin', 'superadmin'].includes(profile?.role ?? '') && !aluno.exclusao_solicitada_em && (
                               <button
                                 onClick={() => { setExclusaoAluno(aluno); setExclusaoMotivo(''); }}
@@ -433,7 +444,7 @@ export default function Alunos() {
                                 <Trash2 className="h-4 w-4" />
                               </button>
                             )}
-                            {aluno.role === 'pendente' ? (
+                            {podeAbrirFicha && (aluno.role === 'pendente' ? (
                               <button
                                 onClick={() => aprovar(aluno.id)}
                                 className="p-1.5 hover:bg-muted rounded text-muted-foreground hover:text-green-400 transition-colors"
@@ -449,7 +460,7 @@ export default function Alunos() {
                               >
                                 <Lock className="h-4 w-4" />
                               </button>
-                            )}
+                            ))}
                           </div>
                         )}
                       </td>
