@@ -48,6 +48,52 @@ export interface ServiceResult {
   error: string | null;
 }
 
+export interface KpisFinanceiro {
+  a_receber: number;        // soma de pendentes+atrasadas (todas)
+  recebido_mes: number;     // soma de pagas com data_pagamento no mês corrente
+  inadimplentes: number;    // alunos distintos com mensalidade vencida não paga
+  valor_atrasado: number;   // soma das vencidas não pagas
+}
+
+// KPIs do painel do financeiro (FinanceiroView) — 1 query, agregação em JS.
+// RLS: financeiro/staff leem todas as mensalidades (037); aluno veria só as suas.
+export async function getKpisFinanceiro(): Promise<KpisFinanceiro> {
+  const vazio: KpisFinanceiro = { a_receber: 0, recebido_mes: 0, inadimplentes: 0, valor_atrasado: 0 };
+
+  const { data, error } = await supabase
+    .from('mensalidades')
+    .select('aluno_id, valor, status, data_vencimento, data_pagamento')
+    .limit(3000); // ~250 alunos × 12 meses
+
+  if (error || !data) {
+    if (error) console.error('[getKpisFinanceiro]', error.message);
+    return vazio;
+  }
+
+  const hoje    = new Date().toISOString().split('T')[0];
+  const mesAtual = hoje.slice(0, 7); // YYYY-MM
+
+  let aReceber = 0, recebidoMes = 0, valorAtrasado = 0;
+  const alunosAtrasados = new Set<string>();
+
+  for (const m of data as Pick<Mensalidade, 'aluno_id' | 'valor' | 'status' | 'data_vencimento' | 'data_pagamento'>[]) {
+    const aberta = m.status === 'pendente' || m.status === 'atrasado';
+    if (aberta) aReceber += m.valor;
+    if (aberta && m.data_vencimento < hoje) {
+      valorAtrasado += m.valor;
+      alunosAtrasados.add(m.aluno_id);
+    }
+    if (m.status === 'pago' && m.data_pagamento?.startsWith(mesAtual)) recebidoMes += m.valor;
+  }
+
+  return {
+    a_receber:      Math.round(aReceber * 100) / 100,
+    recebido_mes:   Math.round(recebidoMes * 100) / 100,
+    inadimplentes:  alunosAtrasados.size,
+    valor_atrasado: Math.round(valorAtrasado * 100) / 100,
+  };
+}
+
 export async function getTaxaMatricula(alunoId: string): Promise<TaxaMatricula | null> {
   const { data, error } = await supabase
     .from('taxa_matricula')

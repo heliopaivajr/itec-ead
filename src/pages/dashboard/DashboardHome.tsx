@@ -3,7 +3,7 @@ import { useOutletContext } from 'react-router-dom';
 import { Link } from 'react-router-dom';
 import {
   GraduationCap, BookOpen, Book, UserCheck,
-  CalendarDays, ClipboardCheck, FileText, Bell, Users, ClipboardList, AlertTriangle, Award, Star,
+  CalendarDays, ClipboardCheck, FileText, Bell, Users, ClipboardList, AlertTriangle, Award, Star, DollarSign,
   Wallet, Unlink, CheckCircle2,
 } from 'lucide-react';
 import {
@@ -16,6 +16,7 @@ import { StatusBadge } from '@/components/dashboard/StatusBadge';
 import { getKpis, getLeadsRecentes, getMatriculasRecentes, getLeadsPorCurso } from '@/services/dashboard.service';
 import { getTurmasAtivas } from '@/services/turmas.service';
 import { getAlunosEmRiscoByTurma, type AlunoEmRiscoTurma } from '@/services/frequencia.service';
+import { getKpisFinanceiro, type KpisFinanceiro } from '@/services/financeiro.service';
 import { useAlunoDashboard } from '@/hooks/useAlunoDashboard';
 import { useProfessorDashboard } from '@/hooks/useProfessorDashboard';
 import { usePendenciasSecretaria } from '@/hooks/usePendenciasSecretaria';
@@ -352,6 +353,63 @@ function AdminView({ name }: { name: string }) {
   );
 }
 
+// ─── Financeiro (Breno) ──────────────────────────────────────
+// Etapa 1 do Financeiro: painel próprio (antes caía no AlunoView). Leitura do
+// acadêmico + gestão financeira (067/037); fronteira: sem Ficha 360, sem escrita
+// acadêmica.
+
+const brl = (v: number) =>
+  v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+
+function FinanceiroView({ name }: { name: string }) {
+  const [kpis, setKpis] = useState<KpisFinanceiro | null>(null);
+
+  useEffect(() => {
+    getKpisFinanceiro().then(setKpis);
+  }, []);
+
+  return (
+    <div className="p-6 space-y-6">
+      <div>
+        <h1 className="text-2xl font-merriweather font-bold text-primary">Painel Financeiro</h1>
+        <p className="text-muted-foreground mt-1">Mensalidades, inadimplência e relatórios — {name}</p>
+      </div>
+
+      {/* KPIs financeiros */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        {kpis === null ? (
+          <><KpiSkeleton /><KpiSkeleton /><KpiSkeleton /><KpiSkeleton /></>
+        ) : (
+          <>
+            <KpiCard titulo="A receber (aberto)"  valor={brl(kpis.a_receber)}      icone={DollarSign}    corFundo="bg-blue-500/10"   href="/dashboard/financeiro" />
+            <KpiCard titulo="Recebido no mês"     valor={brl(kpis.recebido_mes)}   icone={CheckCircle2}  corFundo="bg-green-500/10"  href="/dashboard/financeiro" />
+            <KpiCard titulo="Inadimplentes"       valor={kpis.inadimplentes}       icone={AlertTriangle} corFundo="bg-red-500/10"    href="/dashboard/relatorios/inadimplentes" />
+            <KpiCard titulo="Valor em atraso"     valor={brl(kpis.valor_atrasado)} icone={Wallet}        corFundo="bg-orange-500/10" href="/dashboard/relatorios/inadimplentes" />
+          </>
+        )}
+      </div>
+
+      {/* Acesso rápido */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {[
+          { icon: DollarSign, label: 'Mensalidades',          desc: 'Gerar, cobrar e registrar pagamentos.',          href: '/dashboard/financeiro' },
+          { icon: FileText,   label: 'Relatórios',            desc: 'R04 Situação Financeira e R05 Inadimplentes.',   href: '/dashboard/relatorios' },
+          { icon: Users,      label: 'Alunos',                desc: 'Lista de alunos (leitura).',                     href: '/dashboard/alunos' },
+          { icon: UserCheck,  label: 'Matrículas',            desc: 'Funil de matrículas (leitura).',                 href: '/dashboard/matriculas' },
+          { icon: Bell,       label: 'Avisos',                desc: 'Mural de comunicados.',                          href: '/dashboard/avisos' },
+        ].map(item => (
+          <Link key={item.label} to={item.href}
+            className="bg-card border border-border rounded-xl p-5 hover:border-primary/40 hover:bg-muted/10 transition-all group">
+            <item.icon className="h-6 w-6 text-primary mb-3" />
+            <h3 className="font-semibold text-foreground group-hover:text-primary transition-colors">{item.label}</h3>
+            <p className="text-sm text-muted-foreground mt-1">{item.desc}</p>
+          </Link>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 // ─── Professor ───────────────────────────────────────────────
 
 function ProfessorView({ profile }: { profile: DashboardContext['profile'] }) {
@@ -509,6 +567,7 @@ export default function DashboardHome() {
   const { role, full_name } = profile;
 
   if (role === 'superadmin' || role === 'admin' || role === 'administracao') return <AdminView name={full_name} />;
+  if (role === 'financeiro') return <FinanceiroView name={full_name} />;
   if (role === 'professor') return <ProfessorView profile={profile} />;
   return <AlunoView profile={profile} />;
 }

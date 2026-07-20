@@ -142,13 +142,13 @@ const App = () => (
               <Route path="admin"           element={<PainelAdmin />} />
 
               {/* Admin / Secretaria — rotas protegidas por role */}
-              <Route path="relatorios"    element={<RoleGuard allowedRoles={['superadmin','admin','administracao']}><Relatorios /></RoleGuard>} />
+              <Route path="relatorios"    element={<RoleGuard allowedRoles={['superadmin','admin','administracao','financeiro']}><Relatorios /></RoleGuard>} />
               <Route path="relatorios/alunos-turma" element={<RoleGuard allowedRoles={['superadmin','admin','administracao']}><R01_AlunosPorTurma /></RoleGuard>} />
               <Route path="relatorios/lista-presenca" element={<RoleGuard allowedRoles={['superadmin','admin','administracao','professor']}><R02_ListaPresenca /></RoleGuard>} />
               {/* LGPD-01 fase 2 · Mov.2 (R03-B): R03 é aluno-cêntrico cross-matéria, não escopável por disciplina → professor fica de fora (usa ConsolidadoNotas + VerTurma da cadeira). */}
               <Route path="relatorios/disciplinas-aluno" element={<RoleGuard allowedRoles={['superadmin','admin','administracao']}><R03_DisciplinasPorAluno /></RoleGuard>} />
               <Route path="relatorios/situacao-financeira" element={<RoleGuard allowedRoles={['superadmin','admin','administracao','financeiro']}><R04_SituacaoFinanceira /></RoleGuard>} />
-              <Route path="relatorios/inadimplentes" element={<RoleGuard allowedRoles={['superadmin','admin','administracao']}><R05_Inadimplentes /></RoleGuard>} />
+              <Route path="relatorios/inadimplentes" element={<RoleGuard allowedRoles={['superadmin','admin','administracao','financeiro']}><R05_Inadimplentes /></RoleGuard>} />
               <Route path="relatorios/historico-academico" element={<RoleGuard allowedRoles={['superadmin','admin','administracao']}><R06_HistoricoAcademico /></RoleGuard>} />
               <Route path="calendario"    element={<CalendarioAcademico />} />
               <Route path="nova-matricula" element={<RoleGuard allowedRoles={['superadmin','admin','administracao']}><NovaMatricula /></RoleGuard>} />
@@ -156,7 +156,8 @@ const App = () => (
               <Route path="convalidacoes" element={<RoleGuard allowedRoles={['superadmin','admin','administracao']}><Convalidacoes /></RoleGuard>} />
               <Route path="usuarios"      element={<RoleGuard allowedRoles={['superadmin','admin','administracao']}><Usuarios /></RoleGuard>} />
               <Route path="leads"         element={<RoleGuard allowedRoles={['superadmin','admin','administracao']}><Leads /></RoleGuard>} />
-              <Route path="matriculas"    element={<RoleGuard allowedRoles={['superadmin','admin','administracao']}><Matriculas /></RoleGuard>} />
+              {/* financeiro: leitura do funil (067) — ações de aprovação são negadas pela RLS */}
+              <Route path="matriculas"    element={<RoleGuard allowedRoles={['superadmin','admin','administracao','financeiro']}><Matriculas /></RoleGuard>} />
               <Route path="cursos-admin"  element={<RoleGuard allowedRoles={['superadmin','admin']}><CursosAdmin /></RoleGuard>} />
               <Route path="avisos"        element={<Avisos />} />
               <Route path="notificacoes"  element={<ComingSoon title="Notificações" icon={Bell} description="Envio de comunicados e avisos para alunos e professores em desenvolvimento." />} />
@@ -191,7 +192,8 @@ const App = () => (
               <Route path="notas/:turmaId/:disciplinaId"                 element={<RoleGuard allowedRoles={['professor','admin','superadmin','administracao']}><ConsolidadoNotas /></RoleGuard>} />
 
               {/* Secretaria/Admin — Lista e ficha do aluno */}
-              <Route path="alunos"         element={<RoleGuard allowedRoles={['superadmin','admin','administracao']}><Alunos /></RoleGuard>} />
+              {/* financeiro: LISTA de alunos sim; Ficha 360 (aluno/:alunoId) NÃO — PII (decisão Hélio) */}
+              <Route path="alunos"         element={<RoleGuard allowedRoles={['superadmin','admin','administracao','financeiro']}><Alunos /></RoleGuard>} />
               {/* LGPD-01 fase 2 · Mov.1: professor NÃO vê Ficha do Aluno (CPF/RG/endereço) nem R06 (CPF). */}
               <Route path="aluno/:alunoId" element={<RoleGuard allowedRoles={['superadmin','admin','administracao']}><FichaAluno /></RoleGuard>} />
 
