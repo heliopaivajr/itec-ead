@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { useOutletContext } from 'react-router-dom';
+import { useOutletContext, Link } from 'react-router-dom';
 import {
   DollarSign, AlertTriangle, CheckCircle2, Clock, Loader2,
   RefreshCw, Mail, Upload, X, Calendar,
@@ -179,9 +179,18 @@ export default function Financeiro() {
 
   return (
     <div className="p-6 space-y-6">
-      <div>
-        <h1 className="text-2xl font-merriweather font-bold text-primary">Financeiro</h1>
-        <p className="text-muted-foreground mt-1">Controle de mensalidades e inadimplência</p>
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-merriweather font-bold text-primary">Financeiro</h1>
+          <p className="text-muted-foreground mt-1">Controle de mensalidades e inadimplência</p>
+        </div>
+        {/* Etapa 2a: porta da Tabela de Preços p/ staff (o financeiro também tem no menu) */}
+        <Button asChild variant="outline" size="sm">
+          <Link to="/dashboard/financeiro/precos">
+            <DollarSign className="h-3.5 w-3.5 mr-1.5" />
+            Tabela de Preços
+          </Link>
+        </Button>
       </div>
 
       {/* Abas */}

@@ -96,6 +96,7 @@ const menuByRole: Record<string, { icon: React.ElementType; label: string; href:
     { icon: User,            label: 'Alunos',        href: '/dashboard/alunos',      tooltip: 'Lista de alunos (leitura)' },
     { icon: UserCheck,       label: 'Matrículas',    href: '/dashboard/matriculas',  tooltip: 'Funil de matrículas (leitura)' },
     { icon: DollarSign,      label: 'Financeiro',    href: '/dashboard/financeiro',  tooltip: 'Mensalidades e pagamentos' },
+    { icon: CreditCard,      label: 'Tabela de Preços', href: '/dashboard/financeiro/precos', tooltip: 'Preços por disciplinas/família (editável)' },
     { icon: BarChart2,       label: 'Relatórios',    href: '/dashboard/relatorios',  tooltip: 'R04 Situação Financeira · R05 Inadimplentes' },
     { icon: Megaphone,       label: 'Avisos',        href: '/dashboard/avisos',      tooltip: 'Mural de avisos' },
     { icon: Settings,        label: 'Configurações', href: '/dashboard/perfil',      tooltip: 'Perfil' },
