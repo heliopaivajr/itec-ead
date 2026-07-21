@@ -53,6 +53,7 @@ const MateriaisProfessor = lazy(() => import("./pages/dashboard/MateriaisProfess
 const MeusAlunos         = lazy(() => import("./pages/dashboard/MeusAlunos"));
 const SelecionarDisciplinaProfessor = lazy(() => import("./pages/dashboard/SelecionarDisciplinaProfessor"));
 const MinhaFrequencia    = lazy(() => import("./pages/dashboard/MinhaFrequencia"));
+const TabelaPrecos       = lazy(() => import("./pages/dashboard/TabelaPrecos"));
 const MinhasNotas        = lazy(() => import("./pages/dashboard/MinhasNotas"));
 const ProfessoresAdmin   = lazy(() => import("./pages/dashboard/ProfessoresAdmin"));
 const EquipeITEC         = lazy(() => import("./pages/dashboard/EquipeITEC"));
@@ -153,6 +154,7 @@ const App = () => (
               <Route path="calendario"    element={<CalendarioAcademico />} />
               <Route path="nova-matricula" element={<RoleGuard allowedRoles={['superadmin','admin','administracao']}><NovaMatricula /></RoleGuard>} />
               <Route path="financeiro"    element={<RoleGuard allowedRoles={['superadmin','admin','administracao','financeiro']}><FinanceiroPage /></RoleGuard>} />
+              <Route path="financeiro/precos" element={<RoleGuard allowedRoles={['superadmin','admin','administracao','financeiro']}><TabelaPrecos /></RoleGuard>} />
               <Route path="convalidacoes" element={<RoleGuard allowedRoles={['superadmin','admin','administracao']}><Convalidacoes /></RoleGuard>} />
               <Route path="usuarios"      element={<RoleGuard allowedRoles={['superadmin','admin','administracao']}><Usuarios /></RoleGuard>} />
               <Route path="leads"         element={<RoleGuard allowedRoles={['superadmin','admin','administracao']}><Leads /></RoleGuard>} />
