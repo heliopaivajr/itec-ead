@@ -48,6 +48,55 @@ export interface ServiceResult {
   error: string | null;
 }
 
+// ─── Etapa 2b: valor efetivo por matrícula (069) ─────────────────────────────
+// Régua no BANCO (resolver_valor_efetivo — LICAO-042): override ?? tabela_precos.
+export interface ValoresEfetivos {
+  matricula_id: string;
+  ano: number;
+  tipo_cobranca: 'disciplinas' | 'familia';
+  qtd_disciplinas: number;
+  valor_matricula_ate: number | null;
+  valor_matricula_apos: number | null;
+  valor_mensalidade_ate: number | null;
+  valor_mensalidade_apos: number | null;
+  origem_matricula: 'override' | 'tabela' | 'sem_tabela';
+  origem_mensalidade: 'override' | 'tabela' | 'sem_tabela';
+}
+
+export async function getValoresEfetivos(matriculaId: string, ano?: number): Promise<ValoresEfetivos | null> {
+  const { data, error } = await supabase.rpc('resolver_valor_efetivo', {
+    p_matricula_id: matriculaId,
+    ...(ano ? { p_ano: ano } : {}),
+  });
+  if (error) {
+    console.error('[getValoresEfetivos]', error.message);
+    return null;
+  }
+  const rows = (data as ValoresEfetivos[]) ?? [];
+  return rows[0] ?? null;
+}
+
+export async function setValoresMatricula(params: {
+  matriculaId: string;
+  tipoCobranca: 'disciplinas' | 'familia';
+  valorMatricula: number | null;      // null = limpa override (volta à tabela)
+  valorMensalidade: number | null;    // null = limpa override
+  observacao: string | null;          // justificativa → observacao_financeira
+}): Promise<ServiceResult> {
+  const { error } = await supabase.rpc('set_valores_matricula', {
+    p_matricula_id:     params.matriculaId,
+    p_tipo_cobranca:    params.tipoCobranca,
+    p_valor_matricula:  params.valorMatricula,
+    p_valor_mensalidade: params.valorMensalidade,
+    p_observacao:       params.observacao,
+  });
+  if (error) {
+    console.error('[setValoresMatricula]', error.message);
+    return { error: error.message };
+  }
+  return { error: null };
+}
+
 export interface KpisFinanceiro {
   a_receber: number;        // soma de pendentes+atrasadas (todas)
   recebido_mes: number;     // soma de pagas com data_pagamento no mês corrente

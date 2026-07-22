@@ -26,6 +26,7 @@ import {
 import { PDFDownloadLink } from '@react-pdf/renderer';
 import { DeclaracaoMatriculaPDF } from '@/components/dashboard/DeclaracaoMatriculaPDF';
 import LancamentoRetroativo from '@/components/dashboard/LancamentoRetroativo';
+import { ValoresMatriculaPanel } from '@/components/dashboard/ValoresMatriculaPanel';
 import { useToast } from '@/hooks/use-toast';
 import type { DashboardContext } from '../Dashboard';
 
@@ -511,6 +512,16 @@ export default function FichaAluno() {
 
       {/* Financeiro */}
       <Section title="Financeiro" icon={<CreditCard className="h-4 w-4" />}>
+        {/* Etapa 2b: valores efetivos da matrícula (tabela + override) — secretaria edita */}
+        {(() => {
+          const matFin = matriculas.find(m => m.status === 'ativa') ?? matriculas[0];
+          return matFin ? (
+            <div className="mb-5">
+              <ValoresMatriculaPanel matriculaId={matFin.id} editavel />
+            </div>
+          ) : null;
+        })()}
+
         {mensalidades.length === 0 ? (
           <Empty text="Nenhuma mensalidade registrada." />
         ) : (
