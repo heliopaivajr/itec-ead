@@ -296,18 +296,21 @@ export interface ResultadoGeracao {
   sem_preco: number;
 }
 
-// Gera mensalidades das matrículas ATIVAS pelo valor efetivo (idempotente).
+// Gera mensalidades pelo valor efetivo (idempotente). matriculaIds:
+// undefined/null = todas as ativas (lote); lista = só as selecionadas (071).
 export async function gerarMensalidadesMes(
   ano: number,
   mes: number,               // 1-12
   diaVencimento: number,     // ex.: 10
-  registradoPor: string
+  registradoPor: string,
+  matriculaIds?: string[] | null,
 ): Promise<{ resultado: ResultadoGeracao | null; error: string | null }> {
   const { data, error } = await supabase.rpc('gerar_mensalidades_mes', {
     p_ano: ano,
     p_mes: mes,
     p_dia_vencimento: diaVencimento,
     p_registrado_por: registradoPor,
+    p_matricula_ids: matriculaIds && matriculaIds.length > 0 ? matriculaIds : null,
   });
   if (error) {
     console.error('[gerarMensalidadesMes]', error.message);

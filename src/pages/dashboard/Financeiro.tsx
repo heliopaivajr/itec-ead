@@ -145,19 +145,33 @@ export default function Financeiro() {
   const [preview, setPreview]           = useState<PreviewMensalidade[] | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
   const [gerando, setGerando]           = useState(false);
+  // 2c.1: seleção por matrícula. Elegível = !ja_existe && origem !== 'sem_tabela'.
+  const [selecionados, setSelecionados] = useState<Set<string>>(new Set());
 
   const anoMes = (): { ano: number; mes: number } | null => {
     const m = /^(\d{4})-(\d{2})$/.exec(mesGerar);
     return m ? { ano: parseInt(m[1], 10), mes: parseInt(m[2], 10) } : null;
   };
 
+  const elegivel = (p: PreviewMensalidade) => !p.ja_existe && p.origem !== 'sem_tabela';
+
   const carregarPreview = async () => {
     const am = anoMes();
     if (!am) { toast({ title: 'Selecione o mês de referência', variant: 'destructive' }); return; }
     setPreviewLoading(true);
-    setPreview(await previewGerarMensalidades(am.ano, am.mes));
+    const dados = await previewGerarMensalidades(am.ano, am.mes);
+    setPreview(dados);
+    // Padrão (opção A): todas as ELEGÍVEIS marcadas.
+    setSelecionados(new Set(dados.filter(elegivel).map(p => p.matricula_id)));
     setPreviewLoading(false);
   };
+
+  const toggleUm = (id: string) =>
+    setSelecionados(prev => {
+      const s = new Set(prev);
+      s.has(id) ? s.delete(id) : s.add(id);
+      return s;
+    });
 
   const carregarInadimplentes = useCallback(async () => {
     setLoading(true);
@@ -179,17 +193,19 @@ export default function Financeiro() {
   const gerar = async () => {
     const am = anoMes();
     if (!am) { toast({ title: 'Selecione o mês de referência', variant: 'destructive' }); return; }
+    const ids = Array.from(selecionados);
+    if (ids.length === 0) { toast({ title: 'Selecione ao menos um aluno', variant: 'destructive' }); return; }
     setGerando(true);
-    const { resultado, error } = await gerarMensalidadesMes(am.ano, am.mes, parseInt(diaVenc, 10) || 10, profile.id);
+    const { resultado, error } = await gerarMensalidadesMes(am.ano, am.mes, parseInt(diaVenc, 10) || 10, profile.id, ids);
     setGerando(false);
     if (error || !resultado) {
       toast({ title: 'Erro ao gerar', description: error ?? 'Sem resultado', variant: 'destructive' });
     } else {
       toast({
         title: `${resultado.geradas} mensalidade(s) gerada(s)`,
-        description: `${resultado.ja_existiam} já existiam · ${resultado.sem_preco} sem preço na tabela · ref. ${mesGerar}`,
+        description: `${resultado.ja_existiam} já existiam · ${resultado.sem_preco} sem preço · ref. ${mesGerar}`,
       });
-      carregarPreview(); // atualiza o "já existe"
+      carregarPreview(); // as geradas viram "já existe" (checkbox desabilita)
     }
   };
 
@@ -307,10 +323,14 @@ export default function Financeiro() {
 
       {/* Gerar mensalidades — preview → confirmar (valor efetivo, idempotente) */}
       {aba === 'mensalidades' && (() => {
-        const novas    = (preview ?? []).filter(p => !p.ja_existe && p.origem !== 'sem_tabela');
-        const jaExiste = (preview ?? []).filter(p => p.ja_existe).length;
-        const semPreco = (preview ?? []).filter(p => p.origem === 'sem_tabela').length;
-        const total    = novas.reduce((s, p) => s + (p.valor ?? 0), 0);
+        const elegiveis = (preview ?? []).filter(elegivel);
+        const jaExiste  = (preview ?? []).filter(p => p.ja_existe).length;
+        const semPreco  = (preview ?? []).filter(p => p.origem === 'sem_tabela').length;
+        const selConta  = elegiveis.filter(p => selecionados.has(p.matricula_id));
+        const total     = selConta.reduce((s, p) => s + (p.valor ?? 0), 0);
+        const todosSel  = elegiveis.length > 0 && selConta.length === elegiveis.length;
+        const marcarTodos = (marcar: boolean) =>
+          setSelecionados(marcar ? new Set(elegiveis.map(p => p.matricula_id)) : new Set());
         return (
           <div className="space-y-5">
             <div className="bg-card border border-border rounded-xl p-5 space-y-4 max-w-lg">
@@ -343,10 +363,12 @@ export default function Financeiro() {
 
             {preview && (
               <div className="bg-card border border-border rounded-xl p-5 space-y-4 max-w-3xl">
-                <div className="flex flex-wrap gap-4 text-sm">
-                  <span className="text-green-400 font-semibold">{novas.length} a gerar · R$ {total.toFixed(2)}</span>
-                  <span className="text-muted-foreground">{jaExiste} já existem (ignoradas)</span>
-                  {semPreco > 0 && <span className="text-amber-500">{semPreco} sem preço na tabela</span>}
+                <div className="flex flex-wrap items-center gap-4 text-sm">
+                  <span className="text-green-400 font-semibold">
+                    {selConta.length} selecionado(s) de {elegiveis.length} elegíveis · R$ {total.toFixed(2)}
+                  </span>
+                  <span className="text-muted-foreground">{jaExiste} já existem</span>
+                  {semPreco > 0 && <span className="text-amber-500">{semPreco} sem preço</span>}
                 </div>
 
                 {preview.length === 0 ? (
@@ -356,6 +378,16 @@ export default function Financeiro() {
                     <table className="w-full text-sm">
                       <thead className="text-muted-foreground border-b sticky top-0 bg-card">
                         <tr className="text-left">
+                          <th className="pb-2 pl-1 w-8">
+                            <input
+                              type="checkbox"
+                              checked={todosSel}
+                              disabled={elegiveis.length === 0}
+                              onChange={e => marcarTodos(e.target.checked)}
+                              title={todosSel ? 'Desmarcar todos' : 'Selecionar todos os elegíveis'}
+                              className="accent-primary"
+                            />
+                          </th>
                           <th className="pb-2 font-medium">Aluno</th>
                           <th className="pb-2 font-medium text-center">Disc.</th>
                           <th className="pb-2 font-medium text-right">Até dia {diaVenc}</th>
@@ -365,31 +397,44 @@ export default function Financeiro() {
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-border/50">
-                        {preview.map(p => (
-                          <tr key={p.matricula_id} className={p.origem === 'sem_tabela' ? 'opacity-50' : ''}>
-                            <td className="py-2 font-medium">{p.nome}</td>
-                            <td className="py-2 text-center tabular-nums">{p.qtd_disciplinas}</td>
-                            <td className="py-2 text-right tabular-nums">{p.valor !== null ? `R$ ${p.valor.toFixed(2)}` : '—'}</td>
-                            <td className="py-2 text-right tabular-nums text-muted-foreground">{p.valor_com_atraso !== null ? `R$ ${p.valor_com_atraso.toFixed(2)}` : '—'}</td>
-                            <td className="py-2 text-center">
-                              <span className={`text-[11px] px-1.5 py-0.5 rounded ${p.origem === 'override' ? 'bg-amber-500/20 text-amber-400' : p.origem === 'tabela' ? 'bg-blue-500/15 text-blue-400' : 'bg-muted text-muted-foreground'}`}>
-                                {p.origem === 'override' ? 'negociado' : p.origem === 'tabela' ? 'tabela' : 'sem preço'}
-                              </span>
-                            </td>
-                            <td className="py-2 text-center text-xs">
-                              {p.ja_existe ? <span className="text-muted-foreground">já existe</span> : p.origem === 'sem_tabela' ? <span className="text-amber-500">bloqueada</span> : <span className="text-green-400">nova</span>}
-                            </td>
-                          </tr>
-                        ))}
+                        {preview.map(p => {
+                          const ok = elegivel(p);
+                          return (
+                            <tr key={p.matricula_id} className={ok ? '' : 'opacity-50'}>
+                              <td className="py-2 pl-1">
+                                <input
+                                  type="checkbox"
+                                  checked={ok && selecionados.has(p.matricula_id)}
+                                  disabled={!ok}
+                                  onChange={() => toggleUm(p.matricula_id)}
+                                  className="accent-primary"
+                                  title={ok ? undefined : p.ja_existe ? 'Já existe mensalidade deste mês' : 'Sem preço na tabela'}
+                                />
+                              </td>
+                              <td className="py-2 font-medium">{p.nome}</td>
+                              <td className="py-2 text-center tabular-nums">{p.qtd_disciplinas}</td>
+                              <td className="py-2 text-right tabular-nums">{p.valor !== null ? `R$ ${p.valor.toFixed(2)}` : '—'}</td>
+                              <td className="py-2 text-right tabular-nums text-muted-foreground">{p.valor_com_atraso !== null ? `R$ ${p.valor_com_atraso.toFixed(2)}` : '—'}</td>
+                              <td className="py-2 text-center">
+                                <span className={`text-[11px] px-1.5 py-0.5 rounded ${p.origem === 'override' ? 'bg-amber-500/20 text-amber-400' : p.origem === 'tabela' ? 'bg-blue-500/15 text-blue-400' : 'bg-muted text-muted-foreground'}`}>
+                                  {p.origem === 'override' ? 'negociado' : p.origem === 'tabela' ? 'tabela' : 'sem preço'}
+                                </span>
+                              </td>
+                              <td className="py-2 text-center text-xs">
+                                {p.ja_existe ? <span className="text-muted-foreground">já existe</span> : p.origem === 'sem_tabela' ? <span className="text-amber-500">bloqueada</span> : <span className="text-green-400">nova</span>}
+                              </td>
+                            </tr>
+                          );
+                        })}
                       </tbody>
                     </table>
                   </div>
                 )}
 
-                <Button onClick={gerar} disabled={gerando || novas.length === 0}
+                <Button onClick={gerar} disabled={gerando || selConta.length === 0}
                   className="w-full bg-primary text-primary-foreground">
                   {gerando ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Clock className="h-4 w-4 mr-2" />}
-                  Confirmar geração de {novas.length} mensalidade(s)
+                  Confirmar geração de {selConta.length} mensalidade(s)
                 </Button>
               </div>
             )}
