@@ -379,6 +379,16 @@ Ambos com impressão (**PDF/Excel**), reusando `@react-pdf` + `xlsx` do R02.
 **Prioridade**: Alta — mas **entra DEPOIS do fluxo pagar→confirmar (2d+2f) estar completo**.
 **Status**: Registrado — requisito do Hélio (2026-07-21).
 
+### 8.6 [DIRETRIZ — UX] Dashboard financeiro PRÁTICO (inline + navegação fluida)
+**Descrição**: Diretriz transversal para TODAS as telas financeiras: **edições no lugar (inline)** sem pular de tela; **navegação fluida entre os menus** (geração ↔ valores ↔ inadimplência ↔ aluno).
+**Requisito do Hélio**: "prático ao se mover e comunicar com os outros menus".
+**Aplicar em**:
+- **Geração de mensalidades**: editar valor na linha do preview (inline) → grava o override da matrícula (2c.2).
+- **Painel 2e (8.5)**: edição inline de valor / vencimento / status na grade.
+- **Confirmação de pagamento**: confirmar sem sair da lista de inadimplentes.
+**Regra**: tudo editável mesmo iniciando com o padrão; o inline persiste na fonte única (`resolver_valor_efetivo`/`set_valores_matricula`, LICAO-042) — não é ajuste efêmero de tela.
+**Status**: Registrado — diretriz do Hélio (2026-07-22).
+
 ---
 
 ## 9. OUTRAS IDEIAS
