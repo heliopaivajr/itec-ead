@@ -369,6 +369,16 @@ Ambos com impressão (**PDF/Excel**), reusando `@react-pdf` + `xlsx` do R02.
 **Dependências**: Conta Asaas configurada, tabelas de preços no banco.  
 **Referência**: `.ai-system/memory/REGRAS-FINANCEIRO.md`  
 
+### 8.5 [TELA] 2e — Painel de Gestão Financeira (dashboard financeiro/secretaria)
+**Descrição**: Visão de **TODOS os alunos em grade** (linhas × colunas): aluno · curso/turma · valor · **status de cada mês** (pago/pendente/atrasado) · dias de atraso · total devido · contato. **Indicadores no topo**: total a receber, recebido no mês, inadimplência (%, R$, nº de alunos), previsão. **Filtros** (turma, status, mês). **Ordenável**. **Destaque visual de risco (30/90 dias)**. **Impressão/export (PDF/Excel — reusa R02)**. **TUDO editável** (valor, vencimento, status) mesmo iniciando com o padrão.
+**Requisito do Hélio**: prático, visível, criativo, organizado — "algo melhor do que o atual".
+**Fonte**: `mensalidades` + `resolver_valor_efetivo` (069). Sem regra nova de cálculo — é UI de agregação (LICAO-042).
+**Depende de**: 2c geração ✅ (068–071) · **2d aluno paga** · **2f confirmação de pagamento** — sem eles não há "pago" para exibir.
+**Relação**: é a evolução do 8.3 (Relatório Financeiro Completo) e complementa o painel consolidado acadêmico (2.13). Avaliar reuso no SDD.
+**Esforço**: **M/G**.
+**Prioridade**: Alta — mas **entra DEPOIS do fluxo pagar→confirmar (2d+2f) estar completo**.
+**Status**: Registrado — requisito do Hélio (2026-07-21).
+
 ---
 
 ## 9. OUTRAS IDEIAS
