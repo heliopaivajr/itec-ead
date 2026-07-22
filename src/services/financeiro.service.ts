@@ -98,6 +98,24 @@ export async function setValoresMatricula(params: {
   return { error: null };
 }
 
+// 2c.2: edição inline do valor da mensalidade (só o override — 072).
+// Foca em valor_mensalidade_override, sem tocar tipo_cobranca/obs/taxa (evita
+// perda de dado que set_valores_matricula causaria a partir da linha do preview).
+export async function setValorMensalidadeOverride(
+  matriculaId: string,
+  valor: number | null,          // null = limpa override (volta à tabela)
+): Promise<ServiceResult> {
+  const { error } = await supabase.rpc('set_valor_mensalidade_override', {
+    p_matricula_id: matriculaId,
+    p_valor: valor,
+  });
+  if (error) {
+    console.error('[setValorMensalidadeOverride]', error.message);
+    return { error: error.message };
+  }
+  return { error: null };
+}
+
 export interface KpisFinanceiro {
   a_receber: number;        // soma de pendentes+atrasadas (todas)
   recebido_mes: number;     // soma de pagas com data_pagamento no mês corrente
