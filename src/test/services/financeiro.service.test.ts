@@ -97,8 +97,27 @@ describe('financeiro.service', () => {
       expect(error).toBeNull();
       expect(resultado).toEqual({ geradas: 3, ja_existiam: 1, sem_preco: 0 });
       expect(supabase.rpc).toHaveBeenCalledWith('gerar_mensalidades_mes', {
-        p_ano: 2026, p_mes: 8, p_dia_vencimento: 10, p_registrado_por: 'admin-1',
+        p_ano: 2026, p_mes: 8, p_dia_vencimento: 10, p_registrado_por: 'admin-1', p_matricula_ids: null,
       });
+    });
+
+    it('geração SELETIVA: passa p_matricula_ids quando há seleção (071)', async () => {
+      vi.mocked(supabase.rpc).mockResolvedValueOnce({
+        data: [{ geradas: 2, ja_existiam: 0, sem_preco: 0 }], error: null,
+      } as any);
+
+      await gerarMensalidadesMes(2026, 8, 10, 'admin-1', ['mat-1', 'mat-2']);
+
+      expect(supabase.rpc).toHaveBeenCalledWith('gerar_mensalidades_mes', {
+        p_ano: 2026, p_mes: 8, p_dia_vencimento: 10, p_registrado_por: 'admin-1',
+        p_matricula_ids: ['mat-1', 'mat-2'],
+      });
+    });
+
+    it('lista vazia = lote (p_matricula_ids null)', async () => {
+      vi.mocked(supabase.rpc).mockResolvedValueOnce({ data: [{ geradas: 0, ja_existiam: 0, sem_preco: 0 }], error: null } as any);
+      await gerarMensalidadesMes(2026, 8, 10, 'admin-1', []);
+      expect(supabase.rpc).toHaveBeenCalledWith('gerar_mensalidades_mes', expect.objectContaining({ p_matricula_ids: null }));
     });
 
     it('idempotência: 2ª execução do mesmo mês retorna geradas=0 (não sobrescreve)', async () => {
