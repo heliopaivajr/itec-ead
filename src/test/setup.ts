@@ -38,6 +38,7 @@ function makeQueryBuilder(resolved = { data: [] as unknown[], error: null as str
 vi.mock('@/lib/supabase', () => ({
   supabase: {
     from: vi.fn(() => makeQueryBuilder()),
+    rpc: vi.fn().mockResolvedValue({ data: null, error: null }),
     auth: {
       getSession:             vi.fn().mockResolvedValue({ data: { session: null }, error: null }),
       onAuthStateChange:      vi.fn().mockReturnValue({ data: { subscription: { unsubscribe: vi.fn() } } }),

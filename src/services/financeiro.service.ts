@@ -23,6 +23,7 @@ export interface Mensalidade {
   data_vencimento: string;
   status: 'pendente' | 'pago' | 'atrasado' | 'isento' | 'cancelado';
   data_pagamento: string | null;
+  valor_com_atraso?: number | null;   // 070 — snapshot da multa (após dia 10)
   comprovante_url: string | null;
   registrado_por: string | null;
   observacoes: string | null;
@@ -265,36 +266,53 @@ export async function getResumoFinanceiroAluno(alunoId: string): Promise<ResumoF
   };
 }
 
-// Gera mensalidades para todos os alunos ativos no mês indicado
+// ─── Etapa 2c: geração por valor efetivo (070) ───────────────────────────────
+// Régua e idempotência no BANCO (preview_/gerar_mensalidades_mes): valor efetivo
+// (override ?? tabela × qtd) + ON CONFLICT DO NOTHING (nunca sobrescreve pago).
+
+export interface PreviewMensalidade {
+  matricula_id: string;
+  aluno_id: string;
+  nome: string;
+  qtd_disciplinas: number;
+  valor: number | null;            // até dia 10 (base)
+  valor_com_atraso: number | null; // após dia 10
+  origem: 'override' | 'tabela' | 'sem_tabela';
+  ja_existe: boolean;
+}
+
+export async function previewGerarMensalidades(ano: number, mes: number): Promise<PreviewMensalidade[]> {
+  const { data, error } = await supabase.rpc('preview_gerar_mensalidades', { p_ano: ano, p_mes: mes });
+  if (error) {
+    console.error('[previewGerarMensalidades]', error.message);
+    return [];
+  }
+  return (data as PreviewMensalidade[]) ?? [];
+}
+
+export interface ResultadoGeracao {
+  geradas: number;
+  ja_existiam: number;
+  sem_preco: number;
+}
+
+// Gera mensalidades das matrículas ATIVAS pelo valor efetivo (idempotente).
 export async function gerarMensalidadesMes(
-  mes: string,         // formato YYYY-MM-01
-  valor: number,
-  vencimento: string,  // formato YYYY-MM-DD
+  ano: number,
+  mes: number,               // 1-12
+  diaVencimento: number,     // ex.: 10
   registradoPor: string
-): Promise<{ geradas: number; error: string | null }> {
-  // Busca alunos com matrícula ativa
-  const { data: matriculas, error: errMat } = await supabase
-    .from('matriculas')
-    .select('id, aluno_id')
-    .eq('status', 'ativa')
-    .limit(500);
-
-  if (errMat || !matriculas) return { geradas: 0, error: errMat?.message ?? 'Erro ao buscar matrículas' };
-
-  const registros = matriculas.map(m => ({
-    aluno_id:        m.aluno_id,
-    matricula_id:    m.id,
-    valor,
-    mes_referencia:  mes,
-    data_vencimento: vencimento,
-    status:          'pendente' as const,
-    registrado_por:  registradoPor,
-  }));
-
-  const { error } = await supabase
-    .from('mensalidades')
-    .upsert(registros, { onConflict: 'aluno_id,mes_referencia' });
-
-  if (error) return { geradas: 0, error: error.message };
-  return { geradas: registros.length, error: null };
+): Promise<{ resultado: ResultadoGeracao | null; error: string | null }> {
+  const { data, error } = await supabase.rpc('gerar_mensalidades_mes', {
+    p_ano: ano,
+    p_mes: mes,
+    p_dia_vencimento: diaVencimento,
+    p_registrado_por: registradoPor,
+  });
+  if (error) {
+    console.error('[gerarMensalidadesMes]', error.message);
+    return { resultado: null, error: error.message };
+  }
+  const row = (data as ResultadoGeracao[])?.[0] ?? null;
+  return { resultado: row, error: null };
 }
