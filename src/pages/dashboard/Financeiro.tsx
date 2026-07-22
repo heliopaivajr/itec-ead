@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useOutletContext, Link } from 'react-router-dom';
 import {
   DollarSign, AlertTriangle, CheckCircle2, Clock, Loader2,
-  RefreshCw, Mail, Upload, X, Calendar,
+  RefreshCw, Mail, Upload, X, Calendar, ChevronLeft, ChevronRight,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -154,18 +154,38 @@ export default function Financeiro() {
     return m ? { ano: parseInt(m[1], 10), mes: parseInt(m[2], 10) } : null;
   };
 
+  // Validação do dia de vencimento (1-31)
+  const diaVencNum    = parseInt(diaVenc, 10);
+  const diaVencValido = !isNaN(diaVencNum) && diaVencNum >= 1 && diaVencNum <= 31;
+
+  // Navegação rápida de mês (◀ ▶)
+  const shiftMes = (delta: number) => {
+    const am = anoMes();
+    const base = am ? new Date(am.ano, am.mes - 1, 1) : new Date();
+    base.setMonth(base.getMonth() + delta);
+    setMesGerar(`${base.getFullYear()}-${String(base.getMonth() + 1).padStart(2, '0')}`);
+  };
+
   const elegivel = (p: PreviewMensalidade) => !p.ja_existe && p.origem !== 'sem_tabela';
 
-  const carregarPreview = async () => {
-    const am = anoMes();
-    if (!am) { toast({ title: 'Selecione o mês de referência', variant: 'destructive' }); return; }
+  const carregarPreview = useCallback(async (silencioso = false) => {
+    const m = /^(\d{4})-(\d{2})$/.exec(mesGerar);
+    if (!m) { if (!silencioso) toast({ title: 'Selecione o mês de referência', variant: 'destructive' }); return; }
     setPreviewLoading(true);
-    const dados = await previewGerarMensalidades(am.ano, am.mes);
+    const dados = await previewGerarMensalidades(parseInt(m[1], 10), parseInt(m[2], 10));
     setPreview(dados);
     // Padrão (opção A): todas as ELEGÍVEIS marcadas.
     setSelecionados(new Set(dados.filter(elegivel).map(p => p.matricula_id)));
     setPreviewLoading(false);
-  };
+  }, [mesGerar, toast]);
+
+  // Preview REATIVO: ao escolher/mudar o mês, atualiza sozinho (debounce 400ms).
+  useEffect(() => {
+    if (aba !== 'mensalidades') return;
+    if (!/^\d{4}-\d{2}$/.test(mesGerar)) { setPreview(null); return; }
+    const t = setTimeout(() => carregarPreview(true), 400);
+    return () => clearTimeout(t);
+  }, [mesGerar, aba, carregarPreview]);
 
   const toggleUm = (id: string) =>
     setSelecionados(prev => {
@@ -374,21 +394,39 @@ export default function Financeiro() {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <Label className="text-sm text-foreground">Mês de referência</Label>
-                  <Input type="month" value={mesGerar}
-                    onChange={e => { setMesGerar(e.target.value); setPreview(null); }}
-                    className="mt-1.5 bg-background border-border text-foreground" />
+                  <div className="mt-1.5 flex items-center gap-1">
+                    <button type="button" onClick={() => shiftMes(-1)}
+                      className="p-2 rounded-md border border-border text-muted-foreground hover:text-foreground hover:border-primary/40"
+                      title="Mês anterior">
+                      <ChevronLeft className="h-4 w-4" />
+                    </button>
+                    <Input type="month" value={mesGerar}
+                      onChange={e => setMesGerar(e.target.value)}
+                      className="bg-background border-border text-foreground text-center" />
+                    <button type="button" onClick={() => shiftMes(1)}
+                      className="p-2 rounded-md border border-border text-muted-foreground hover:text-foreground hover:border-primary/40"
+                      title="Próximo mês">
+                      <ChevronRight className="h-4 w-4" />
+                    </button>
+                  </div>
                 </div>
                 <div>
                   <Label className="text-sm text-foreground">Dia de vencimento</Label>
-                  <Input type="number" min={1} max={28} value={diaVenc}
+                  <Input type="number" min={1} max={31} value={diaVenc}
                     onChange={e => setDiaVenc(e.target.value)}
-                    className="mt-1.5 bg-background border-border text-foreground" />
+                    className={`mt-1.5 bg-background text-foreground ${diaVencValido ? 'border-border' : 'border-destructive'}`} />
+                  {!diaVencValido && <p className="text-[11px] text-destructive mt-1">Informe um dia entre 1 e 31.</p>}
                 </div>
               </div>
-              <Button variant="outline" onClick={carregarPreview} disabled={previewLoading || !mesGerar} className="w-full">
-                {previewLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <RefreshCw className="h-4 w-4 mr-2" />}
-                Pré-visualizar
-              </Button>
+              <div className="flex items-center gap-2">
+                <p className="text-xs text-muted-foreground flex-1">
+                  {previewLoading ? 'Atualizando prévia…' : 'A prévia atualiza sozinha ao mudar o mês.'}
+                </p>
+                <Button variant="outline" size="sm" onClick={() => carregarPreview()} disabled={previewLoading || !mesGerar}>
+                  {previewLoading ? <Loader2 className="h-4 w-4 animate-spin mr-1.5" /> : <RefreshCw className="h-4 w-4 mr-1.5" />}
+                  Atualizar
+                </Button>
+              </div>
             </div>
 
             {preview && (
@@ -494,7 +532,7 @@ export default function Financeiro() {
                   </div>
                 )}
 
-                <Button onClick={gerar} disabled={gerando || selConta.length === 0}
+                <Button onClick={gerar} disabled={gerando || selConta.length === 0 || !diaVencValido}
                   className="w-full bg-primary text-primary-foreground">
                   {gerando ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Clock className="h-4 w-4 mr-2" />}
                   Confirmar geração de {selConta.length} mensalidade(s)
