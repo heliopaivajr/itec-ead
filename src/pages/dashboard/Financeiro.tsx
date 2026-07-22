@@ -15,6 +15,7 @@ import {
   registrarPagamentoMensalidade,
   gerarMensalidadesMes,
   previewGerarMensalidades,
+  setValorMensalidadeOverride,
   type Inadimplente,
   type Mensalidade,
   type PreviewMensalidade,
@@ -172,6 +173,35 @@ export default function Financeiro() {
       s.has(id) ? s.delete(id) : s.add(id);
       return s;
     });
+
+  // 2c.2: edição inline do valor da mensalidade → grava o override PERMANENTE.
+  const [editandoId, setEditandoId] = useState<string | null>(null);
+  const [valorEdit, setValorEdit]   = useState('');
+  const [salvandoValor, setSalvandoValor] = useState(false);
+
+  const abrirEdicao = (p: PreviewMensalidade) => {
+    setEditandoId(p.matricula_id);
+    setValorEdit(p.valor !== null ? String(p.valor) : '');
+  };
+
+  const salvarValorInline = async (p: PreviewMensalidade) => {
+    const t = valorEdit.trim().replace(',', '.');
+    const v = t === '' ? null : parseFloat(t);
+    if (v !== null && (isNaN(v) || v < 0)) {
+      toast({ title: 'Valor inválido', description: 'Informe um número ≥ 0 (ou vazio para voltar à tabela).', variant: 'destructive' });
+      return;
+    }
+    setSalvandoValor(true);
+    const { error } = await setValorMensalidadeOverride(p.matricula_id, v);
+    setSalvandoValor(false);
+    if (error) {
+      toast({ title: 'Erro ao salvar valor', description: error, variant: 'destructive' });
+      return;
+    }
+    toast({ title: `Valor de ${p.nome} atualizado`, description: v === null ? 'Voltou ao preço da tabela.' : `Negociado: R$ ${v.toFixed(2)} (permanente).` });
+    setEditandoId(null);
+    carregarPreview();  // resolver_valor_efetivo agora traz o override → origem vira 'negociado', total recalcula
+  };
 
   const carregarInadimplentes = useCallback(async () => {
     setLoading(true);
@@ -370,6 +400,9 @@ export default function Financeiro() {
                   <span className="text-muted-foreground">{jaExiste} já existem</span>
                   {semPreco > 0 && <span className="text-amber-500">{semPreco} sem preço</span>}
                 </div>
+                <p className="text-[11px] text-muted-foreground -mt-1">
+                  💡 Clique no valor "Até dia {diaVenc}" para editar o <strong>valor negociado do aluno</strong> — é permanente (vale para os próximos meses), não só desta geração. Vazio = volta ao preço da tabela.
+                </p>
 
                 {preview.length === 0 ? (
                   <p className="text-sm text-muted-foreground">Nenhuma matrícula ativa.</p>
@@ -413,7 +446,37 @@ export default function Financeiro() {
                               </td>
                               <td className="py-2 font-medium">{p.nome}</td>
                               <td className="py-2 text-center tabular-nums">{p.qtd_disciplinas}</td>
-                              <td className="py-2 text-right tabular-nums">{p.valor !== null ? `R$ ${p.valor.toFixed(2)}` : '—'}</td>
+                              <td className="py-2 text-right tabular-nums">
+                                {editandoId === p.matricula_id ? (
+                                  <div className="flex items-center gap-1 justify-end">
+                                    <span className="text-xs text-muted-foreground">R$</span>
+                                    <Input
+                                      autoFocus
+                                      value={valorEdit}
+                                      onChange={e => setValorEdit(e.target.value)}
+                                      onKeyDown={e => { if (e.key === 'Enter') salvarValorInline(p); if (e.key === 'Escape') setEditandoId(null); }}
+                                      inputMode="decimal"
+                                      placeholder="tabela"
+                                      className="w-20 h-7 text-right tabular-nums bg-background"
+                                    />
+                                    <button onClick={() => salvarValorInline(p)} disabled={salvandoValor}
+                                      className="text-green-400 hover:text-green-300" title="Salvar (permanente)">
+                                      {salvandoValor ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
+                                    </button>
+                                    <button onClick={() => setEditandoId(null)} className="text-muted-foreground hover:text-foreground" title="Cancelar">
+                                      <X className="h-3.5 w-3.5" />
+                                    </button>
+                                  </div>
+                                ) : (
+                                  <button
+                                    onClick={() => abrirEdicao(p)}
+                                    className="hover:text-primary hover:underline decoration-dotted"
+                                    title="Editar o valor negociado do aluno (permanente)"
+                                  >
+                                    {p.valor !== null ? `R$ ${p.valor.toFixed(2)}` : '—'}
+                                  </button>
+                                )}
+                              </td>
                               <td className="py-2 text-right tabular-nums text-muted-foreground">{p.valor_com_atraso !== null ? `R$ ${p.valor_com_atraso.toFixed(2)}` : '—'}</td>
                               <td className="py-2 text-center">
                                 <span className={`text-[11px] px-1.5 py-0.5 rounded ${p.origem === 'override' ? 'bg-amber-500/20 text-amber-400' : p.origem === 'tabela' ? 'bg-blue-500/15 text-blue-400' : 'bg-muted text-muted-foreground'}`}>
