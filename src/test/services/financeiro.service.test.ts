@@ -86,71 +86,39 @@ describe('financeiro.service', () => {
     });
   });
 
-  describe('gerarMensalidadesMes', () => {
-    it('insere mensalidades para todos os alunos com matrícula ativa', async () => {
-      vi.mocked(supabase.from).mockReset();
-      vi.mocked(supabase.from)
-        // Chamada 1: buscar matrículas ativas
-        .mockReturnValueOnce({
-          select: vi.fn().mockReturnValue({
-            eq: vi.fn().mockReturnValue({
-              limit: vi.fn().mockResolvedValue({
-                data: [
-                  { id: 'mat-1', aluno_id: 'aluno-A' },
-                  { id: 'mat-2', aluno_id: 'aluno-B' },
-                  { id: 'mat-3', aluno_id: 'aluno-C' },
-                ],
-                error: null,
-              }),
-            }),
-          }),
-        } as any)
-        // Chamada 2: insert batch mensalidades
-        .mockReturnValueOnce({
-          upsert: vi.fn().mockResolvedValue({ error: null }),
-        } as any);
-
-      const resultado = await gerarMensalidadesMes('2026-06-01', 200, '2026-06-10', 'admin-1');
-
-      expect(resultado.geradas).toBe(3);
-      expect(resultado.error).toBeNull();
-    });
-
-    it('retorna geradas=0 quando não há matrículas ativas', async () => {
-      vi.mocked(supabase.from).mockReset();
-      // Mesmo com array vazio, gerarMensalidadesMes chama upsert([], ...)
-      vi.mocked(supabase.from)
-        .mockReturnValueOnce({
-          select: vi.fn().mockReturnValue({
-            eq: vi.fn().mockReturnValue({
-              limit: vi.fn().mockResolvedValue({ data: [], error: null }),
-            }),
-          }),
-        } as any)
-        .mockReturnValueOnce({
-          upsert: vi.fn().mockResolvedValue({ error: null }),
-        } as any);
-
-      const resultado = await gerarMensalidadesMes('2026-06-01', 200, '2026-06-10', 'admin-1');
-
-      expect(resultado.geradas).toBe(0);
-      expect(resultado.error).toBeNull();
-    });
-
-    it('retorna erro quando busca de matrículas falha', async () => {
-      vi.mocked(supabase.from).mockReset();
-      vi.mocked(supabase.from).mockReturnValueOnce({
-        select: vi.fn().mockReturnValue({
-          eq: vi.fn().mockReturnValue({
-            limit: vi.fn().mockResolvedValue({ data: null, error: { message: 'db error' } }),
-          }),
-        }),
+  describe('gerarMensalidadesMes (RPC — 070)', () => {
+    it('retorna o resultado da geração (geradas/ja_existiam/sem_preco) da RPC', async () => {
+      vi.mocked(supabase.rpc).mockResolvedValueOnce({
+        data: [{ geradas: 3, ja_existiam: 1, sem_preco: 0 }], error: null,
       } as any);
 
-      const resultado = await gerarMensalidadesMes('2026-06-01', 200, '2026-06-10', 'admin-1');
+      const { resultado, error } = await gerarMensalidadesMes(2026, 8, 10, 'admin-1');
 
-      expect(resultado.geradas).toBe(0);
-      expect(resultado.error).toBe('db error');
+      expect(error).toBeNull();
+      expect(resultado).toEqual({ geradas: 3, ja_existiam: 1, sem_preco: 0 });
+      expect(supabase.rpc).toHaveBeenCalledWith('gerar_mensalidades_mes', {
+        p_ano: 2026, p_mes: 8, p_dia_vencimento: 10, p_registrado_por: 'admin-1',
+      });
+    });
+
+    it('idempotência: 2ª execução do mesmo mês retorna geradas=0 (não sobrescreve)', async () => {
+      vi.mocked(supabase.rpc).mockResolvedValueOnce({
+        data: [{ geradas: 0, ja_existiam: 3, sem_preco: 0 }], error: null,
+      } as any);
+
+      const { resultado } = await gerarMensalidadesMes(2026, 8, 10, 'admin-1');
+
+      expect(resultado?.geradas).toBe(0);
+      expect(resultado?.ja_existiam).toBe(3);
+    });
+
+    it('retorna erro quando a RPC falha', async () => {
+      vi.mocked(supabase.rpc).mockResolvedValueOnce({ data: null, error: { message: 'db error' } } as any);
+
+      const { resultado, error } = await gerarMensalidadesMes(2026, 8, 10, 'admin-1');
+
+      expect(resultado).toBeNull();
+      expect(error).toBe('db error');
     });
   });
 });

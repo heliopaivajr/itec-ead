@@ -14,8 +14,10 @@ import {
   getMensalidadesByAluno,
   registrarPagamentoMensalidade,
   gerarMensalidadesMes,
+  previewGerarMensalidades,
   type Inadimplente,
   type Mensalidade,
+  type PreviewMensalidade,
 } from '@/services/financeiro.service';
 import { supabase } from '@/lib/supabase';
 import type { DashboardContext } from '../Dashboard';
@@ -137,11 +139,25 @@ export default function Financeiro() {
     window.open(`mailto:${aluno.email}?subject=${assunto}&body=${corpo}`, '_blank');
   };
 
-  // Geração de mensalidades
-  const [mesGerar, setMesGerar]         = useState('');
-  const [valorGerar, setValorGerar]     = useState('');
-  const [vencGerar, setVencGerar]       = useState('');
+  // Geração de mensalidades (Etapa 2c: preview → confirmar; valor efetivo; idempotente)
+  const [mesGerar, setMesGerar]         = useState('');           // input type=month → 'YYYY-MM'
+  const [diaVenc, setDiaVenc]           = useState('10');
+  const [preview, setPreview]           = useState<PreviewMensalidade[] | null>(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
   const [gerando, setGerando]           = useState(false);
+
+  const anoMes = (): { ano: number; mes: number } | null => {
+    const m = /^(\d{4})-(\d{2})$/.exec(mesGerar);
+    return m ? { ano: parseInt(m[1], 10), mes: parseInt(m[2], 10) } : null;
+  };
+
+  const carregarPreview = async () => {
+    const am = anoMes();
+    if (!am) { toast({ title: 'Selecione o mês de referência', variant: 'destructive' }); return; }
+    setPreviewLoading(true);
+    setPreview(await previewGerarMensalidades(am.ano, am.mes));
+    setPreviewLoading(false);
+  };
 
   const carregarInadimplentes = useCallback(async () => {
     setLoading(true);
@@ -161,19 +177,19 @@ export default function Financeiro() {
   };
 
   const gerar = async () => {
-    if (!mesGerar || !valorGerar || !vencGerar) {
-      toast({ title: 'Preencha todos os campos', variant: 'destructive' });
-      return;
-    }
+    const am = anoMes();
+    if (!am) { toast({ title: 'Selecione o mês de referência', variant: 'destructive' }); return; }
     setGerando(true);
-    const { geradas, error } = await gerarMensalidadesMes(
-      mesGerar + '-01', parseFloat(valorGerar), vencGerar, profile.id
-    );
+    const { resultado, error } = await gerarMensalidadesMes(am.ano, am.mes, parseInt(diaVenc, 10) || 10, profile.id);
     setGerando(false);
-    if (error) {
-      toast({ title: 'Erro', description: error, variant: 'destructive' });
+    if (error || !resultado) {
+      toast({ title: 'Erro ao gerar', description: error ?? 'Sem resultado', variant: 'destructive' });
     } else {
-      toast({ title: `${geradas} mensalidades geradas!`, description: `Referência: ${mesGerar}` });
+      toast({
+        title: `${resultado.geradas} mensalidade(s) gerada(s)`,
+        description: `${resultado.ja_existiam} já existiam · ${resultado.sem_preco} sem preço na tabela · ref. ${mesGerar}`,
+      });
+      carregarPreview(); // atualiza o "já existe"
     }
   };
 
@@ -289,37 +305,97 @@ export default function Financeiro() {
         </div>
       )}
 
-      {/* Gerar mensalidades */}
-      {aba === 'mensalidades' && (
-        <div className="bg-card border border-border rounded-xl p-5 space-y-5 max-w-md">
-          <h2 className="font-semibold text-foreground">Gerar mensalidades do mês</h2>
-          <p className="text-sm text-muted-foreground">
-            Gera mensalidades para todos os alunos com matrícula ativa.
-          </p>
-          <div className="space-y-3">
-            <div>
-              <Label className="text-sm text-foreground">Mês de referência</Label>
-              <Input type="month" value={mesGerar} onChange={e => setMesGerar(e.target.value)}
-                className="mt-1.5 bg-background border-border text-foreground" />
+      {/* Gerar mensalidades — preview → confirmar (valor efetivo, idempotente) */}
+      {aba === 'mensalidades' && (() => {
+        const novas    = (preview ?? []).filter(p => !p.ja_existe && p.origem !== 'sem_tabela');
+        const jaExiste = (preview ?? []).filter(p => p.ja_existe).length;
+        const semPreco = (preview ?? []).filter(p => p.origem === 'sem_tabela').length;
+        const total    = novas.reduce((s, p) => s + (p.valor ?? 0), 0);
+        return (
+          <div className="space-y-5">
+            <div className="bg-card border border-border rounded-xl p-5 space-y-4 max-w-lg">
+              <div>
+                <h2 className="font-semibold text-foreground">Gerar mensalidades do mês</h2>
+                <p className="text-sm text-muted-foreground mt-0.5">
+                  Valor por aluno vem da <strong>Tabela de Preços</strong> (nº de disciplinas × tipo) ou do
+                  <strong> valor negociado</strong> da matrícula. Só matrículas ativas. Não duplica nem sobrescreve pagas.
+                </p>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label className="text-sm text-foreground">Mês de referência</Label>
+                  <Input type="month" value={mesGerar}
+                    onChange={e => { setMesGerar(e.target.value); setPreview(null); }}
+                    className="mt-1.5 bg-background border-border text-foreground" />
+                </div>
+                <div>
+                  <Label className="text-sm text-foreground">Dia de vencimento</Label>
+                  <Input type="number" min={1} max={28} value={diaVenc}
+                    onChange={e => setDiaVenc(e.target.value)}
+                    className="mt-1.5 bg-background border-border text-foreground" />
+                </div>
+              </div>
+              <Button variant="outline" onClick={carregarPreview} disabled={previewLoading || !mesGerar} className="w-full">
+                {previewLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <RefreshCw className="h-4 w-4 mr-2" />}
+                Pré-visualizar
+              </Button>
             </div>
-            <div>
-              <Label className="text-sm text-foreground">Valor (R$)</Label>
-              <Input type="number" step="0.01" placeholder="Ex: 200.00" value={valorGerar}
-                onChange={e => setValorGerar(e.target.value)}
-                className="mt-1.5 bg-background border-border text-foreground" />
-            </div>
-            <div>
-              <Label className="text-sm text-foreground">Data de vencimento</Label>
-              <Input type="date" value={vencGerar} onChange={e => setVencGerar(e.target.value)}
-                className="mt-1.5 bg-background border-border text-foreground" />
-            </div>
+
+            {preview && (
+              <div className="bg-card border border-border rounded-xl p-5 space-y-4 max-w-3xl">
+                <div className="flex flex-wrap gap-4 text-sm">
+                  <span className="text-green-400 font-semibold">{novas.length} a gerar · R$ {total.toFixed(2)}</span>
+                  <span className="text-muted-foreground">{jaExiste} já existem (ignoradas)</span>
+                  {semPreco > 0 && <span className="text-amber-500">{semPreco} sem preço na tabela</span>}
+                </div>
+
+                {preview.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">Nenhuma matrícula ativa.</p>
+                ) : (
+                  <div className="overflow-x-auto max-h-[50vh]">
+                    <table className="w-full text-sm">
+                      <thead className="text-muted-foreground border-b sticky top-0 bg-card">
+                        <tr className="text-left">
+                          <th className="pb-2 font-medium">Aluno</th>
+                          <th className="pb-2 font-medium text-center">Disc.</th>
+                          <th className="pb-2 font-medium text-right">Até dia {diaVenc}</th>
+                          <th className="pb-2 font-medium text-right">Após</th>
+                          <th className="pb-2 font-medium text-center">Origem</th>
+                          <th className="pb-2 font-medium text-center">Situação</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-border/50">
+                        {preview.map(p => (
+                          <tr key={p.matricula_id} className={p.origem === 'sem_tabela' ? 'opacity-50' : ''}>
+                            <td className="py-2 font-medium">{p.nome}</td>
+                            <td className="py-2 text-center tabular-nums">{p.qtd_disciplinas}</td>
+                            <td className="py-2 text-right tabular-nums">{p.valor !== null ? `R$ ${p.valor.toFixed(2)}` : '—'}</td>
+                            <td className="py-2 text-right tabular-nums text-muted-foreground">{p.valor_com_atraso !== null ? `R$ ${p.valor_com_atraso.toFixed(2)}` : '—'}</td>
+                            <td className="py-2 text-center">
+                              <span className={`text-[11px] px-1.5 py-0.5 rounded ${p.origem === 'override' ? 'bg-amber-500/20 text-amber-400' : p.origem === 'tabela' ? 'bg-blue-500/15 text-blue-400' : 'bg-muted text-muted-foreground'}`}>
+                                {p.origem === 'override' ? 'negociado' : p.origem === 'tabela' ? 'tabela' : 'sem preço'}
+                              </span>
+                            </td>
+                            <td className="py-2 text-center text-xs">
+                              {p.ja_existe ? <span className="text-muted-foreground">já existe</span> : p.origem === 'sem_tabela' ? <span className="text-amber-500">bloqueada</span> : <span className="text-green-400">nova</span>}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+
+                <Button onClick={gerar} disabled={gerando || novas.length === 0}
+                  className="w-full bg-primary text-primary-foreground">
+                  {gerando ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Clock className="h-4 w-4 mr-2" />}
+                  Confirmar geração de {novas.length} mensalidade(s)
+                </Button>
+              </div>
+            )}
           </div>
-          <Button onClick={gerar} disabled={gerando} className="w-full bg-primary text-primary-foreground">
-            {gerando ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Clock className="h-4 w-4 mr-2" />}
-            Gerar mensalidades
-          </Button>
-        </div>
-      )}
+        );
+      })()}
 
       {/* Modal pagamento */}
       {modalMens && (
