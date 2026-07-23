@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { supabase } from '@/lib/supabase';
 import {
   getResumoFinanceiroAluno,
-  registrarPagamentoMensalidade,
+  confirmarPagamento,
   gerarMensalidadesMes,
 } from '@/services/financeiro.service';
 
@@ -53,36 +53,28 @@ describe('financeiro.service', () => {
     });
   });
 
-  describe('registrarPagamentoMensalidade', () => {
-    it('atualiza status para pago com data, comprovante e registrador', async () => {
-      vi.mocked(supabase.from).mockReset();
-      const eqFn    = vi.fn().mockResolvedValue({ error: null });
-      const updateFn = vi.fn().mockReturnValue({ eq: eqFn });
-      vi.mocked(supabase.from).mockReturnValue({ update: updateFn } as any);
+  describe('confirmarPagamento (RPC — 073)', () => {
+    it('chama confirmar_pagamento com valor/forma/comprovante/data e retorna sucesso', async () => {
+      vi.mocked(supabase.rpc).mockResolvedValueOnce({ data: null, error: null } as any);
 
-      const resultado = await registrarPagamentoMensalidade(
-        'mens-1', '2026-05-26', 'https://comprovante.pdf', 'secretaria-1'
-      );
+      const resultado = await confirmarPagamento({
+        mensalidadeId: 'mens-1', valorPago: 125, forma: 'pix',
+        comprovantePath: 'aluno-1/mens-1.pdf', dataPagamento: '2026-05-26',
+      });
 
       expect(resultado.error).toBeNull();
-      const payload = updateFn.mock.calls[0][0];
-      expect(payload.status).toBe('pago');
-      expect(payload.data_pagamento).toBe('2026-05-26');
-      expect(payload.comprovante_url).toBe('https://comprovante.pdf');
-      expect(payload.registrado_por).toBe('secretaria-1');
+      expect(supabase.rpc).toHaveBeenCalledWith('confirmar_pagamento', {
+        p_mensalidade_id: 'mens-1', p_valor_pago: 125, p_forma: 'pix',
+        p_comprovante_url: 'aluno-1/mens-1.pdf', p_data_pagamento: '2026-05-26',
+      });
     });
 
-    it('retorna erro quando update falha', async () => {
-      vi.mocked(supabase.from).mockReset();
-      vi.mocked(supabase.from).mockReturnValue({
-        update: vi.fn().mockReturnValue({
-          eq: vi.fn().mockResolvedValue({ error: { message: 'update failed' } }),
-        }),
-      } as any);
+    it('propaga o erro (ex.: idempotência — já paga) da RPC', async () => {
+      vi.mocked(supabase.rpc).mockResolvedValueOnce({ data: null, error: { message: 'Mensalidade já confirmada como paga' } } as any);
 
-      const resultado = await registrarPagamentoMensalidade('m-1', '2026-05-26', '', 'sec-1');
+      const resultado = await confirmarPagamento({ mensalidadeId: 'm-1', valorPago: 125, forma: 'pix' });
 
-      expect(resultado.error).toBe('update failed');
+      expect(resultado.error).toBe('Mensalidade já confirmada como paga');
     });
   });
 
