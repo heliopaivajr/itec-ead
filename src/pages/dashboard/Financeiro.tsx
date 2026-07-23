@@ -12,15 +12,16 @@ import { useToast } from '@/hooks/use-toast';
 import {
   getInadimplentes,
   getMensalidadesByAluno,
-  registrarPagamentoMensalidade,
+  confirmarPagamento,
+  uploadComprovante,
   gerarMensalidadesMes,
   previewGerarMensalidades,
   setValorMensalidadeOverride,
   type Inadimplente,
   type Mensalidade,
   type PreviewMensalidade,
+  type FormaPagamento,
 } from '@/services/financeiro.service';
-import { supabase } from '@/lib/supabase';
 import type { DashboardContext } from '../Dashboard';
 
 type Aba = 'inadimplentes' | 'mensalidades';
@@ -30,37 +31,62 @@ interface ModalPagamentoProps {
   mensalidade: Mensalidade;
   onClose: () => void;
   onSaved: () => void;
-  registradoPor: string;
 }
 
-function ModalPagamento({ mensalidade, onClose, onSaved, registradoPor }: ModalPagamentoProps) {
+const FORMAS: { v: FormaPagamento; label: string }[] = [
+  { v: 'pix', label: 'PIX' }, { v: 'dinheiro', label: 'Dinheiro' },
+  { v: 'boleto', label: 'Boleto' }, { v: 'transferencia', label: 'Transferência' },
+];
+
+function ModalPagamento({ mensalidade, onClose, onSaved }: ModalPagamentoProps) {
   const { toast }      = useToast();
   const [dataPag, setDataPag] = useState(new Date().toISOString().split('T')[0]);
+  const [forma, setForma]     = useState<FormaPagamento>('pix');
   const [file, setFile]       = useState<File | null>(null);
   const [salvando, setSalvando] = useState(false);
 
-  const salvar = async () => {
-    setSalvando(true);
-    let url = '';
+  // Valor sugerido: se pago após o vencimento, o com-atraso (070); senão o base.
+  const emAtraso = dataPag > mensalidade.data_vencimento;
+  const sugerido = emAtraso ? (mensalidade.valor_com_atraso ?? mensalidade.valor) : mensalidade.valor;
+  const [valorPago, setValorPago] = useState(String(sugerido.toFixed(2)));
 
+  // Re-sugere o valor quando a data cruza o vencimento (só se o usuário não editou manualmente)
+  const [tocado, setTocado] = useState(false);
+  useEffect(() => {
+    if (!tocado) setValorPago(String(sugerido.toFixed(2)));
+  }, [sugerido, tocado]);
+
+  const salvar = async () => {
+    const v = parseFloat(valorPago.replace(',', '.'));
+    if (isNaN(v) || v < 0) {
+      toast({ title: 'Valor pago inválido', variant: 'destructive' });
+      return;
+    }
+    setSalvando(true);
+
+    let comprovantePath: string | null = null;
     if (file) {
-      const path = `comprovantes/${mensalidade.aluno_id}_${mensalidade.mes_referencia}_${file.name}`;
-      const { error: upErr } = await supabase.storage.from('comprovantes-pagamento').upload(path, file, { upsert: true });
-      if (upErr) {
-        toast({ title: 'Erro no upload', description: upErr.message, variant: 'destructive' });
+      const up = await uploadComprovante(mensalidade.aluno_id, mensalidade.id, file);
+      if (up.error) {
+        toast({ title: 'Erro no upload do comprovante', description: up.error, variant: 'destructive' });
         setSalvando(false);
         return;
       }
-      const { data } = supabase.storage.from('comprovantes-pagamento').getPublicUrl(path);
-      url = data.publicUrl;
+      comprovantePath = up.path;
     }
 
-    const { error } = await registrarPagamentoMensalidade(mensalidade.id, dataPag, url, registradoPor);
+    const { error } = await confirmarPagamento({
+      mensalidadeId: mensalidade.id,
+      valorPago: v,
+      forma,
+      comprovantePath,
+      dataPagamento: dataPag,
+    });
     setSalvando(false);
     if (error) {
-      toast({ title: 'Erro', description: error, variant: 'destructive' });
+      toast({ title: 'Erro ao confirmar', description: error, variant: 'destructive' });
     } else {
-      toast({ title: 'Pagamento registrado!' });
+      toast({ title: 'Pagamento confirmado!', description: `R$ ${v.toFixed(2)} · ${forma.toUpperCase()}` });
       onSaved();
     }
   };
@@ -71,22 +97,48 @@ function ModalPagamento({ mensalidade, onClose, onSaved, registradoPor }: ModalP
     <div className="fixed inset-0 bg-background/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
       <div className="bg-card border border-border rounded-2xl p-6 w-full max-w-md space-y-4 shadow-2xl">
         <div className="flex items-center justify-between">
-          <h2 className="text-lg font-merriweather font-bold text-foreground">Registrar Pagamento</h2>
+          <h2 className="text-lg font-merriweather font-bold text-foreground">Confirmar Pagamento</h2>
           <button onClick={onClose} className="text-muted-foreground hover:text-foreground"><X className="h-5 w-5" /></button>
         </div>
 
-        <div className="text-sm space-y-2 bg-muted/20 rounded-lg p-3">
+        <div className="text-sm space-y-1.5 bg-muted/20 rounded-lg p-3">
           <p><span className="text-muted-foreground">Referência:</span> <span className="font-medium text-foreground capitalize">{mesLabel}</span></p>
-          <p><span className="text-muted-foreground">Valor:</span> <span className="font-medium text-foreground">R$ {mensalidade.valor.toFixed(2)}</span></p>
+          <p><span className="text-muted-foreground">Cobrado:</span> <span className="font-medium text-foreground">R$ {mensalidade.valor.toFixed(2)}</span>
+            {mensalidade.valor_com_atraso != null && <span className="text-muted-foreground"> · com atraso R$ {mensalidade.valor_com_atraso.toFixed(2)}</span>}</p>
+          <p><span className="text-muted-foreground">Vencimento:</span> <span className="text-foreground">{new Date(mensalidade.data_vencimento + 'T12:00').toLocaleDateString('pt-BR')}</span></p>
         </div>
 
         <div className="space-y-3">
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Label className="text-sm text-foreground">Data do pagamento</Label>
+              <div className="flex items-center gap-1.5 mt-1.5">
+                <Calendar className="h-4 w-4 text-muted-foreground shrink-0" />
+                <Input type="date" value={dataPag} onChange={e => setDataPag(e.target.value)}
+                  className="bg-background border-border text-foreground" />
+              </div>
+            </div>
+            <div>
+              <Label className="text-sm text-foreground">Valor pago (R$)</Label>
+              <Input inputMode="decimal" value={valorPago}
+                onChange={e => { setValorPago(e.target.value); setTocado(true); }}
+                className="mt-1.5 bg-background border-border text-foreground text-right tabular-nums" />
+            </div>
+          </div>
+
+          {emAtraso && (
+            <p className="text-[11px] text-amber-500">Pago após o vencimento — sugerido o valor com atraso. Ajuste se houve acordo.</p>
+          )}
+
           <div>
-            <Label className="text-sm text-foreground">Data do pagamento</Label>
-            <div className="flex items-center gap-2 mt-1.5">
-              <Calendar className="h-4 w-4 text-muted-foreground" />
-              <Input type="date" value={dataPag} onChange={e => setDataPag(e.target.value)}
-                className="bg-background border-border text-foreground" />
+            <Label className="text-sm text-foreground">Forma</Label>
+            <div className="grid grid-cols-4 gap-1.5 mt-1.5">
+              {FORMAS.map(f => (
+                <button key={f.v} type="button" onClick={() => setForma(f.v)}
+                  className={`text-xs py-1.5 rounded-md border transition-colors ${forma === f.v ? 'border-primary bg-primary/10 text-primary' : 'border-border text-muted-foreground hover:border-primary/40'}`}>
+                  {f.label}
+                </button>
+              ))}
             </div>
           </div>
 
@@ -94,7 +146,7 @@ function ModalPagamento({ mensalidade, onClose, onSaved, registradoPor }: ModalP
             <Label className="text-sm text-foreground">Comprovante (opcional)</Label>
             <label className="flex items-center gap-2 mt-1.5 cursor-pointer border border-dashed border-border rounded-lg px-3 py-2 hover:border-primary/40 transition-colors">
               <Upload className="h-4 w-4 text-muted-foreground" />
-              <span className="text-sm text-muted-foreground">{file ? file.name : 'Selecionar arquivo...'}</span>
+              <span className="text-sm text-muted-foreground truncate">{file ? file.name : 'Selecionar arquivo...'}</span>
               <input type="file" className="hidden" accept="image/*,.pdf" onChange={e => setFile(e.target.files?.[0] ?? null)} />
             </label>
           </div>
@@ -547,7 +599,6 @@ export default function Financeiro() {
       {modalMens && (
         <ModalPagamento
           mensalidade={modalMens}
-          registradoPor={profile.id}
           onClose={() => setModalMens(null)}
           onSaved={() => { setModalMens(null); carregarInadimplentes(); }}
         />

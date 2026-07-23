@@ -204,23 +204,54 @@ export async function getMensalidadesByAluno(alunoId: string): Promise<Mensalida
   return (data as Mensalidade[]) ?? [];
 }
 
-export async function registrarPagamentoMensalidade(
-  id: string,
-  dataPagamento: string,
-  comprovanteUrl: string,
-  registradoPor: string
-): Promise<ServiceResult> {
-  const { error } = await supabase
-    .from('mensalidades')
-    .update({
-      status:          'pago',
-      data_pagamento:   dataPagamento,
-      comprovante_url:  comprovanteUrl,
-      registrado_por:   registradoPor,
-    })
-    .eq('id', id);
+// ─── 2f: confirmação de pagamento (fila compartilhada secretaria+financeiro) ──
+export type FormaPagamento = 'pix' | 'dinheiro' | 'boleto' | 'transferencia';
 
-  if (error) return { error: error.message };
+// Sobe o comprovante no bucket PRIVADO (073) e devolve o path (não URL pública).
+// Path: {aluno_id}/{mensalidade_id}.<ext> — casa com o gate foldername[1]=aluno_id.
+export async function uploadComprovante(
+  alunoId: string, mensalidadeId: string, file: File
+): Promise<{ path: string | null; error: string | null }> {
+  const ext  = file.name.split('.').pop() ?? 'bin';
+  const path = `${alunoId}/${mensalidadeId}.${ext}`;
+  const { error } = await supabase.storage
+    .from('comprovantes-pagamento')
+    .upload(path, file, { upsert: true });
+  if (error) {
+    console.error('[uploadComprovante]', error.message);
+    return { path: null, error: error.message };
+  }
+  return { path, error: null };
+}
+
+// URL assinada temporária para VER o comprovante (bucket privado).
+export async function getComprovanteUrl(path: string, segundos = 3600): Promise<string | null> {
+  const { data, error } = await supabase.storage
+    .from('comprovantes-pagamento')
+    .createSignedUrl(path, segundos);
+  if (error) { console.error('[getComprovanteUrl]', error.message); return null; }
+  return data.signedUrl;
+}
+
+// Confirma o pagamento (RPC 073): idempotente, gate is_staff OR is_financeiro.
+export async function confirmarPagamento(params: {
+  mensalidadeId: string;
+  valorPago: number;
+  forma: FormaPagamento;
+  comprovantePath?: string | null;   // path no bucket privado (não URL pública)
+  dataPagamento?: string;            // YYYY-MM-DD (default hoje no banco)
+}): Promise<ServiceResult> {
+  const { error } = await supabase.rpc('confirmar_pagamento', {
+    p_mensalidade_id:  params.mensalidadeId,
+    p_valor_pago:      params.valorPago,
+    p_forma:           params.forma,
+    p_comprovante_url: params.comprovantePath ?? null,
+    ...(params.dataPagamento ? { p_data_pagamento: params.dataPagamento } : {}),
+  });
+  if (error) {
+    console.error('[confirmarPagamento]', error.message);
+    return { error: error.message };
+  }
   return { error: null };
 }
 
