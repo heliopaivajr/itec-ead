@@ -15,6 +15,7 @@ import {
   getFichaAlunoInfo,
   getMensalidadesVw,
   atualizarMensalidade,
+  setDiaVencimentoPadrao,
   gerarMensalidadesMes,
   getComprovanteUrl,
   type FichaAlunoInfo,
@@ -71,6 +72,10 @@ export default function FichaFinanceiraAluno() {
   const [editVenc, setEditVenc]   = useState('');
   const [savingLinha, setSavingLinha] = useState(false);
 
+  // dia de vencimento padrão do aluno (Zona 1 — persiste em matriculas.dia_vencimento_padrao)
+  const [diaPadrao, setDiaPadrao]   = useState('10');
+  const [savingDia, setSavingDia]   = useState(false);
+
   // gerar próximo mês para ESTE aluno
   const [gerarMes, setGerarMes]   = useState('');   // input month YYYY-MM
   const [gerarDia, setGerarDia]   = useState('10');
@@ -85,8 +90,10 @@ export default function FichaFinanceiraAluno() {
     ]);
     setInfo(i);
     setMensalidades(ms);
-    // pré-preenche o dia de vencimento padrão derivado
-    if (i?.dia_vencimento_padrao) setGerarDia(String(i.dia_vencimento_padrao));
+    // dia de vencimento padrão persistido (074) → edição na Zona 1 + default da geração
+    const dia = String(i?.dia_vencimento_padrao ?? 10);
+    setDiaPadrao(dia);
+    setGerarDia(dia);
     setLoading(false);
   }, [alunoId]);
 
@@ -96,6 +103,22 @@ export default function FichaFinanceiraAluno() {
     if (!alunoId) return;
     setMensalidades(await getMensalidadesVw(alunoId));
   }, [alunoId]);
+
+  const salvarDiaPadrao = async () => {
+    if (!info?.matricula_id) { toast({ title: 'Aluno sem matrícula ativa', variant: 'destructive' }); return; }
+    const dia = parseInt(diaPadrao, 10);
+    if (isNaN(dia) || dia < 1 || dia > 28) {
+      toast({ title: 'Dia inválido', description: 'Use 1 a 28 (segurança de data em fevereiro).', variant: 'destructive' });
+      return;
+    }
+    setSavingDia(true);
+    const { error } = await setDiaVencimentoPadrao(info.matricula_id, dia);
+    setSavingDia(false);
+    if (error) { toast({ title: 'Erro ao salvar o dia', description: error, variant: 'destructive' }); return; }
+    toast({ title: 'Dia de vencimento atualizado', description: `Vence dia ${dia} — vale para as próximas gerações.` });
+    setInfo(prev => prev ? { ...prev, dia_vencimento_padrao: dia } : prev);
+    setGerarDia(String(dia));
+  };
 
   // ─── Zona 3: resumo derivado ────────────────────────────────────────────────
   const resumo = useMemo(() => {
@@ -282,7 +305,27 @@ export default function FichaFinanceiraAluno() {
           <Coins className="h-4 w-4 text-[#BF9000]" /> Configuração de cobrança
         </h2>
         {info.matricula_id ? (
-          <ValoresMatriculaPanel matriculaId={info.matricula_id} editavel onSaved={recarregarMensalidades} />
+          <>
+            <ValoresMatriculaPanel matriculaId={info.matricula_id} editavel onSaved={recarregarMensalidades} />
+
+            {/* Dia de vencimento padrão do aluno (persiste — 074) */}
+            <div className="border-t border-border pt-4 flex flex-wrap items-end gap-3">
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block flex items-center gap-1.5">
+                  <CalendarClock className="h-3.5 w-3.5 text-[#BF9000]" /> Dia de vencimento padrão
+                </label>
+                <Input inputMode="numeric" value={diaPadrao} onChange={e => setDiaPadrao(e.target.value)}
+                  className="bg-background w-24 text-center" placeholder="1–28" />
+              </div>
+              <Button variant="outline" onClick={salvarDiaPadrao} disabled={savingDia} className="border-border">
+                {savingDia ? <Loader2 className="h-4 w-4 animate-spin mr-1.5" /> : <Save className="h-4 w-4 mr-1.5" />}
+                Salvar dia
+              </Button>
+              <p className="text-[11px] text-muted-foreground flex-1 min-w-[12rem]">
+                Vale para as PRÓXIMAS gerações deste aluno (1–28; cap em 28 por segurança de fevereiro).
+              </p>
+            </div>
+          </>
         ) : (
           <p className="text-sm text-muted-foreground">Aluno sem matrícula ativa — não há o que configurar.</p>
         )}

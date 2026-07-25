@@ -248,6 +248,24 @@ export async function atualizarMensalidade(
   return { error: null };
 }
 
+// Dia de vencimento padrão do aluno — persiste em matriculas.dia_vencimento_padrao (074).
+// Via RPC SECURITY DEFINER: o financeiro edita 1 campo sem ganhar UPDATE amplo em
+// matriculas (fronteira 067). Gate is_staff() OR is_financeiro(); valida 1..28.
+export async function setDiaVencimentoPadrao(
+  matriculaId: string,
+  dia: number,
+): Promise<ServiceResult> {
+  const { error } = await supabase.rpc('set_dia_vencimento_padrao', {
+    p_matricula_id: matriculaId,
+    p_dia: dia,
+  });
+  if (error) {
+    console.error('[setDiaVencimentoPadrao]', error.message);
+    return { error: error.message };
+  }
+  return { error: null };
+}
+
 // Cabeçalho PII-FREE da ficha: nome, contato, curso, turma, matrícula ativa.
 // NUNCA expõe CPF/RG/endereço. Queries SEPARADas (LICAO-026 — sem join aninhado sob RLS).
 export interface FichaAlunoInfo {
@@ -261,8 +279,7 @@ export interface FichaAlunoInfo {
   matricula_status: string | null;
   turma_nome: string | null;
   curso_nome: string | null;
-  // Dia de vencimento "padrão" do aluno: NÃO há coluna dedicada — derivado do dia
-  // das mensalidades já geradas (a mais recente). Ver relatório 2g.
+  // Dia de vencimento padrão do aluno — coluna persistente matriculas.dia_vencimento_padrao (074).
   dia_vencimento_padrao: number | null;
 }
 
@@ -281,13 +298,13 @@ export async function getFichaAlunoInfo(alunoId: string): Promise<FichaAlunoInfo
   // 2) matrículas do aluno (escolhe a ativa; senão a mais recente)
   const { data: mats, error: errMats } = await supabase
     .from('matriculas')
-    .select('id, turma_id, status, created_at')
+    .select('id, turma_id, status, created_at, dia_vencimento_padrao')
     .eq('aluno_id', alunoId)
     .order('created_at', { ascending: false })
     .limit(10);
   if (errMats) console.error('[getFichaAlunoInfo] matriculas:', errMats.message);
 
-  type MatRow = { id: string; turma_id: string | null; status: string; created_at: string };
+  type MatRow = { id: string; turma_id: string | null; status: string; created_at: string; dia_vencimento_padrao: number | null };
   const matriculas = (mats ?? []) as MatRow[];
   const matricula = matriculas.find(m => m.status === 'ativa') ?? matriculas[0] ?? null;
 
@@ -312,16 +329,8 @@ export async function getFichaAlunoInfo(alunoId: string): Promise<FichaAlunoInfo
     }
   }
 
-  // 4) dia de vencimento padrão — derivado da mensalidade mais recente (sem coluna dedicada)
-  let diaVenc: number | null = null;
-  const { data: ultima } = await supabase
-    .from('mensalidades')
-    .select('data_vencimento')
-    .eq('aluno_id', alunoId)
-    .order('mes_referencia', { ascending: false })
-    .limit(1);
-  const dv = (ultima as { data_vencimento: string }[] | null)?.[0]?.data_vencimento;
-  if (dv) diaVenc = Number(dv.slice(8, 10)) || null;
+  // 4) dia de vencimento padrão — coluna persistente da matrícula (074)
+  const diaVenc = matricula?.dia_vencimento_padrao ?? null;
 
   const p = prof as { full_name: string | null; email: string | null; telefone: string | null; codigo_itec: string | null; avatar_url: string | null };
   return {
