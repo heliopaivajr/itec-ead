@@ -107,8 +107,8 @@ export default function FichaFinanceiraAluno() {
   const salvarDiaPadrao = async () => {
     if (!info?.matricula_id) { toast({ title: 'Aluno sem matrícula ativa', variant: 'destructive' }); return; }
     const dia = parseInt(diaPadrao, 10);
-    if (isNaN(dia) || dia < 1 || dia > 28) {
-      toast({ title: 'Dia inválido', description: 'Use 1 a 28 (segurança de data em fevereiro).', variant: 'destructive' });
+    if (isNaN(dia) || dia < 1 || dia > 30) {
+      toast({ title: 'Dia inválido', description: 'Use 1 a 30 (meses curtos ajustam para o último dia).', variant: 'destructive' });
       return;
     }
     setSavingDia(true);
@@ -315,14 +315,14 @@ export default function FichaFinanceiraAluno() {
                   <CalendarClock className="h-3.5 w-3.5 text-[#BF9000]" /> Dia de vencimento padrão
                 </label>
                 <Input inputMode="numeric" value={diaPadrao} onChange={e => setDiaPadrao(e.target.value)}
-                  className="bg-background w-24 text-center" placeholder="1–28" />
+                  className="bg-background w-24 text-center" placeholder="1–30" />
               </div>
               <Button variant="outline" onClick={salvarDiaPadrao} disabled={savingDia} className="border-border">
                 {savingDia ? <Loader2 className="h-4 w-4 animate-spin mr-1.5" /> : <Save className="h-4 w-4 mr-1.5" />}
                 Salvar dia
               </Button>
               <p className="text-[11px] text-muted-foreground flex-1 min-w-[12rem]">
-                Vale para as PRÓXIMAS gerações deste aluno (1–28; cap em 28 por segurança de fevereiro).
+                Vale para as PRÓXIMAS gerações deste aluno (1–30; meses curtos ajustam para o último dia).
               </p>
             </div>
           </>
