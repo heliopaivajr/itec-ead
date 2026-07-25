@@ -19,12 +19,13 @@ import {
 interface Props {
   matriculaId: string;
   editavel?: boolean;   // default true; passe false para exibir somente-leitura
+  onSaved?: () => void; // 2g — a ficha atualiza o resumo após salvar os valores
 }
 
 const brl = (v: number | null) =>
   v === null ? '—' : v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
-export function ValoresMatriculaPanel({ matriculaId, editavel = true }: Props) {
+export function ValoresMatriculaPanel({ matriculaId, editavel = true, onSaved }: Props) {
   const { toast } = useToast();
   const [dados, setDados]       = useState<ValoresEfetivos | null>(null);
   const [loading, setLoading]   = useState(true);
@@ -76,6 +77,7 @@ export function ValoresMatriculaPanel({ matriculaId, editavel = true }: Props) {
     } else {
       toast({ title: 'Valores atualizados' });
       carregar();
+      onSaved?.();
     }
   };
 

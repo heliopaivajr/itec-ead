@@ -204,6 +204,141 @@ export async function getMensalidadesByAluno(alunoId: string): Promise<Mensalida
   return (data as Mensalidade[]) ?? [];
 }
 
+// ─── 2g: Ficha Financeira do Aluno ───────────────────────────────────────────
+
+// Linha do tempo com status_efetivo (atrasado derivado na leitura — 073).
+// Lê vw_mensalidades (security_invoker → RLS 037 aplica: financeiro/staff veem todas).
+export interface MensalidadeVw extends Mensalidade {
+  status_efetivo: 'pago' | 'atrasado' | 'pendente' | 'isento' | 'cancelado';
+  valor_pago?: number | null;
+  forma_pagamento?: FormaPagamento | null;
+}
+
+export async function getMensalidadesVw(alunoId: string): Promise<MensalidadeVw[]> {
+  const { data, error } = await supabase
+    .from('vw_mensalidades')
+    .select('*')
+    .eq('aluno_id', alunoId)
+    .order('mes_referencia', { ascending: true })
+    .limit(60);
+  if (error) {
+    console.error('[getMensalidadesVw]', error.message);
+    return [];
+  }
+  return (data as MensalidadeVw[]) ?? [];
+}
+
+// Edição inline de UMA mensalidade (valor cobrado e/ou vencimento daquela linha).
+// Persistência na FONTE ÚNICA (mensalidades — LICAO-042). RLS 037: staff/financeiro
+// têm UPDATE. Não confundir com override de matrícula (072, que afeta gerações futuras).
+export async function atualizarMensalidade(
+  id: string,
+  patch: { valor?: number; dataVencimento?: string },
+): Promise<ServiceResult> {
+  const upd: Record<string, unknown> = {};
+  if (patch.valor != null)          upd.valor = patch.valor;
+  if (patch.dataVencimento)         upd.data_vencimento = patch.dataVencimento;
+  if (Object.keys(upd).length === 0) return { error: null };
+
+  const { error } = await supabase.from('mensalidades').update(upd).eq('id', id);
+  if (error) {
+    console.error('[atualizarMensalidade]', error.message);
+    return { error: error.message };
+  }
+  return { error: null };
+}
+
+// Cabeçalho PII-FREE da ficha: nome, contato, curso, turma, matrícula ativa.
+// NUNCA expõe CPF/RG/endereço. Queries SEPARADas (LICAO-026 — sem join aninhado sob RLS).
+export interface FichaAlunoInfo {
+  aluno_id: string;
+  nome: string;
+  email: string | null;
+  telefone: string | null;
+  codigo_itec: string | null;
+  avatar_url: string | null;
+  matricula_id: string | null;
+  matricula_status: string | null;
+  turma_nome: string | null;
+  curso_nome: string | null;
+  // Dia de vencimento "padrão" do aluno: NÃO há coluna dedicada — derivado do dia
+  // das mensalidades já geradas (a mais recente). Ver relatório 2g.
+  dia_vencimento_padrao: number | null;
+}
+
+export async function getFichaAlunoInfo(alunoId: string): Promise<FichaAlunoInfo | null> {
+  // 1) perfil (PII-free: só nome/contato/código)
+  const { data: prof, error: errProf } = await supabase
+    .from('profiles')
+    .select('id, full_name, email, telefone, codigo_itec, avatar_url')
+    .eq('id', alunoId)
+    .single();
+  if (errProf || !prof) {
+    if (errProf) console.error('[getFichaAlunoInfo] profiles:', errProf.message);
+    return null;
+  }
+
+  // 2) matrículas do aluno (escolhe a ativa; senão a mais recente)
+  const { data: mats, error: errMats } = await supabase
+    .from('matriculas')
+    .select('id, turma_id, status, created_at')
+    .eq('aluno_id', alunoId)
+    .order('created_at', { ascending: false })
+    .limit(10);
+  if (errMats) console.error('[getFichaAlunoInfo] matriculas:', errMats.message);
+
+  type MatRow = { id: string; turma_id: string | null; status: string; created_at: string };
+  const matriculas = (mats ?? []) as MatRow[];
+  const matricula = matriculas.find(m => m.status === 'ativa') ?? matriculas[0] ?? null;
+
+  // 3) turma → curso (queries separadas)
+  let turmaNome: string | null = null;
+  let cursoNome: string | null = null;
+  if (matricula?.turma_id) {
+    const { data: turma } = await supabase
+      .from('turmas')
+      .select('nome, codigo, curso_id')
+      .eq('id', matricula.turma_id)
+      .single();
+    if (turma) {
+      turmaNome = (turma as { nome: string; codigo: string }).nome
+        ?? (turma as { codigo: string }).codigo ?? null;
+      const cursoId = (turma as { curso_id: string | null }).curso_id;
+      if (cursoId) {
+        const { data: curso } = await supabase
+          .from('cursos').select('nome').eq('id', cursoId).single();
+        cursoNome = (curso as { nome: string } | null)?.nome ?? null;
+      }
+    }
+  }
+
+  // 4) dia de vencimento padrão — derivado da mensalidade mais recente (sem coluna dedicada)
+  let diaVenc: number | null = null;
+  const { data: ultima } = await supabase
+    .from('mensalidades')
+    .select('data_vencimento')
+    .eq('aluno_id', alunoId)
+    .order('mes_referencia', { ascending: false })
+    .limit(1);
+  const dv = (ultima as { data_vencimento: string }[] | null)?.[0]?.data_vencimento;
+  if (dv) diaVenc = Number(dv.slice(8, 10)) || null;
+
+  const p = prof as { full_name: string | null; email: string | null; telefone: string | null; codigo_itec: string | null; avatar_url: string | null };
+  return {
+    aluno_id:            alunoId,
+    nome:                p.full_name ?? '—',
+    email:               p.email ?? null,
+    telefone:            p.telefone ?? null,
+    codigo_itec:         p.codigo_itec ?? null,
+    avatar_url:          p.avatar_url ?? null,
+    matricula_id:        matricula?.id ?? null,
+    matricula_status:    matricula?.status ?? null,
+    turma_nome:          turmaNome,
+    curso_nome:          cursoNome,
+    dia_vencimento_padrao: diaVenc,
+  };
+}
+
 // ─── 2f: confirmação de pagamento (fila compartilhada secretaria+financeiro) ──
 export type FormaPagamento = 'pix' | 'dinheiro' | 'boleto' | 'transferencia';
 

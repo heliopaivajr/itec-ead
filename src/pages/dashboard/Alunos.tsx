@@ -370,6 +370,14 @@ export default function Alunos() {
                                 >
                                   {aluno.full_name}
                                 </button>
+                              ) : profile.role === 'financeiro' ? (
+                                // financeiro: abre a Ficha Financeira (PII-free), não a Ficha 360
+                                <button
+                                  onClick={() => navigate(`/dashboard/financeiro/aluno/${aluno.id}`)}
+                                  className="font-medium text-left hover:text-primary hover:underline transition-colors"
+                                >
+                                  {aluno.full_name}
+                                </button>
                               ) : (
                                 <span className="font-medium">{aluno.full_name}</span>
                               )}
