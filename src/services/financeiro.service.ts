@@ -165,7 +165,7 @@ export async function getKpisFinanceiro(): Promise<KpisFinanceiro> {
 
 // ─── Etapa 2e: Visão Geral (lista de todos os alunos ativos + situação) ───────
 // PII-free: nome/turma/valores — sem CPF/RG. Acesso staff+financeiro (RLS 037/067).
-export type SituacaoFinanceira = 'em_dia' | 'pendente' | 'atrasado';
+export type SituacaoFinanceira = 'em_dia' | 'pendente' | 'atrasado' | 'suspenso';
 
 export interface VisaoGeralAluno {
   aluno_id: string;
@@ -177,45 +177,59 @@ export interface VisaoGeralAluno {
   situacao: SituacaoFinanceira;
   total_devido: number;               // soma de mensalidades em aberto (pendente+atrasado)
   maior_atraso_dias: number;          // 0 se não há atraso
+  matricula_status: string;           // 'ativa' | 'suspensa' — E5.1: suspenso VISÍVEL na lista
+  telefone: string | null;            // p/ cobrança WhatsApp (E5.1) — não é PII sensível
+  email: string | null;               // p/ cobrança e-mail (E5.1)
 }
 
-// Régua e valores no BANCO (LICAO-042). Queries SEPARADAS + merge em JS (LICAO-026):
-//  1) preview_gerar_mensalidades(ano,mes) → 1 linha/matrícula ativa com nome +
-//     qtd_disciplinas + valor efetivo (reusa resolver_valor_efetivo via LATERAL — sem N+1).
-//  2) matriculas ativas → turma_id.  3) turmas → nome.
-//  4) vw_mensalidades (status_efetivo já deriva 'atrasado' na leitura) → situação/devido/atraso.
+// Régua e valores no BANCO (LICAO-042). Queries SEPARADAS + merge em JS (LICAO-026).
+// E5.1 — a base é matriculas ATIVAS **+ SUSPENSAS** (o suspenso por inadimplência TEM
+// que aparecer; antes a base era só o preview = ativas → o suspenso sumia da lista
+// mesmo o KPI contando-o). Situação real: suspenso > atrasado > pendente > em dia.
 export async function getVisaoGeralFinanceira(): Promise<VisaoGeralAluno[]> {
   const hoje = new Date();
   const ano  = hoje.getFullYear();
   const mes  = hoje.getMonth() + 1;
 
-  // 1) base: nome + qtd + valor efetivo de cada matrícula ativa (1 RPC)
-  const { data: previewData, error: errPrev } = await supabase.rpc('preview_gerar_mensalidades', { p_ano: ano, p_mes: mes });
-  if (errPrev) { console.error('[getVisaoGeralFinanceira] preview', errPrev.message); return []; }
-  const base = (previewData as PreviewMensalidade[]) ?? [];
-  if (base.length === 0) return [];
-
-  // 2) matrículas ativas → turma_id
+  // 1) base: matrículas ativas + suspensas (1 por aluno — prefere a ativa)
   const { data: mats, error: errMats } = await supabase
-    .from('matriculas').select('id, turma_id').eq('status', 'ativa').limit(500);
-  if (errMats) console.error('[getVisaoGeralFinanceira] matriculas', errMats.message);
-  const turmaByMat = new Map<string, string | null>();
-  const turmaIds = new Set<string>();
-  for (const m of (mats ?? []) as { id: string; turma_id: string | null }[]) {
-    turmaByMat.set(m.id, m.turma_id);
-    if (m.turma_id) turmaIds.add(m.turma_id);
+    .from('matriculas')
+    .select('id, aluno_id, turma_id, status')
+    .in('status', ['ativa', 'suspensa'])
+    .limit(600);
+  if (errMats) { console.error('[getVisaoGeralFinanceira] matriculas', errMats.message); return []; }
+  type MatRow = { id: string; aluno_id: string; turma_id: string | null; status: string };
+  const porAluno = new Map<string, MatRow>();
+  for (const m of (mats ?? []) as MatRow[]) {
+    const cur = porAluno.get(m.aluno_id);
+    if (!cur || (cur.status !== 'ativa' && m.status === 'ativa')) porAluno.set(m.aluno_id, m);
+  }
+  const linhas = [...porAluno.values()];
+  if (linhas.length === 0) return [];
+
+  const alunoIds = linhas.map(l => l.aluno_id);
+  const turmaIds = [...new Set(linhas.map(l => l.turma_id).filter((t): t is string => !!t))];
+
+  // 2) perfis: nome + contato (telefone/e-mail p/ cobrança) — query separada (LICAO-026)
+  const perfil = new Map<string, { nome: string; telefone: string | null; email: string | null }>();
+  const { data: profs } = await supabase.from('profiles').select('id, full_name, telefone, email').in('id', alunoIds);
+  for (const p of (profs ?? []) as { id: string; full_name: string | null; telefone: string | null; email: string | null }[]) {
+    perfil.set(p.id, { nome: p.full_name ?? '—', telefone: p.telefone ?? null, email: p.email ?? null });
   }
 
   // 3) turmas → nome
   const turmaNome = new Map<string, string>();
-  if (turmaIds.size > 0) {
-    const { data: turmas } = await supabase.from('turmas').select('id, nome, codigo').in('id', [...turmaIds]);
-    for (const t of (turmas ?? []) as { id: string; nome: string; codigo: string }[]) {
-      turmaNome.set(t.id, t.nome ?? t.codigo);
-    }
+  if (turmaIds.length > 0) {
+    const { data: turmas } = await supabase.from('turmas').select('id, nome, codigo').in('id', turmaIds);
+    for (const t of (turmas ?? []) as { id: string; nome: string; codigo: string }[]) turmaNome.set(t.id, t.nome ?? t.codigo);
   }
 
-  // 4) situação por aluno via vw_mensalidades (staff/financeiro veem todas — RLS 037)
+  // 4) valor efetivo + qtd (preview — só ativas) → map por matricula_id
+  const valorByMat = new Map<string, { qtd: number; valor: number | null }>();
+  const { data: prev } = await supabase.rpc('preview_gerar_mensalidades', { p_ano: ano, p_mes: mes });
+  for (const p of (prev as PreviewMensalidade[] ?? [])) valorByMat.set(p.matricula_id, { qtd: p.qtd_disciplinas, valor: p.valor });
+
+  // 5) situação por aluno via vw_mensalidades (staff/financeiro veem todas — RLS 037)
   const { data: vw, error: errVw } = await supabase
     .from('vw_mensalidades')
     .select('aluno_id, valor, data_vencimento, status_efetivo')
@@ -239,26 +253,33 @@ export async function getVisaoGeralFinanceira(): Promise<VisaoGeralAluno[]> {
     agg.set(r.aluno_id, a);
   }
 
-  const rank = (s: SituacaoFinanceira) => (s === 'atrasado' ? 0 : s === 'pendente' ? 1 : 2);
+  const rank = (s: SituacaoFinanceira) => (s === 'suspenso' ? 0 : s === 'atrasado' ? 1 : s === 'pendente' ? 2 : 3);
 
-  return base.map((b): VisaoGeralAluno => {
-    const a = agg.get(b.aluno_id);
-    const situacao: SituacaoFinanceira = a && a.maiorAtraso > 0 ? 'atrasado' : a && a.temPendente ? 'pendente' : 'em_dia';
-    const turmaId = turmaByMat.get(b.matricula_id) ?? null;
+  return linhas.map((l): VisaoGeralAluno => {
+    const a = agg.get(l.aluno_id);
+    const suspenso = l.status === 'suspensa';
+    const situacao: SituacaoFinanceira = suspenso
+      ? 'suspenso'
+      : a && a.maiorAtraso > 0 ? 'atrasado' : a && a.temPendente ? 'pendente' : 'em_dia';
+    const v = valorByMat.get(l.id);
+    const info = perfil.get(l.aluno_id);
     return {
-      aluno_id:          b.aluno_id,
-      matricula_id:      b.matricula_id,
-      nome:              b.nome,
-      turma_nome:        turmaId ? (turmaNome.get(turmaId) ?? null) : null,
-      qtd_disciplinas:   b.qtd_disciplinas,
-      valor_mensalidade: b.valor,
+      aluno_id:          l.aluno_id,
+      matricula_id:      l.id,
+      nome:              info?.nome ?? '—',
+      turma_nome:        l.turma_id ? (turmaNome.get(l.turma_id) ?? null) : null,
+      qtd_disciplinas:   v?.qtd ?? 0,
+      valor_mensalidade: v?.valor ?? null,
       situacao,
       total_devido:      a ? Math.round(a.devido * 100) / 100 : 0,
       maior_atraso_dias: a?.maiorAtraso ?? 0,
+      matricula_status:  l.status,
+      telefone:          info?.telefone ?? null,
+      email:             info?.email ?? null,
     };
   }).sort((x, y) => {
     if (rank(x.situacao) !== rank(y.situacao)) return rank(x.situacao) - rank(y.situacao);
-    if (x.situacao === 'atrasado') return y.maior_atraso_dias - x.maior_atraso_dias;
+    if (x.situacao === 'atrasado' || x.situacao === 'suspenso') return y.maior_atraso_dias - x.maior_atraso_dias;
     return x.nome.localeCompare(y.nome);
   });
 }

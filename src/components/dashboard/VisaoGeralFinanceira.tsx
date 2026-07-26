@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { PDFDownloadLink } from '@react-pdf/renderer';
 import {
   Search, Loader2, RefreshCw, FileText, FileSpreadsheet, ArrowRight,
-  DollarSign, TrendingUp, AlertTriangle, CheckCircle2, Lock, X,
+  DollarSign, TrendingUp, AlertTriangle, CheckCircle2, Lock, Unlock, X, MessageCircle, Mail,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -13,12 +13,17 @@ import { useToast } from '@/hooks/use-toast';
 import {
   getVisaoGeralFinanceira,
   getKpisFinanceiro,
+  getConfigFinanceiro,
   type VisaoGeralAluno,
   type KpisFinanceiro,
+  type ConfigFinanceiro,
 } from '@/services/financeiro.service';
-import { suspenderMatriculaInadimplencia } from '@/services/matriculas.service';
+import { suspenderMatriculaInadimplencia, reativarMatricula } from '@/services/matriculas.service';
 import { VisaoGeralFinanceiraPDF } from '@/components/dashboard/VisaoGeralFinanceiraPDF';
 import { exportToExcel } from '@/components/dashboard/relatorios/exporters/excelExporter';
+import {
+  tipoCobrancaSugerido, linkWhatsAppCobranca, linkEmailCobranca,
+} from '@/lib/cobranca';
 
 // Financeiro 2e — Visão Geral: lista de TODOS os alunos ativos com situação
 // financeiro. Aba padrão do menu Financeiro (diretriz 8.6 prático). PII-free.
@@ -27,12 +32,13 @@ import { exportToExcel } from '@/components/dashboard/relatorios/exporters/excel
 const brl = (v: number | null | undefined) =>
   (v ?? 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
-type FiltroSituacao = 'todos' | 'em_dia' | 'pendente' | 'atrasado';
+type FiltroSituacao = 'todos' | 'em_dia' | 'pendente' | 'atrasado' | 'suspenso';
 
 const SIT_BADGE: Record<string, { txt: string; cls: string; emoji: string }> = {
   em_dia:   { txt: 'Em dia',   emoji: '✅', cls: 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300' },
   pendente: { txt: 'Pendente', emoji: '⏳', cls: 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300' },
   atrasado: { txt: 'Atrasado', emoji: '🔴', cls: 'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300' },
+  suspenso: { txt: 'Suspenso', emoji: '🔒', cls: 'bg-red-200 text-red-900 dark:bg-red-950/60 dark:text-red-200 font-semibold' },
 };
 
 export function VisaoGeralFinanceira() {
@@ -41,7 +47,9 @@ export function VisaoGeralFinanceira() {
 
   const [alunos, setAlunos]   = useState<VisaoGeralAluno[]>([]);
   const [kpis, setKpis]       = useState<KpisFinanceiro | null>(null);
+  const [config, setConfig]   = useState<ConfigFinanceiro | null>(null);
   const [loading, setLoading] = useState(true);
+  const [reativandoId, setReativandoId] = useState<string | null>(null);
 
   // filtros (ao vivo)
   const [busca, setBusca]         = useState('');
@@ -57,9 +65,10 @@ export function VisaoGeralFinanceira() {
 
   const carregar = useCallback(async () => {
     setLoading(true);
-    const [lista, k] = await Promise.all([getVisaoGeralFinanceira(), getKpisFinanceiro()]);
+    const [lista, k, cfg] = await Promise.all([getVisaoGeralFinanceira(), getKpisFinanceiro(), getConfigFinanceiro()]);
     setAlunos(lista);
     setKpis(k);
+    setConfig(cfg);
     setLoading(false);
   }, []);
 
@@ -86,10 +95,31 @@ export function VisaoGeralFinanceira() {
   }), [alunos, buscaDeb, fSituacao, fTurma, fFaixa]);
 
   const emDiaCount = useMemo(() => alunos.filter(a => a.situacao === 'em_dia').length, [alunos]);
-  const emRisco    = useMemo(() => alunos.filter(a => a.maior_atraso_dias >= 30 && a.maior_atraso_dias < 90).length, [alunos]);
-  const criticos   = useMemo(() => alunos.filter(a => a.maior_atraso_dias >= 90).length, [alunos]);
+  // buckets = candidatos ATIVOS (o suspenso já não é candidato — tem selo próprio)
+  const emRisco    = useMemo(() => alunos.filter(a => a.situacao !== 'suspenso' && a.maior_atraso_dias >= 30 && a.maior_atraso_dias < 90).length, [alunos]);
+  const criticos   = useMemo(() => alunos.filter(a => a.situacao !== 'suspenso' && a.maior_atraso_dias >= 90).length, [alunos]);
 
   const abrirFicha = (id: string) => navigate(`/dashboard/financeiro/aluno/${id}`);
+
+  const reativar = async (a: VisaoGeralAluno) => {
+    if (!window.confirm(`Reativar o acesso de ${a.nome}?`)) return;
+    setReativandoId(a.matricula_id);
+    const { error } = await reativarMatricula(a.matricula_id);
+    setReativandoId(null);
+    if (error) { toast({ title: 'Erro ao reativar', description: error, variant: 'destructive' }); return; }
+    toast({ title: 'Matrícula reativada', description: `${a.nome} recuperou o acesso.` });
+    carregar();
+  };
+
+  // Cobrança pronta (F3) — abre WhatsApp/Email preenchido (não envia). Tom pelo atraso.
+  const cobrar = (a: VisaoGeralAluno, canal: 'whatsapp' | 'email') => {
+    const tipo = tipoCobrancaSugerido(a.maior_atraso_dias);
+    const dados = { nome: a.nome, telefone: a.telefone, email: a.email, totalDevido: a.total_devido, maiorAtrasoDias: a.maior_atraso_dias };
+    const pix = { chave_pix: config?.chave_pix ?? null, beneficiario: config?.beneficiario ?? null };
+    const href = canal === 'whatsapp' ? linkWhatsAppCobranca(tipo, dados, pix) : linkEmailCobranca(tipo, dados, pix);
+    if (!href) { toast({ title: canal === 'whatsapp' ? 'Aluno sem telefone' : 'Aluno sem e-mail', variant: 'destructive' }); return; }
+    window.open(href, '_blank');
+  };
 
   const confirmarSuspensao = async () => {
     if (!modalSusp) return;
@@ -175,6 +205,7 @@ export function VisaoGeralFinanceira() {
           <option value="em_dia">✅ Em dia</option>
           <option value="pendente">⏳ Pendente</option>
           <option value="atrasado">🔴 Atrasado</option>
+          <option value="suspenso">🔒 Suspenso</option>
         </select>
         <select value={fTurma} onChange={e => setFTurma(e.target.value)}
           className="bg-background border border-border rounded-md px-3 py-2 text-sm h-10 max-w-[12rem]">
@@ -248,17 +279,38 @@ export function VisaoGeralFinanceira() {
                       <td className="px-3 py-2.5 text-right tabular-nums">{brl(a.valor_mensalidade)}</td>
                       <td className="px-3 py-2.5 text-center">
                         <span className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${badge.cls}`}>
-                          {badge.emoji} {badge.txt}{a.situacao === 'atrasado' ? ` ${a.maior_atraso_dias}d` : ''}
+                          {badge.emoji} {badge.txt}{(a.situacao === 'atrasado' || a.situacao === 'suspenso') && a.maior_atraso_dias > 0 ? ` ${a.maior_atraso_dias}d` : ''}
                         </span>
                       </td>
                       <td className="px-3 py-2.5 text-right tabular-nums">
                         {a.total_devido > 0 ? <span className="text-red-600 font-medium">{brl(a.total_devido)}</span> : <span className="text-muted-foreground">—</span>}
                       </td>
                       <td className="px-3 py-2.5 text-right whitespace-nowrap">
-                        {a.maior_atraso_dias >= 90 && (
+                        {/* Cobrança pronta (não envia) quando há dívida */}
+                        {a.total_devido > 0 && (
+                          <>
+                            <Button size="sm" variant="ghost" onClick={() => cobrar(a, 'whatsapp')}
+                              className="h-8 px-2 text-green-600" title="Cobrar por WhatsApp (texto pronto)">
+                              <MessageCircle className="h-3.5 w-3.5" />
+                            </Button>
+                            <Button size="sm" variant="ghost" onClick={() => cobrar(a, 'email')}
+                              className="h-8 px-2 text-muted-foreground" title="Cobrar por e-mail (texto pronto)">
+                              <Mail className="h-3.5 w-3.5" />
+                            </Button>
+                          </>
+                        )}
+                        {/* Suspender: só ATIVO 90+ (o suspenso não é candidato) */}
+                        {a.situacao !== 'suspenso' && a.maior_atraso_dias >= 90 && (
                           <Button size="sm" variant="ghost" onClick={() => { setMotivoSusp(`Inadimplência — ${a.maior_atraso_dias} dias de atraso`); setModalSusp(a); }}
                             className="h-8 px-2 text-red-600" title="Suspender por inadimplência (90+)">
                             <Lock className="h-3.5 w-3.5" />
+                          </Button>
+                        )}
+                        {/* Reativar: aluno suspenso */}
+                        {a.situacao === 'suspenso' && (
+                          <Button size="sm" variant="ghost" onClick={() => reativar(a)} disabled={reativandoId === a.matricula_id}
+                            className="h-8 px-2 text-green-600" title="Reativar acesso do aluno">
+                            {reativandoId === a.matricula_id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Unlock className="h-3.5 w-3.5" />}
                           </Button>
                         )}
                         <Button size="sm" variant="ghost" onClick={() => abrirFicha(a.aluno_id)}

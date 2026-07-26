@@ -45,11 +45,11 @@ const styles = StyleSheet.create({
 const brl = (v: number | null | undefined) =>
   (v ?? 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
-const SIT_LABEL: Record<string, string> = { em_dia: 'Em dia', pendente: 'Pendente', atrasado: 'Atrasado' };
+const SIT_LABEL: Record<string, string> = { em_dia: 'Em dia', pendente: 'Pendente', atrasado: 'Atrasado', suspenso: 'Suspenso' };
 
 function sitStyle(s: string) {
   if (s === 'em_dia') return styles.stPago;
-  if (s === 'atrasado') return styles.stAtrasado;
+  if (s === 'atrasado' || s === 'suspenso') return styles.stAtrasado;
   return styles.stPendente;
 }
 
@@ -61,12 +61,13 @@ export function VisaoGeralFinanceiraPDF({ alunos, filtros }: VisaoGeralPDFProps)
   const nEmDia    = alunos.filter(a => a.situacao === 'em_dia').length;
   const nPendente = alunos.filter(a => a.situacao === 'pendente').length;
   const nAtrasado = alunos.filter(a => a.situacao === 'atrasado').length;
+  const nSuspenso = alunos.filter(a => a.situacao === 'suspenso').length;
 
   const filtroTxt = [
     filtros.busca ? `busca "${filtros.busca}"` : null,
     filtros.situacao !== 'todos' ? `situação ${SIT_LABEL[filtros.situacao] ?? filtros.situacao}` : null,
     filtros.turma !== 'todas' ? `turma ${filtros.turma}` : null,
-  ].filter(Boolean).join(' · ') || 'sem filtros (todos os alunos ativos)';
+  ].filter(Boolean).join(' · ') || 'sem filtros (alunos ativos + suspensos)';
 
   return (
     <Document title="Visão Geral Financeira - ITEC" author="ITEC - Instituto de Teologia Cristã">
@@ -90,6 +91,7 @@ export function VisaoGeralFinanceiraPDF({ alunos, filtros }: VisaoGeralPDFProps)
           <View style={styles.resumoBox}><Text style={styles.resumoLabel}>Em dia</Text><Text style={styles.resumoValor}>{nEmDia}</Text></View>
           <View style={styles.resumoBox}><Text style={styles.resumoLabel}>Pendentes</Text><Text style={styles.resumoValor}>{nPendente}</Text></View>
           <View style={styles.resumoBox}><Text style={styles.resumoLabel}>Atrasados</Text><Text style={styles.resumoValor}>{nAtrasado}</Text></View>
+          <View style={styles.resumoBox}><Text style={styles.resumoLabel}>Suspensos</Text><Text style={styles.resumoValor}>{nSuspenso}</Text></View>
           <View style={styles.resumoBox}><Text style={styles.resumoLabel}>Total em aberto</Text><Text style={styles.resumoValor}>{brl(totalDevido)}</Text></View>
         </View>
 
@@ -109,7 +111,7 @@ export function VisaoGeralFinanceiraPDF({ alunos, filtros }: VisaoGeralPDFProps)
               <Text style={styles.colDisc}>{a.qtd_disciplinas}</Text>
               <Text style={styles.colValor}>{brl(a.valor_mensalidade)}</Text>
               <Text style={[styles.colSit, sitStyle(a.situacao)]}>
-                {SIT_LABEL[a.situacao]}{a.situacao === 'atrasado' ? ` ${a.maior_atraso_dias}d` : ''}
+                {SIT_LABEL[a.situacao]}{(a.situacao === 'atrasado' || a.situacao === 'suspenso') && a.maior_atraso_dias > 0 ? ` ${a.maior_atraso_dias}d` : ''}
               </Text>
               <Text style={styles.colDevido}>{a.total_devido > 0 ? brl(a.total_devido) : '—'}</Text>
             </View>
