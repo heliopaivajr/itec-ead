@@ -20,16 +20,17 @@ import {
   type PreviewMensalidade,
 } from '@/services/financeiro.service';
 import { ConfirmarPagamentoModal } from '@/components/dashboard/ConfirmarPagamentoModal';
+import { VisaoGeralFinanceira } from '@/components/dashboard/VisaoGeralFinanceira';
 import type { DashboardContext } from '../Dashboard';
 
-type Aba = 'inadimplentes' | 'mensalidades';
+type Aba = 'visao' | 'inadimplentes' | 'mensalidades';
 
 // ─── Componente principal ─────────────────────────────────────
 export default function Financeiro() {
   const { profile } = useOutletContext<DashboardContext>();
   const { toast }   = useToast();
 
-  const [aba, setAba]                     = useState<Aba>('inadimplentes');
+  const [aba, setAba]                     = useState<Aba>('visao');
   const [inadimplentes, setInadimplentes] = useState<Inadimplente[]>([]);
   const [loading, setLoading]             = useState(true);
   const [modalMens, setModalMens]         = useState<Mensalidade | null>(null);
@@ -190,6 +191,7 @@ export default function Financeiro() {
       {/* Abas */}
       <div className="flex gap-1 bg-muted/40 border border-border rounded-xl p-1 w-fit">
         {([
+          ['visao',         'Visão Geral'],
           ['inadimplentes', 'Inadimplentes'],
           ['mensalidades',  'Gerar Mensalidades'],
         ] as [Aba, string][]).map(([key, label]) => (
@@ -201,6 +203,9 @@ export default function Financeiro() {
           </button>
         ))}
       </div>
+
+      {/* Visão Geral — aba padrão (lista de todos os alunos + situação) */}
+      {aba === 'visao' && <VisaoGeralFinanceira />}
 
       {/* Inadimplentes */}
       {aba === 'inadimplentes' && (
