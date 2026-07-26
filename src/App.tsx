@@ -45,6 +45,7 @@ const PainelAdmin        = lazy(() => import("./pages/dashboard/PainelAdmin"));
 const FinanceiroPage     = lazy(() => import("./pages/dashboard/Financeiro"));
 const FichaFinanceiraAluno = lazy(() => import("./pages/dashboard/FichaFinanceiraAluno"));
 const MeuFinanceiro        = lazy(() => import("./pages/dashboard/MeuFinanceiro"));
+const ConfigPagamento      = lazy(() => import("./pages/dashboard/ConfigPagamento"));
 const Convalidacoes      = lazy(() => import("./pages/dashboard/Convalidacoes"));
 const ProfessorHome      = lazy(() => import("./pages/dashboard/ProfessorHome"));
 const LancarFrequencia   = lazy(() => import("./pages/dashboard/LancarFrequencia"));
@@ -158,6 +159,7 @@ const App = () => (
               <Route path="nova-matricula" element={<RoleGuard allowedRoles={['superadmin','admin','administracao']}><NovaMatricula /></RoleGuard>} />
               <Route path="financeiro"    element={<RoleGuard allowedRoles={['superadmin','admin','administracao','financeiro']}><FinanceiroPage /></RoleGuard>} />
               <Route path="financeiro/precos" element={<RoleGuard allowedRoles={['superadmin','admin','administracao','financeiro']}><TabelaPrecos /></RoleGuard>} />
+              <Route path="financeiro/config-pagamento" element={<RoleGuard allowedRoles={['superadmin','admin','administracao','financeiro']}><ConfigPagamento /></RoleGuard>} />
               {/* Ficha Financeira do aluno (2g) — PII-free; staff + financeiro */}
               <Route path="financeiro/aluno/:alunoId" element={<RoleGuard allowedRoles={['superadmin','admin','administracao','financeiro']}><FichaFinanceiraAluno /></RoleGuard>} />
               <Route path="convalidacoes" element={<RoleGuard allowedRoles={['superadmin','admin','administracao']}><Convalidacoes /></RoleGuard>} />
