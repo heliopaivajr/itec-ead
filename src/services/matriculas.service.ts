@@ -24,6 +24,9 @@ export interface Matricula {
   tipo_financiamento?: string | null;
   percentual_desconto?: number | null;
   observacao_financeira?: string | null;
+  motivo_suspensao?: string | null;    // 078 — inadimplência vs trancamento manual
+  data_suspensao?: string | null;      // 078
+  suspensa_por?: string | null;        // 078
   // Derivados (não são colunas)
   profile?: { full_name: string; email?: string };
   curso_label?: string;
@@ -264,3 +267,28 @@ export async function mudarStatusMatricula(
 // NOTA (R3.2 Leva 2c): removida a antiga `updateStatusMatricula` (troca de status SEM
 // efeito de acesso). Toda mudança de status passa por `mudarStatusMatricula`, que mantém
 // role/acesso consistentes com o status — evitando o bug de aluno 'ativo' sem acesso.
+
+// ─── E5: suspender/reativar por inadimplência (RPCs 078) ─────────────────────
+// Gate no BANCO (is_staff() OR is_financeiro()) — inclui o financeiro (Breno) sem
+// UPDATE amplo em matriculas (fronteira 067). Efeito de acesso completo dentro da RPC
+// (matriculas.status + profiles.role; user_roles é view e reflete sozinho — LICAO-039).
+export async function suspenderMatriculaInadimplencia(matriculaId: string, motivo: string): Promise<ServiceResult> {
+  const { error } = await supabase.rpc('suspender_matricula_inadimplencia', {
+    p_matricula_id: matriculaId,
+    p_motivo: motivo,
+  });
+  if (error) {
+    console.error('[suspenderMatriculaInadimplencia]', error.message);
+    return { error: error.message };
+  }
+  return { error: null };
+}
+
+export async function reativarMatricula(matriculaId: string): Promise<ServiceResult> {
+  const { error } = await supabase.rpc('reativar_matricula', { p_matricula_id: matriculaId });
+  if (error) {
+    console.error('[reativarMatricula]', error.message);
+    return { error: error.message };
+  }
+  return { error: null };
+}
