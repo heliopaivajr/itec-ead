@@ -613,6 +613,28 @@ Ambos com impressão (**PDF/Excel**), reusando `@react-pdf` + `xlsx` do R02.
 
 ---
 
+## 13. OBSERVABILIDADE & ADMIN
+
+### 13.1 [RÁPIDO] Relógio/data em todas as roles
+**Descrição**: Exibir **data e hora atual** no dashboard de todos os usuários (aluno/professor/staff/financeiro). Cosmético.
+**Nota**: as funções do banco já usam `now()`/`CURRENT_DATE` do Postgres (**data confiável do servidor**) — isto é **só exibição na UI**, não muda nenhuma regra de negócio nem cálculo de datas.
+**Esforço**: **P**.
+**Prioridade**: baixa (cosmético) — pode entrar a qualquer momento.
+**Status**: Registrado — Hélio (2026-07-26).
+
+### 13.2 [MÉDIO/GRANDE] Sistema de LOG administrativo (dev/superadmin)
+**Descrição**: Observabilidade para operar com segurança pós-abertura. Dois logs:
+- **(a) Log de ATIVIDADE** — quem entrou/saiu, quando, ações principais (auditoria de acesso). Painel visível **só ao dev/superadmin**.
+- **(b) Log de ERROS** — quando ocorre erro (qualquer role: aluno/financeiro/staff), registrar `timestamp, usuário, rota, erro` e **alertar o dev SÓ quando há erro** (não ruído).
+**Avaliar no SDD**: tabela de logs no Supabase? Serviço externo (**Sentry/Logflare**)? Edge Function? Em todos os casos **RLS restrita ao superadmin**.
+**Esforço**: **M/G**.
+**Prioridade**: **v1.1 (pós-abertura)** — não bloqueia agosto, mas importante para operar com segurança.
+**⚠️ Relaciona com a REGRA CRÍTICA — APIs Externas** (se usar Sentry/Logflare/serviço externo → **avisar o Hélio antes**, conferir gratuidade/limite e o repositório de APIs disponíveis).
+**Status**: Registrado — Hélio (2026-07-26).
+**Relação**: complementa o 4.1 (Sentry para captura de erros, seção MONITORAMENTO) — consolidar no SDD para não duplicar.
+
+---
+
 ## REGRA CRÍTICA — Camada Analítica
 
 **APENAS avaliar após lançamento de agosto 2026.**
