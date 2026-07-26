@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useOutletContext, Link } from 'react-router-dom';
 import {
   DollarSign, AlertTriangle, CheckCircle2, Clock, Loader2,
-  RefreshCw, Mail, X, ChevronLeft, ChevronRight,
+  RefreshCw, Mail, X, ChevronLeft, ChevronRight, CreditCard,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -180,12 +180,20 @@ export default function Financeiro() {
           <p className="text-muted-foreground mt-1">Controle de mensalidades e inadimplência</p>
         </div>
         {/* Etapa 2a: porta da Tabela de Preços p/ staff (o financeiro também tem no menu) */}
-        <Button asChild variant="outline" size="sm">
-          <Link to="/dashboard/financeiro/precos">
-            <DollarSign className="h-3.5 w-3.5 mr-1.5" />
-            Tabela de Preços
-          </Link>
-        </Button>
+        <div className="flex gap-2">
+          <Button asChild variant="outline" size="sm">
+            <Link to="/dashboard/financeiro/config-pagamento">
+              <CreditCard className="h-3.5 w-3.5 mr-1.5" />
+              Config PIX
+            </Link>
+          </Button>
+          <Button asChild variant="outline" size="sm">
+            <Link to="/dashboard/financeiro/precos">
+              <DollarSign className="h-3.5 w-3.5 mr-1.5" />
+              Tabela de Preços
+            </Link>
+          </Button>
+        </div>
       </div>
 
       {/* Abas */}

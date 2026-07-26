@@ -620,6 +620,9 @@ export interface ConfigFinanceiro {
   instrucoes: string | null;
 }
 
+// Placeholder semeado na 077 — usado para avisar "configure a chave PIX".
+export const PLACEHOLDER_PIX = 'CHAVE-PIX-A-DEFINIR';
+
 export async function getConfigFinanceiro(): Promise<ConfigFinanceiro | null> {
   const { data, error } = await supabase
     .from('config_financeiro')
@@ -631,6 +634,31 @@ export async function getConfigFinanceiro(): Promise<ConfigFinanceiro | null> {
     return null;
   }
   return (data as ConfigFinanceiro) ?? null;
+}
+
+// Edita a config PIX (staff/financeiro — gate pela RLS config_financeiro_write, 077).
+// Upsert do singleton id=1; grava autoria. A tela do aluno passa a ver a chave real.
+export async function upsertConfigFinanceiro(
+  cfg: ConfigFinanceiro,
+  atualizadoPor: string,
+): Promise<ServiceResult> {
+  const { error } = await supabase
+    .from('config_financeiro')
+    .upsert({
+      id:            1,
+      chave_pix:     cfg.chave_pix?.trim() || null,
+      tipo_chave:    cfg.tipo_chave || null,
+      beneficiario:  cfg.beneficiario?.trim() || null,
+      cidade:        cfg.cidade?.trim() || null,
+      instrucoes:    cfg.instrucoes?.trim() || null,
+      atualizado_por: atualizadoPor,
+      atualizado_em:  new Date().toISOString(),
+    }, { onConflict: 'id' });
+  if (error) {
+    console.error('[upsertConfigFinanceiro]', error.message);
+    return { error: error.message };
+  }
+  return { error: null };
 }
 
 // O aluno vincula o comprovante à PRÓPRIA mensalidade (RPC 077, SECURITY DEFINER).
