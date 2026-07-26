@@ -4,7 +4,7 @@ import { PDFDownloadLink } from '@react-pdf/renderer';
 import {
   ArrowLeft, Loader2, Coins, CalendarClock, Wallet, MessageCircle,
   FileText, CheckCircle2, Pencil, Paperclip, Plus, X, Save, RotateCcw, Ban, Info,
-  ChevronLeft, ChevronRight,
+  ChevronLeft, ChevronRight, Lock, Unlock,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -25,6 +25,7 @@ import {
   type FichaAlunoInfo,
   type MensalidadeVw,
 } from '@/services/financeiro.service';
+import { suspenderMatriculaInadimplencia, reativarMatricula } from '@/services/matriculas.service';
 import type { DashboardContext } from '../Dashboard';
 
 // Financeiro 2g — FICHA FINANCEIRA DO ALUNO. "Cada aluno é uma história": aqui a
@@ -80,6 +81,11 @@ export default function FichaFinanceiraAluno() {
   const [modalMotivo, setModalMotivo] = useState<{ tipo: 'estorno' | 'cancelamento'; mens: MensalidadeVw } | null>(null);
   const [motivo, setMotivo]           = useState('');
   const [savingMotivo, setSavingMotivo] = useState(false);
+
+  // E5: suspender/reativar matrícula por inadimplência
+  const [modalSuspender, setModalSuspender] = useState(false);
+  const [motivoSusp, setMotivoSusp]         = useState('');
+  const [savingMatricula, setSavingMatricula] = useState(false);
 
   // dia de vencimento padrão do aluno (Zona 1 — persiste em matriculas.dia_vencimento_padrao)
   const [diaPadrao, setDiaPadrao]   = useState('10');
@@ -194,6 +200,31 @@ export default function FichaFinanceiraAluno() {
     recarregarMensalidades();
   };
 
+  // E5: suspender/reativar a matrícula (RPCs 078; gate staff+financeiro no banco).
+  const confirmarSuspensao = async () => {
+    if (!info?.matricula_id) return;
+    if (motivoSusp.trim() === '') { toast({ title: 'Motivo é obrigatório', variant: 'destructive' }); return; }
+    setSavingMatricula(true);
+    const { error } = await suspenderMatriculaInadimplencia(info.matricula_id, motivoSusp.trim());
+    setSavingMatricula(false);
+    if (error) { toast({ title: 'Erro ao suspender', description: error, variant: 'destructive' }); return; }
+    toast({ title: 'Matrícula suspensa', description: 'O aluno perde o acesso até a reativação.' });
+    setModalSuspender(false);
+    setMotivoSusp('');
+    carregar();
+  };
+
+  const reativar = async () => {
+    if (!info?.matricula_id) return;
+    if (!window.confirm('Reativar a matrícula e devolver o acesso ao aluno?')) return;
+    setSavingMatricula(true);
+    const { error } = await reativarMatricula(info.matricula_id);
+    setSavingMatricula(false);
+    if (error) { toast({ title: 'Erro ao reativar', description: error, variant: 'destructive' }); return; }
+    toast({ title: 'Matrícula reativada', description: 'O acesso do aluno foi restaurado.' });
+    carregar();
+  };
+
   const verComprovante = async (path: string) => {
     const url = await getComprovanteUrl(path);
     if (url) window.open(url, '_blank');
@@ -286,6 +317,48 @@ export default function FichaFinanceiraAluno() {
           </div>
         </div>
       </div>
+
+      {/* ───── E5: acesso / suspensão por inadimplência ───── */}
+      {(() => {
+        const suspensa = info.matricula_status === 'suspensa';
+        const podeSuspender = info.matricula_status === 'ativa' && resumo.maior_atraso_dias >= 90;
+        if (!suspensa && !podeSuspender) return null;
+        return (
+          <div className={`rounded-2xl border p-4 flex items-start justify-between gap-3 flex-wrap ${suspensa ? 'border-red-500/40 bg-red-500/5' : 'border-amber-500/40 bg-amber-500/5'}`}>
+            <div className="flex items-start gap-3">
+              {suspensa ? <Lock className="h-6 w-6 text-red-600 shrink-0" /> : <CalendarClock className="h-6 w-6 text-amber-600 shrink-0" />}
+              <div>
+                {suspensa ? (
+                  <>
+                    <p className="font-semibold text-foreground">Matrícula suspensa</p>
+                    <p className="text-sm text-muted-foreground">
+                      {info.motivo_suspensao ? `Motivo: ${info.motivo_suspensao}. ` : ''}
+                      {info.data_suspensao ? `Desde ${fmtData((info.data_suspensao ?? '').slice(0, 10))}. ` : ''}
+                      O aluno está sem acesso ao sistema.
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <p className="font-semibold text-foreground">Aluno crítico — {resumo.maior_atraso_dias} dias de atraso</p>
+                    <p className="text-sm text-muted-foreground">Elegível para suspensão por inadimplência (90+ dias).</p>
+                  </>
+                )}
+              </div>
+            </div>
+            {suspensa ? (
+              <Button onClick={reativar} disabled={savingMatricula} className="bg-green-600 hover:bg-green-600/90 text-white">
+                {savingMatricula ? <Loader2 className="h-4 w-4 animate-spin mr-1.5" /> : <Unlock className="h-4 w-4 mr-1.5" />}
+                Reativar matrícula
+              </Button>
+            ) : (
+              <Button onClick={() => { setMotivoSusp(`Inadimplência — ${resumo.maior_atraso_dias} dias de atraso`); setModalSuspender(true); }}
+                disabled={savingMatricula} className="bg-red-600 hover:bg-red-600/90 text-white">
+                <Lock className="h-4 w-4 mr-1.5" /> Suspender por inadimplência
+              </Button>
+            )}
+          </div>
+        );
+      })()}
 
       {/* ───── ZONA 3 (topo): resumo + ações rápidas ───── */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
@@ -575,6 +648,39 @@ export default function FichaFinanceiraAluno() {
                 className={`flex-1 text-white ${modalMotivo.tipo === 'estorno' ? 'bg-red-600 hover:bg-red-600/90' : 'bg-amber-600 hover:bg-amber-600/90'}`}>
                 {savingMotivo ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
                 {modalMotivo.tipo === 'estorno' ? 'Estornar' : 'Cancelar mensalidade'}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de suspensão por inadimplência (E5) — motivo obrigatório */}
+      {modalSuspender && (
+        <div className="fixed inset-0 bg-background/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-card border border-border rounded-2xl p-6 w-full max-w-md space-y-4 shadow-2xl">
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-merriweather font-bold text-foreground flex items-center gap-2">
+                <Lock className="h-5 w-5 text-red-600" /> Suspender matrícula
+              </h2>
+              <button onClick={() => setModalSuspender(false)} className="text-muted-foreground hover:text-foreground"><X className="h-5 w-5" /></button>
+            </div>
+            <div className="text-sm bg-muted/20 rounded-lg p-3 space-y-1">
+              <p><span className="text-muted-foreground">Aluno:</span> <span className="font-medium">{info.nome}</span></p>
+              <p><span className="text-muted-foreground">Atraso:</span> <span className="font-medium text-red-600">{resumo.maior_atraso_dias} dias</span></p>
+              <p className="text-[11px] text-muted-foreground">
+                O aluno perde o acesso ao sistema (vai para a tela de "matrícula suspensa") até você reativar. Os dados são preservados.
+              </p>
+            </div>
+            <div>
+              <label className="text-sm text-foreground">Motivo (obrigatório)</label>
+              <Textarea value={motivoSusp} onChange={e => setMotivoSusp(e.target.value)} rows={2}
+                placeholder="Ex.: inadimplência — 92 dias de atraso, sem retorno após contato" className="mt-1.5 bg-background" />
+            </div>
+            <div className="flex gap-3 pt-1">
+              <Button variant="outline" onClick={() => setModalSuspender(false)} className="flex-1 border-border text-foreground">Voltar</Button>
+              <Button onClick={confirmarSuspensao} disabled={savingMatricula} className="flex-1 bg-red-600 hover:bg-red-600/90 text-white">
+                {savingMatricula ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                Suspender
               </Button>
             </div>
           </div>

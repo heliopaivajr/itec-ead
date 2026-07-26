@@ -3,10 +3,11 @@ import { useNavigate } from 'react-router-dom';
 import { PDFDownloadLink } from '@react-pdf/renderer';
 import {
   Search, Loader2, RefreshCw, FileText, FileSpreadsheet, ArrowRight,
-  DollarSign, TrendingUp, AlertTriangle, CheckCircle2,
+  DollarSign, TrendingUp, AlertTriangle, CheckCircle2, Lock, X,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
 import {
@@ -15,6 +16,7 @@ import {
   type VisaoGeralAluno,
   type KpisFinanceiro,
 } from '@/services/financeiro.service';
+import { suspenderMatriculaInadimplencia } from '@/services/matriculas.service';
 import { VisaoGeralFinanceiraPDF } from '@/components/dashboard/VisaoGeralFinanceiraPDF';
 import { exportToExcel } from '@/components/dashboard/relatorios/exporters/excelExporter';
 
@@ -46,6 +48,12 @@ export function VisaoGeralFinanceira() {
   const [buscaDeb, setBuscaDeb]   = useState('');
   const [fSituacao, setFSituacao] = useState<FiltroSituacao>('todos');
   const [fTurma, setFTurma]       = useState('todas');
+  const [fFaixa, setFFaixa]       = useState<'todas' | 'risco' | 'critico'>('todas'); // E5: 30-89 / 90+
+
+  // E5: suspensão assistida (o Breno revê e suspende — nunca automático)
+  const [modalSusp, setModalSusp]   = useState<VisaoGeralAluno | null>(null);
+  const [motivoSusp, setMotivoSusp] = useState('');
+  const [savingSusp, setSavingSusp] = useState(false);
 
   const carregar = useCallback(async () => {
     setLoading(true);
@@ -72,12 +80,29 @@ export function VisaoGeralFinanceira() {
     if (buscaDeb && !a.nome.toLowerCase().includes(buscaDeb)) return false;
     if (fSituacao !== 'todos' && a.situacao !== fSituacao) return false;
     if (fTurma !== 'todas' && a.turma_nome !== fTurma) return false;
+    if (fFaixa === 'risco'   && !(a.maior_atraso_dias >= 30 && a.maior_atraso_dias < 90)) return false;
+    if (fFaixa === 'critico' && !(a.maior_atraso_dias >= 90)) return false;
     return true;
-  }), [alunos, buscaDeb, fSituacao, fTurma]);
+  }), [alunos, buscaDeb, fSituacao, fTurma, fFaixa]);
 
   const emDiaCount = useMemo(() => alunos.filter(a => a.situacao === 'em_dia').length, [alunos]);
+  const emRisco    = useMemo(() => alunos.filter(a => a.maior_atraso_dias >= 30 && a.maior_atraso_dias < 90).length, [alunos]);
+  const criticos   = useMemo(() => alunos.filter(a => a.maior_atraso_dias >= 90).length, [alunos]);
 
   const abrirFicha = (id: string) => navigate(`/dashboard/financeiro/aluno/${id}`);
+
+  const confirmarSuspensao = async () => {
+    if (!modalSusp) return;
+    if (motivoSusp.trim() === '') { toast({ title: 'Motivo é obrigatório', variant: 'destructive' }); return; }
+    setSavingSusp(true);
+    const { error } = await suspenderMatriculaInadimplencia(modalSusp.matricula_id, motivoSusp.trim());
+    setSavingSusp(false);
+    if (error) { toast({ title: 'Erro ao suspender', description: error, variant: 'destructive' }); return; }
+    toast({ title: 'Matrícula suspensa', description: `${modalSusp.nome} perde o acesso até a reativação.` });
+    setModalSusp(null);
+    setMotivoSusp('');
+    carregar();
+  };
 
   const exportarExcel = () => {
     if (filtrados.length === 0) { toast({ title: 'Nada para exportar', variant: 'destructive' }); return; }
@@ -110,6 +135,32 @@ export function VisaoGeralFinanceira() {
         <KpiCard icon={<CheckCircle2 className="h-4 w-4" />} label="Em dia"
           valor={loading ? '—' : String(emDiaCount)} tint="text-green-600" />
       </div>
+
+      {/* E5: buckets de risco (clicáveis → filtram por faixa) */}
+      {!loading && (emRisco > 0 || criticos > 0) && (
+        <div className="flex flex-wrap gap-2">
+          <button
+            onClick={() => setFFaixa(f => f === 'risco' ? 'todas' : 'risco')}
+            className={`text-sm rounded-full px-3 py-1.5 border transition-colors ${fFaixa === 'risco'
+              ? 'border-amber-500 bg-amber-500/15 text-amber-700 dark:text-amber-300'
+              : 'border-border text-muted-foreground hover:border-amber-500/40'}`}>
+            ⚠️ {emRisco} em risco (30–89 dias)
+          </button>
+          <button
+            onClick={() => setFFaixa(f => f === 'critico' ? 'todas' : 'critico')}
+            className={`text-sm rounded-full px-3 py-1.5 border transition-colors ${fFaixa === 'critico'
+              ? 'border-red-500 bg-red-500/15 text-red-700 dark:text-red-300'
+              : 'border-border text-muted-foreground hover:border-red-500/40'}`}>
+            🔴 {criticos} críticos (90+ dias — candidatos a suspensão)
+          </button>
+          {fFaixa !== 'todas' && (
+            <button onClick={() => setFFaixa('todas')}
+              className="text-sm rounded-full px-3 py-1.5 border border-border text-muted-foreground hover:text-foreground">
+              limpar faixa
+            </button>
+          )}
+        </div>
+      )}
 
       {/* Busca + filtros + export */}
       <div className="flex flex-wrap items-center gap-2">
@@ -203,7 +254,13 @@ export function VisaoGeralFinanceira() {
                       <td className="px-3 py-2.5 text-right tabular-nums">
                         {a.total_devido > 0 ? <span className="text-red-600 font-medium">{brl(a.total_devido)}</span> : <span className="text-muted-foreground">—</span>}
                       </td>
-                      <td className="px-3 py-2.5 text-right">
+                      <td className="px-3 py-2.5 text-right whitespace-nowrap">
+                        {a.maior_atraso_dias >= 90 && (
+                          <Button size="sm" variant="ghost" onClick={() => { setMotivoSusp(`Inadimplência — ${a.maior_atraso_dias} dias de atraso`); setModalSusp(a); }}
+                            className="h-8 px-2 text-red-600" title="Suspender por inadimplência (90+)">
+                            <Lock className="h-3.5 w-3.5" />
+                          </Button>
+                        )}
                         <Button size="sm" variant="ghost" onClick={() => abrirFicha(a.aluno_id)}
                           className="h-8 px-2 text-primary" title="Ver ficha financeira">
                           Ver ficha <ArrowRight className="h-3.5 w-3.5 ml-1" />
@@ -216,6 +273,36 @@ export function VisaoGeralFinanceira() {
             </table>
           </div>
         </>
+      )}
+
+      {/* Modal de suspensão assistida (E5) — motivo obrigatório */}
+      {modalSusp && (
+        <div className="fixed inset-0 bg-background/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-card border border-border rounded-2xl p-6 w-full max-w-md space-y-4 shadow-2xl">
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-merriweather font-bold text-foreground flex items-center gap-2">
+                <Lock className="h-5 w-5 text-red-600" /> Suspender matrícula
+              </h2>
+              <button onClick={() => setModalSusp(null)} className="text-muted-foreground hover:text-foreground"><X className="h-5 w-5" /></button>
+            </div>
+            <div className="text-sm bg-muted/20 rounded-lg p-3 space-y-1">
+              <p><span className="text-muted-foreground">Aluno:</span> <span className="font-medium">{modalSusp.nome}</span></p>
+              <p><span className="text-muted-foreground">Atraso:</span> <span className="font-medium text-red-600">{modalSusp.maior_atraso_dias} dias</span> · em aberto {brl(modalSusp.total_devido)}</p>
+              <p className="text-[11px] text-muted-foreground">O aluno perde o acesso até você reativar (na ficha). Os dados são preservados.</p>
+            </div>
+            <div>
+              <label className="text-sm text-foreground">Motivo (obrigatório)</label>
+              <Textarea value={motivoSusp} onChange={e => setMotivoSusp(e.target.value)} rows={2} className="mt-1.5 bg-background" />
+            </div>
+            <div className="flex gap-3 pt-1">
+              <Button variant="outline" onClick={() => setModalSusp(null)} className="flex-1 border-border text-foreground">Voltar</Button>
+              <Button onClick={confirmarSuspensao} disabled={savingSusp} className="flex-1 bg-red-600 hover:bg-red-600/90 text-white">
+                {savingSusp ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                Suspender
+              </Button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

@@ -122,6 +122,35 @@ export default function MeuFinanceiro() {
         <div className="space-y-3">{[1,2,3].map(i => <Skeleton key={i} className="h-20 rounded-xl" />)}</div>
       ) : (
         <>
+          {/* AVISO PROGRESSIVO de inadimplência (E5) — pelo maior atraso */}
+          {resumo.maiorAtraso >= 60 && resumo.maiorAtraso < 90 && (
+            <div className="rounded-2xl border border-red-500/40 bg-red-500/10 p-5 flex items-start gap-3">
+              <AlertTriangle className="h-7 w-7 text-red-600 shrink-0" />
+              <div>
+                <p className="font-merriweather font-bold text-red-700 dark:text-red-300">
+                  Faltam {90 - resumo.maiorAtraso} dia(s) para a suspensão da sua matrícula
+                </p>
+                <p className="text-sm text-muted-foreground mt-0.5">
+                  Você está com <strong>{resumo.maiorAtraso} dias</strong> de atraso. Regularize com urgência para não perder o acesso.
+                  Secretaria: <strong>WhatsApp (81) 99116-1448</strong>.
+                </p>
+              </div>
+            </div>
+          )}
+          {resumo.maiorAtraso >= 30 && resumo.maiorAtraso < 60 && (
+            <div className="rounded-2xl border border-amber-500/40 bg-amber-500/10 p-5 flex items-start gap-3">
+              <AlertTriangle className="h-7 w-7 text-amber-600 shrink-0" />
+              <div>
+                <p className="font-merriweather font-bold text-amber-700 dark:text-amber-300">
+                  Você está com {resumo.maiorAtraso} dias de atraso
+                </p>
+                <p className="text-sm text-muted-foreground mt-0.5">
+                  Regularize para evitar a suspensão da matrícula. Secretaria: <strong>WhatsApp (81) 99116-1448</strong>.
+                </p>
+              </div>
+            </div>
+          )}
+
           {/* RESUMO */}
           <div className={`rounded-2xl border p-5 ${resumo.emDia
             ? 'border-green-500/30 bg-green-500/5'

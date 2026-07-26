@@ -427,6 +427,8 @@ export interface FichaAlunoInfo {
   avatar_url: string | null;
   matricula_id: string | null;
   matricula_status: string | null;
+  motivo_suspensao: string | null;    // 078 — quando status='suspensa'
+  data_suspensao: string | null;      // 078
   turma_nome: string | null;
   curso_nome: string | null;
   // Dia de vencimento padrão do aluno — coluna persistente matriculas.dia_vencimento_padrao (074).
@@ -448,13 +450,13 @@ export async function getFichaAlunoInfo(alunoId: string): Promise<FichaAlunoInfo
   // 2) matrículas do aluno (escolhe a ativa; senão a mais recente)
   const { data: mats, error: errMats } = await supabase
     .from('matriculas')
-    .select('id, turma_id, status, created_at, dia_vencimento_padrao')
+    .select('id, turma_id, status, created_at, dia_vencimento_padrao, motivo_suspensao, data_suspensao')
     .eq('aluno_id', alunoId)
     .order('created_at', { ascending: false })
     .limit(10);
   if (errMats) console.error('[getFichaAlunoInfo] matriculas:', errMats.message);
 
-  type MatRow = { id: string; turma_id: string | null; status: string; created_at: string; dia_vencimento_padrao: number | null };
+  type MatRow = { id: string; turma_id: string | null; status: string; created_at: string; dia_vencimento_padrao: number | null; motivo_suspensao: string | null; data_suspensao: string | null };
   const matriculas = (mats ?? []) as MatRow[];
   const matricula = matriculas.find(m => m.status === 'ativa') ?? matriculas[0] ?? null;
 
@@ -492,6 +494,8 @@ export async function getFichaAlunoInfo(alunoId: string): Promise<FichaAlunoInfo
     avatar_url:          p.avatar_url ?? null,
     matricula_id:        matricula?.id ?? null,
     matricula_status:    matricula?.status ?? null,
+    motivo_suspensao:    matricula?.motivo_suspensao ?? null,
+    data_suspensao:      matricula?.data_suspensao ?? null,
     turma_nome:          turmaNome,
     curso_nome:          cursoNome,
     dia_vencimento_padrao: diaVenc,
