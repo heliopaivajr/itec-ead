@@ -162,6 +162,106 @@ export async function getKpisFinanceiro(): Promise<KpisFinanceiro> {
   };
 }
 
+// ─── Etapa 2e: Visão Geral (lista de todos os alunos ativos + situação) ───────
+// PII-free: nome/turma/valores — sem CPF/RG. Acesso staff+financeiro (RLS 037/067).
+export type SituacaoFinanceira = 'em_dia' | 'pendente' | 'atrasado';
+
+export interface VisaoGeralAluno {
+  aluno_id: string;
+  matricula_id: string;
+  nome: string;
+  turma_nome: string | null;
+  qtd_disciplinas: number;
+  valor_mensalidade: number | null;   // valor efetivo (resolver_valor_efetivo via preview)
+  situacao: SituacaoFinanceira;
+  total_devido: number;               // soma de mensalidades em aberto (pendente+atrasado)
+  maior_atraso_dias: number;          // 0 se não há atraso
+}
+
+// Régua e valores no BANCO (LICAO-042). Queries SEPARADAS + merge em JS (LICAO-026):
+//  1) preview_gerar_mensalidades(ano,mes) → 1 linha/matrícula ativa com nome +
+//     qtd_disciplinas + valor efetivo (reusa resolver_valor_efetivo via LATERAL — sem N+1).
+//  2) matriculas ativas → turma_id.  3) turmas → nome.
+//  4) vw_mensalidades (status_efetivo já deriva 'atrasado' na leitura) → situação/devido/atraso.
+export async function getVisaoGeralFinanceira(): Promise<VisaoGeralAluno[]> {
+  const hoje = new Date();
+  const ano  = hoje.getFullYear();
+  const mes  = hoje.getMonth() + 1;
+
+  // 1) base: nome + qtd + valor efetivo de cada matrícula ativa (1 RPC)
+  const { data: previewData, error: errPrev } = await supabase.rpc('preview_gerar_mensalidades', { p_ano: ano, p_mes: mes });
+  if (errPrev) { console.error('[getVisaoGeralFinanceira] preview', errPrev.message); return []; }
+  const base = (previewData as PreviewMensalidade[]) ?? [];
+  if (base.length === 0) return [];
+
+  // 2) matrículas ativas → turma_id
+  const { data: mats, error: errMats } = await supabase
+    .from('matriculas').select('id, turma_id').eq('status', 'ativa').limit(500);
+  if (errMats) console.error('[getVisaoGeralFinanceira] matriculas', errMats.message);
+  const turmaByMat = new Map<string, string | null>();
+  const turmaIds = new Set<string>();
+  for (const m of (mats ?? []) as { id: string; turma_id: string | null }[]) {
+    turmaByMat.set(m.id, m.turma_id);
+    if (m.turma_id) turmaIds.add(m.turma_id);
+  }
+
+  // 3) turmas → nome
+  const turmaNome = new Map<string, string>();
+  if (turmaIds.size > 0) {
+    const { data: turmas } = await supabase.from('turmas').select('id, nome, codigo').in('id', [...turmaIds]);
+    for (const t of (turmas ?? []) as { id: string; nome: string; codigo: string }[]) {
+      turmaNome.set(t.id, t.nome ?? t.codigo);
+    }
+  }
+
+  // 4) situação por aluno via vw_mensalidades (staff/financeiro veem todas — RLS 037)
+  const { data: vw, error: errVw } = await supabase
+    .from('vw_mensalidades')
+    .select('aluno_id, valor, data_vencimento, status_efetivo')
+    .limit(5000);
+  if (errVw) console.error('[getVisaoGeralFinanceira] vw_mensalidades', errVw.message);
+
+  const hojeStr = hoje.toISOString().split('T')[0];
+  const hojeMs  = new Date(hojeStr + 'T12:00').getTime();
+  type Agg = { devido: number; temPendente: boolean; maiorAtraso: number };
+  const agg = new Map<string, Agg>();
+  for (const r of (vw ?? []) as { aluno_id: string; valor: number; data_vencimento: string; status_efetivo: string }[]) {
+    const a = agg.get(r.aluno_id) ?? { devido: 0, temPendente: false, maiorAtraso: 0 };
+    if (r.status_efetivo === 'atrasado') {
+      a.devido += r.valor;
+      const dias = Math.max(0, Math.round((hojeMs - new Date(r.data_vencimento + 'T12:00').getTime()) / 86_400_000));
+      a.maiorAtraso = Math.max(a.maiorAtraso, dias);
+    } else if (r.status_efetivo === 'pendente') {
+      a.devido += r.valor;
+      a.temPendente = true;
+    }
+    agg.set(r.aluno_id, a);
+  }
+
+  const rank = (s: SituacaoFinanceira) => (s === 'atrasado' ? 0 : s === 'pendente' ? 1 : 2);
+
+  return base.map((b): VisaoGeralAluno => {
+    const a = agg.get(b.aluno_id);
+    const situacao: SituacaoFinanceira = a && a.maiorAtraso > 0 ? 'atrasado' : a && a.temPendente ? 'pendente' : 'em_dia';
+    const turmaId = turmaByMat.get(b.matricula_id) ?? null;
+    return {
+      aluno_id:          b.aluno_id,
+      matricula_id:      b.matricula_id,
+      nome:              b.nome,
+      turma_nome:        turmaId ? (turmaNome.get(turmaId) ?? null) : null,
+      qtd_disciplinas:   b.qtd_disciplinas,
+      valor_mensalidade: b.valor,
+      situacao,
+      total_devido:      a ? Math.round(a.devido * 100) / 100 : 0,
+      maior_atraso_dias: a?.maiorAtraso ?? 0,
+    };
+  }).sort((x, y) => {
+    if (rank(x.situacao) !== rank(y.situacao)) return rank(x.situacao) - rank(y.situacao);
+    if (x.situacao === 'atrasado') return y.maior_atraso_dias - x.maior_atraso_dias;
+    return x.nome.localeCompare(y.nome);
+  });
+}
+
 export async function getTaxaMatricula(alunoId: string): Promise<TaxaMatricula | null> {
   const { data, error } = await supabase
     .from('taxa_matricula')
