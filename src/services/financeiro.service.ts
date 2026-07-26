@@ -312,6 +312,13 @@ export interface MensalidadeVw extends Mensalidade {
   status_efetivo: 'pago' | 'atrasado' | 'pendente' | 'isento' | 'cancelado';
   valor_pago?: number | null;
   forma_pagamento?: FormaPagamento | null;
+  // auditoria de correção (075) — para os selos "estornado/cancelado"
+  confirmado_por?: string | null;
+  data_confirmacao?: string | null;
+  estornado_por?: string | null;
+  data_estorno?: string | null;
+  motivo_estorno?: string | null;
+  motivo_cancelamento?: string | null;
 }
 
 export async function getMensalidadesVw(alunoId: string): Promise<MensalidadeVw[]> {
@@ -331,18 +338,59 @@ export async function getMensalidadesVw(alunoId: string): Promise<MensalidadeVw[
 // Edição inline de UMA mensalidade (valor cobrado e/ou vencimento daquela linha).
 // Persistência na FONTE ÚNICA (mensalidades — LICAO-042). RLS 037: staff/financeiro
 // têm UPDATE. Não confundir com override de matrícula (072, que afeta gerações futuras).
+// 2h: BLOQUEIA edição de mensalidade PAGA (estorne primeiro) + registra atualizado_por/em.
 export async function atualizarMensalidade(
   id: string,
   patch: { valor?: number; dataVencimento?: string },
+  atualizadoPor: string,
 ): Promise<ServiceResult> {
   const upd: Record<string, unknown> = {};
   if (patch.valor != null)          upd.valor = patch.valor;
   if (patch.dataVencimento)         upd.data_vencimento = patch.dataVencimento;
   if (Object.keys(upd).length === 0) return { error: null };
+  upd.atualizado_por = atualizadoPor;
+  upd.atualizado_em  = new Date().toISOString();
 
-  const { error } = await supabase.from('mensalidades').update(upd).eq('id', id);
+  // Guard: não editar paga (o .neq filtra no banco — 0 linhas = paga, avisa).
+  const { data, error } = await supabase
+    .from('mensalidades')
+    .update(upd)
+    .eq('id', id)
+    .neq('status', 'pago')
+    .select('id');
   if (error) {
     console.error('[atualizarMensalidade]', error.message);
+    return { error: error.message };
+  }
+  if (!data || data.length === 0) {
+    return { error: 'Mensalidade paga não pode ser editada — estorne o pagamento primeiro.' };
+  }
+  return { error: null };
+}
+
+// Estorna um pagamento confirmado por engano (075): 'pago' → 'pendente', limpa os
+// campos de pagamento (preserva comprovante), grava quem/quando/motivo. Motivo obrigatório.
+export async function estornarPagamento(mensalidadeId: string, motivo: string): Promise<ServiceResult> {
+  const { error } = await supabase.rpc('estornar_pagamento', {
+    p_mensalidade_id: mensalidadeId,
+    p_motivo: motivo,
+  });
+  if (error) {
+    console.error('[estornarPagamento]', error.message);
+    return { error: error.message };
+  }
+  return { error: null };
+}
+
+// Cancela (SOFT) uma mensalidade gerada errada (075): status 'cancelado' + motivo.
+// Bloqueia se 'pago' (estorne primeiro). Não exclui — rastro > exclusão.
+export async function cancelarMensalidade(mensalidadeId: string, motivo: string): Promise<ServiceResult> {
+  const { error } = await supabase.rpc('cancelar_mensalidade', {
+    p_mensalidade_id: mensalidadeId,
+    p_motivo: motivo,
+  });
+  if (error) {
+    console.error('[cancelarMensalidade]', error.message);
     return { error: error.message };
   }
   return { error: null };

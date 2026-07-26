@@ -3,10 +3,11 @@ import { useParams, useNavigate, useOutletContext } from 'react-router-dom';
 import { PDFDownloadLink } from '@react-pdf/renderer';
 import {
   ArrowLeft, Loader2, Coins, CalendarClock, Wallet, MessageCircle,
-  FileText, CheckCircle2, Pencil, Paperclip, Plus, X, Save,
+  FileText, CheckCircle2, Pencil, Paperclip, Plus, X, Save, RotateCcw, Ban, Info,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { ValoresMatriculaPanel } from '@/components/dashboard/ValoresMatriculaPanel';
 import { ConfirmarPagamentoModal } from '@/components/dashboard/ConfirmarPagamentoModal';
@@ -15,6 +16,8 @@ import {
   getFichaAlunoInfo,
   getMensalidadesVw,
   atualizarMensalidade,
+  estornarPagamento,
+  cancelarMensalidade,
   setDiaVencimentoPadrao,
   gerarMensalidadesMes,
   getComprovanteUrl,
@@ -71,6 +74,11 @@ export default function FichaFinanceiraAluno() {
   const [editValor, setEditValor] = useState('');
   const [editVenc, setEditVenc]   = useState('');
   const [savingLinha, setSavingLinha] = useState(false);
+
+  // 2h: estorno/cancelamento com motivo obrigatório
+  const [modalMotivo, setModalMotivo] = useState<{ tipo: 'estorno' | 'cancelamento'; mens: MensalidadeVw } | null>(null);
+  const [motivo, setMotivo]           = useState('');
+  const [savingMotivo, setSavingMotivo] = useState(false);
 
   // dia de vencimento padrão do aluno (Zona 1 — persiste em matriculas.dia_vencimento_padrao)
   const [diaPadrao, setDiaPadrao]   = useState('10');
@@ -157,11 +165,31 @@ export default function FichaFinanceiraAluno() {
     const patch: { valor?: number; dataVencimento?: string } = {};
     if (v !== m.valor) patch.valor = v;
     if (editVenc !== m.data_vencimento) patch.dataVencimento = editVenc;
-    const { error } = await atualizarMensalidade(m.id, patch);
+    const { error } = await atualizarMensalidade(m.id, patch, profile.id);
     setSavingLinha(false);
-    if (error) { toast({ title: 'Erro ao salvar', description: error, variant: 'destructive' }); return; }
+    if (error) { toast({ title: 'Não foi possível editar', description: error, variant: 'destructive' }); return; }
     toast({ title: 'Mensalidade atualizada' });
     setEditLinha(null);
+    recarregarMensalidades();
+  };
+
+  const abrirMotivo = (tipo: 'estorno' | 'cancelamento', mens: MensalidadeVw) => {
+    setMotivo('');
+    setModalMotivo({ tipo, mens });
+  };
+
+  const confirmarMotivo = async () => {
+    if (!modalMotivo) return;
+    if (motivo.trim() === '') { toast({ title: 'Motivo é obrigatório', variant: 'destructive' }); return; }
+    setSavingMotivo(true);
+    const { tipo, mens } = modalMotivo;
+    const { error } = tipo === 'estorno'
+      ? await estornarPagamento(mens.id, motivo.trim())
+      : await cancelarMensalidade(mens.id, motivo.trim());
+    setSavingMotivo(false);
+    if (error) { toast({ title: tipo === 'estorno' ? 'Erro ao estornar' : 'Erro ao cancelar', description: error, variant: 'destructive' }); return; }
+    toast({ title: tipo === 'estorno' ? 'Pagamento estornado' : 'Mensalidade cancelada' });
+    setModalMotivo(null);
     recarregarMensalidades();
   };
 
@@ -375,12 +403,27 @@ export default function FichaFinanceiraAluno() {
               </thead>
               <tbody>
                 {mensalidades.map(m => {
-                  const emEdicao = editLinha === m.id;
-                  const atraso = diasAtraso(m);
+                  const emEdicao   = editLinha === m.id;
+                  const atraso     = diasAtraso(m);
+                  const isPago     = m.status_efetivo === 'pago';
+                  const isCancel   = m.status_efetivo === 'cancelado';
+                  const isAberto   = m.status_efetivo === 'pendente' || m.status_efetivo === 'atrasado';
+                  const selo       = m.data_estorno
+                    ? `↩ estornado em ${fmtData((m.data_estorno ?? '').slice(0, 10))}${m.motivo_estorno ? ` — ${m.motivo_estorno}` : ''}`
+                    : isCancel && m.motivo_cancelamento
+                    ? `cancelado — ${m.motivo_cancelamento}`
+                    : null;
                   return (
-                    <tr key={m.id} className="border-b border-border/60 last:border-0">
-                      <td className="py-2 pr-3 capitalize text-foreground">{fmtMes(m.mes_referencia)}</td>
-                      <td className="py-2 pr-3 text-right tabular-nums text-foreground">
+                    <tr key={m.id} className={`border-b border-border/60 last:border-0 ${isCancel ? 'opacity-60' : ''}`}>
+                      <td className={`py-2 pr-3 capitalize text-foreground ${isCancel ? 'line-through' : ''}`}>
+                        {fmtMes(m.mes_referencia)}
+                        {selo && (
+                          <span className="block text-[10px] not-italic text-muted-foreground normal-case no-underline flex items-center gap-1 mt-0.5">
+                            <Info className="h-3 w-3 shrink-0" /> {selo}
+                          </span>
+                        )}
+                      </td>
+                      <td className={`py-2 pr-3 text-right tabular-nums text-foreground ${isCancel ? 'line-through' : ''}`}>
                         {emEdicao
                           ? <Input inputMode="decimal" value={editValor} onChange={e => setEditValor(e.target.value)}
                               className="h-8 w-24 text-right bg-background ml-auto" />
@@ -413,16 +456,32 @@ export default function FichaFinanceiraAluno() {
                           </div>
                         ) : (
                           <div className="inline-flex gap-1">
-                            {m.status_efetivo !== 'pago' && m.status_efetivo !== 'isento' && m.status_efetivo !== 'cancelado' && (
+                            {/* Aberta: confirmar · editar · cancelar */}
+                            {isAberto && (
                               <Button size="sm" variant="ghost" onClick={() => setModalPag(m)}
                                 className="h-8 px-2 text-green-600" title="Confirmar pagamento">
                                 <CheckCircle2 className="h-4 w-4" />
                               </Button>
                             )}
-                            <Button size="sm" variant="ghost" onClick={() => abrirEdicao(m)}
-                              className="h-8 px-2 text-muted-foreground" title="Editar valor/vencimento">
-                              <Pencil className="h-4 w-4" />
-                            </Button>
+                            {isAberto && (
+                              <Button size="sm" variant="ghost" onClick={() => abrirEdicao(m)}
+                                className="h-8 px-2 text-muted-foreground" title="Editar valor/vencimento">
+                                <Pencil className="h-4 w-4" />
+                              </Button>
+                            )}
+                            {isAberto && (
+                              <Button size="sm" variant="ghost" onClick={() => abrirMotivo('cancelamento', m)}
+                                className="h-8 px-2 text-amber-600" title="Cancelar mensalidade">
+                                <Ban className="h-4 w-4" />
+                              </Button>
+                            )}
+                            {/* Paga: estornar */}
+                            {isPago && (
+                              <Button size="sm" variant="ghost" onClick={() => abrirMotivo('estorno', m)}
+                                className="h-8 px-2 text-red-600" title="Estornar pagamento">
+                                <RotateCcw className="h-4 w-4" />
+                              </Button>
+                            )}
                             {m.comprovante_url && (
                               <Button size="sm" variant="ghost" onClick={() => verComprovante(m.comprovante_url!)}
                                 className="h-8 px-2 text-muted-foreground" title="Ver comprovante">
@@ -447,6 +506,50 @@ export default function FichaFinanceiraAluno() {
           onClose={() => setModalPag(null)}
           onSaved={() => { setModalPag(null); recarregarMensalidades(); }}
         />
+      )}
+
+      {/* Modal de motivo (estorno / cancelamento) — motivo obrigatório */}
+      {modalMotivo && (
+        <div className="fixed inset-0 bg-background/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-card border border-border rounded-2xl p-6 w-full max-w-md space-y-4 shadow-2xl">
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-merriweather font-bold text-foreground flex items-center gap-2">
+                {modalMotivo.tipo === 'estorno'
+                  ? <><RotateCcw className="h-5 w-5 text-red-600" /> Estornar pagamento</>
+                  : <><Ban className="h-5 w-5 text-amber-600" /> Cancelar mensalidade</>}
+              </h2>
+              <button onClick={() => setModalMotivo(null)} className="text-muted-foreground hover:text-foreground"><X className="h-5 w-5" /></button>
+            </div>
+
+            <div className="text-sm bg-muted/20 rounded-lg p-3 space-y-1">
+              <p><span className="text-muted-foreground">Referência:</span> <span className="font-medium capitalize">{fmtMes(modalMotivo.mens.mes_referencia)}</span></p>
+              <p><span className="text-muted-foreground">Valor:</span> <span className="font-medium">{brl(modalMotivo.mens.valor)}</span></p>
+              <p className="text-[11px] text-muted-foreground">
+                {modalMotivo.tipo === 'estorno'
+                  ? 'Volta para pendente e limpa o pagamento (o comprovante é preservado no histórico). Fica registrado quem estornou e quando.'
+                  : 'A mensalidade é anulada (status cancelado) — não é excluída, fica no histórico com o motivo.'}
+              </p>
+            </div>
+
+            <div>
+              <label className="text-sm text-foreground">Motivo (obrigatório)</label>
+              <Textarea value={motivo} onChange={e => setMotivo(e.target.value)} rows={3}
+                placeholder={modalMotivo.tipo === 'estorno'
+                  ? 'Ex.: confirmado no aluno errado; valor divergente do comprovante'
+                  : 'Ex.: mês gerado em duplicidade; aluno trancou a matrícula'}
+                className="mt-1.5 bg-background" />
+            </div>
+
+            <div className="flex gap-3 pt-1">
+              <Button variant="outline" onClick={() => setModalMotivo(null)} className="flex-1 border-border text-foreground">Voltar</Button>
+              <Button onClick={confirmarMotivo} disabled={savingMotivo}
+                className={`flex-1 text-white ${modalMotivo.tipo === 'estorno' ? 'bg-red-600 hover:bg-red-600/90' : 'bg-amber-600 hover:bg-amber-600/90'}`}>
+                {savingMotivo ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                {modalMotivo.tipo === 'estorno' ? 'Estornar' : 'Cancelar mensalidade'}
+              </Button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
