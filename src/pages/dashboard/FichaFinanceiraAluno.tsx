@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useParams, useNavigate, useOutletContext } from 'react-router-dom';
 import { PDFDownloadLink } from '@react-pdf/renderer';
 import {
-  ArrowLeft, Loader2, Coins, CalendarClock, Wallet, MessageCircle,
+  ArrowLeft, Loader2, Coins, CalendarClock, Wallet, MessageCircle, Mail,
   FileText, CheckCircle2, Pencil, Paperclip, Plus, X, Save, RotateCcw, Ban, Info,
   ChevronLeft, ChevronRight, Lock, Unlock,
 } from 'lucide-react';
@@ -22,10 +22,13 @@ import {
   setDiaVencimentoPadrao,
   gerarMensalidadesMes,
   getComprovanteUrl,
+  getConfigFinanceiro,
   type FichaAlunoInfo,
   type MensalidadeVw,
+  type ConfigFinanceiro,
 } from '@/services/financeiro.service';
 import { suspenderMatriculaInadimplencia, reativarMatricula } from '@/services/matriculas.service';
+import { tipoCobrancaSugerido, linkWhatsAppCobranca, linkEmailCobranca } from '@/lib/cobranca';
 import type { DashboardContext } from '../Dashboard';
 
 // Financeiro 2g — FICHA FINANCEIRA DO ALUNO. "Cada aluno é uma história": aqui a
@@ -86,6 +89,9 @@ export default function FichaFinanceiraAluno() {
   const [modalSuspender, setModalSuspender] = useState(false);
   const [motivoSusp, setMotivoSusp]         = useState('');
   const [savingMatricula, setSavingMatricula] = useState(false);
+  // E5.1: sugerir reativação após quitar (dívida zerada + matrícula suspensa)
+  const [sugereReativar, setSugereReativar] = useState(false);
+  const [config, setConfig]                 = useState<ConfigFinanceiro | null>(null);
 
   // dia de vencimento padrão do aluno (Zona 1 — persiste em matriculas.dia_vencimento_padrao)
   const [diaPadrao, setDiaPadrao]   = useState('10');
@@ -99,12 +105,14 @@ export default function FichaFinanceiraAluno() {
   const carregar = useCallback(async () => {
     if (!alunoId) return;
     setLoading(true);
-    const [i, ms] = await Promise.all([
+    const [i, ms, cfg] = await Promise.all([
       getFichaAlunoInfo(alunoId),
       getMensalidadesVw(alunoId),
+      getConfigFinanceiro(),
     ]);
     setInfo(i);
     setMensalidades(ms);
+    setConfig(cfg);
     // dia de vencimento padrão persistido (074) → edição na Zona 1 + default da geração
     const dia = String(i?.dia_vencimento_padrao ?? 10);
     setDiaPadrao(dia);
@@ -214,9 +222,9 @@ export default function FichaFinanceiraAluno() {
     carregar();
   };
 
-  const reativar = async () => {
+  const reativar = async (semConfirmar = false) => {
     if (!info?.matricula_id) return;
-    if (!window.confirm('Reativar a matrícula e devolver o acesso ao aluno?')) return;
+    if (!semConfirmar && !window.confirm('Reativar a matrícula e devolver o acesso ao aluno?')) return;
     setSavingMatricula(true);
     const { error } = await reativarMatricula(info.matricula_id);
     setSavingMatricula(false);
@@ -259,18 +267,28 @@ export default function FichaFinanceiraAluno() {
     recarregarMensalidades();
   };
 
-  const abrirWhatsApp = () => {
-    if (!info?.telefone) { toast({ title: 'Aluno sem telefone cadastrado', variant: 'destructive' }); return; }
-    const fone = info.telefone.replace(/\D/g, '');
-    const numero = fone.startsWith('55') ? fone : `55${fone}`;
-    const devido = resumo.total_devido;
-    const texto = encodeURIComponent(
-      `Olá, ${info.nome}! Aqui é da secretaria do ITEC.` +
-      (devido > 0
-        ? ` Consta um total em aberto de ${brl(devido)}. Podemos ajudar a regularizar?`
-        : ` Passando para confirmar que sua situação financeira está em dia. Obrigado!`),
-    );
-    window.open(`https://wa.me/${numero}?text=${texto}`, '_blank');
+  // Cobrança pronta (F3) — WhatsApp/Email preenchido (não envia). Tom pelo atraso.
+  const cobrar = (canal: 'whatsapp' | 'email') => {
+    if (!info) return;
+    const tipo = tipoCobrancaSugerido(resumo.maior_atraso_dias);
+    const dados = { nome: info.nome, telefone: info.telefone, email: info.email, totalDevido: resumo.total_devido, maiorAtrasoDias: resumo.maior_atraso_dias };
+    const pix = { chave_pix: config?.chave_pix ?? null, beneficiario: config?.beneficiario ?? null };
+    const href = canal === 'whatsapp' ? linkWhatsAppCobranca(tipo, dados, pix) : linkEmailCobranca(tipo, dados, pix);
+    if (!href) { toast({ title: canal === 'whatsapp' ? 'Aluno sem telefone cadastrado' : 'Aluno sem e-mail cadastrado', variant: 'destructive' }); return; }
+    window.open(href, '_blank');
+  };
+
+  // Pós-confirmação de pagamento (F2, decisão A): se a matrícula está suspensa e a
+  // dívida ZEROU (sem atrasada nem pendente já vencida), sugere reativar (1 clique).
+  const posConfirmacao = async () => {
+    setModalPag(null);
+    if (!alunoId) return;
+    const ms = await getMensalidadesVw(alunoId);
+    setMensalidades(ms);
+    const aindaDeve = ms.some(m =>
+      m.status_efetivo === 'atrasado' ||
+      (m.status_efetivo === 'pendente' && m.data_vencimento < HOJE));
+    if (info?.matricula_status === 'suspensa' && !aindaDeve) setSugereReativar(true);
   };
 
   if (loading) {
@@ -346,9 +364,10 @@ export default function FichaFinanceiraAluno() {
               </div>
             </div>
             {suspensa ? (
-              <Button onClick={reativar} disabled={savingMatricula} className="bg-green-600 hover:bg-green-600/90 text-white">
-                {savingMatricula ? <Loader2 className="h-4 w-4 animate-spin mr-1.5" /> : <Unlock className="h-4 w-4 mr-1.5" />}
-                Reativar matrícula
+              <Button onClick={() => reativar()} disabled={savingMatricula} size="lg"
+                className="bg-green-600 hover:bg-green-600/90 text-white shadow-lg shadow-green-600/20 font-semibold">
+                {savingMatricula ? <Loader2 className="h-5 w-5 animate-spin mr-2" /> : <Unlock className="h-5 w-5 mr-2" />}
+                Reativar acesso do aluno
               </Button>
             ) : (
               <Button onClick={() => { setMotivoSusp(`Inadimplência — ${resumo.maior_atraso_dias} dias de atraso`); setModalSuspender(true); }}
@@ -386,9 +405,16 @@ export default function FichaFinanceiraAluno() {
       </div>
 
       <div className="flex flex-wrap gap-2">
-        <Button variant="outline" onClick={abrirWhatsApp} className="border-border">
-          <MessageCircle className="h-4 w-4 mr-1.5 text-green-600" /> WhatsApp
-        </Button>
+        {resumo.total_devido > 0 && (
+          <>
+            <Button variant="outline" onClick={() => cobrar('whatsapp')} className="border-border">
+              <MessageCircle className="h-4 w-4 mr-1.5 text-green-600" /> Cobrar por WhatsApp
+            </Button>
+            <Button variant="outline" onClick={() => cobrar('email')} className="border-border">
+              <Mail className="h-4 w-4 mr-1.5 text-muted-foreground" /> Cobrar por e-mail
+            </Button>
+          </>
+        )}
         <PDFDownloadLink
           document={
             <ExtratoFinanceiroPDF
@@ -606,7 +632,7 @@ export default function FichaFinanceiraAluno() {
         <ConfirmarPagamentoModal
           mensalidade={modalPag}
           onClose={() => setModalPag(null)}
-          onSaved={() => { setModalPag(null); recarregarMensalidades(); }}
+          onSaved={posConfirmacao}
         />
       )}
 
@@ -681,6 +707,30 @@ export default function FichaFinanceiraAluno() {
               <Button onClick={confirmarSuspensao} disabled={savingMatricula} className="flex-1 bg-red-600 hover:bg-red-600/90 text-white">
                 {savingMatricula ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
                 Suspender
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* F2 (decisão A): dívida quitada → sugerir reativação (1 clique de confirmação) */}
+      {sugereReativar && (
+        <div className="fixed inset-0 bg-background/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-card border border-green-500/40 rounded-2xl p-6 w-full max-w-md space-y-4 shadow-2xl">
+            <div className="flex items-center gap-2">
+              <CheckCircle2 className="h-6 w-6 text-green-600" />
+              <h2 className="text-lg font-merriweather font-bold text-foreground">Dívida quitada!</h2>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              {info.nome} não tem mais mensalidades em aberto e está com a <strong>matrícula suspensa</strong>.
+              Deseja <strong>reativar o acesso</strong> agora?
+            </p>
+            <div className="flex gap-3 pt-1">
+              <Button variant="outline" onClick={() => setSugereReativar(false)} className="flex-1 border-border text-foreground">Agora não</Button>
+              <Button onClick={async () => { setSugereReativar(false); await reativar(true); }} disabled={savingMatricula}
+                className="flex-1 bg-green-600 hover:bg-green-600/90 text-white font-semibold">
+                {savingMatricula ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Unlock className="h-4 w-4 mr-2" />}
+                Reativar acesso
               </Button>
             </div>
           </div>
