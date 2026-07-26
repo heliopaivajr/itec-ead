@@ -389,6 +389,25 @@ Ambos com impressão (**PDF/Excel**), reusando `@react-pdf` + `xlsx` do R02.
 **Regra**: tudo editável mesmo iniciando com o padrão; o inline persiste na fonte única (`resolver_valor_efetivo`/`set_valores_matricula`, LICAO-042) — não é ajuste efêmero de tela.
 **Status**: Registrado — diretriz do Hélio (2026-07-22).
 
+### 8.7 [MELHORIAS] Financeiro pós-E5 — backlog priorizado
+**Contexto**: registrado após a trilha 2a–2h + 2d (aluno) + config PIX. E5 (travamento por inadimplência 30/90) é o próximo grande item — estas são as melhorias que vêm depois/em paralelo.
+
+**Agosto (rápidas)**:
+1. **Recibo de pagamento confirmado** para o aluno baixar (PDF) — após `confirmar_pagamento`, o aluno vê/baixa um recibo do que foi pago (reusa `@react-pdf`, padrão do extrato 2g/R02).
+2. **Aviso de vencimento próximo** na tela "Meu Financeiro" do aluno — banner "sua próxima mensalidade vence em X dias" (deriva de `proxima_mensalidade`). Base do aviso progressivo do E5.
+3. **Badge "N comprovantes aguardando confirmação"** no menu Financeiro do staff — conta `mensalidades` com `comprovante_enviado_em` preenchido e status ainda em aberto (077). Dá visibilidade da fila 2f.
+
+**v1.1**:
+- **Extrato anual PDF** do aluno (para IR) — consolida o ano de mensalidades pagas.
+- **Relatório de fluxo de caixa** do Breno — recebido × previsto por mês (evolução do 8.3).
+- **Notificação automática** e-mail/WhatsApp (mensalidade gerada / vencimento próximo) — depende de provedor (Resend/WhatsApp; ver REGRA CRÍTICA de APIs externas).
+- **Desconto por antecipação** (se o Hélio desejar) — política a definir.
+
+**Futuro (SaaS)**:
+- **Boleto/cartão** — decisão do Hélio: fica para o futuro no SaaS (gateway Asaas, ver 8.1/8.4). PIX + comprovante manual atende o lançamento.
+
+**Status**: Registrado — melhorias do Hélio (2026-07-26).
+
 ---
 
 ## 9. OUTRAS IDEIAS
