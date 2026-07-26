@@ -55,6 +55,7 @@ const menuByRole: Record<string, { icon: React.ElementType; label: string; href:
     { icon: GraduationCap,   label: 'Meu Histórico',    href: '/dashboard/meu-historico',      tooltip: 'Histórico acadêmico, progresso e impressão' },
     { icon: Star,            label: 'Minhas Notas',     href: '/dashboard/minhas-notas',       tooltip: 'Suas notas por disciplina' },
     { icon: CalendarCheck,   label: 'Minha Frequência', href: '/dashboard/minha-frequencia',   tooltip: 'Sua presença por disciplina' },
+    { icon: CreditCard,      label: 'Meu Financeiro',   href: '/dashboard/pagamentos',         tooltip: 'Mensalidades, PIX e comprovante' },
     { icon: CalendarDays,    label: 'Calendário',       href: '/dashboard/calendario',         tooltip: 'Calendário acadêmico de aulas e eventos' },
     { icon: Award,           label: 'Meus Certificados',href: '/dashboard/meus-certificados',  tooltip: 'Certificados — disponível após conclusão de módulo' },
     { icon: Megaphone,       label: 'Avisos',           href: '/dashboard/avisos',             tooltip: 'Mural de avisos do ITEC' },
