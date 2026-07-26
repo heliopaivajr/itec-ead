@@ -44,6 +44,7 @@ const NovaMatricula      = lazy(() => import("./pages/dashboard/NovaMatricula"))
 const PainelAdmin        = lazy(() => import("./pages/dashboard/PainelAdmin"));
 const FinanceiroPage     = lazy(() => import("./pages/dashboard/Financeiro"));
 const FichaFinanceiraAluno = lazy(() => import("./pages/dashboard/FichaFinanceiraAluno"));
+const MeuFinanceiro        = lazy(() => import("./pages/dashboard/MeuFinanceiro"));
 const Convalidacoes      = lazy(() => import("./pages/dashboard/Convalidacoes"));
 const ProfessorHome      = lazy(() => import("./pages/dashboard/ProfessorHome"));
 const LancarFrequencia   = lazy(() => import("./pages/dashboard/LancarFrequencia"));
@@ -131,7 +132,8 @@ const App = () => (
               <Route path="comunidade"  element={<ComingSoon title="Comunidade" icon={Users} description="Fóruns, grupos de oração e mural de avisos em desenvolvimento." />} />
               <Route path="eventos"     element={<ComingSoon title="Eventos" icon={CalendarDays} description="O calendário acadêmico com todos os eventos estará disponível em breve." />} />
               <Route path="documentos"  element={<ComingSoon title="Documentos" icon={FileText} description="Certificados e histórico acadêmico disponíveis após a conclusão dos módulos." />} />
-              <Route path="pagamentos"  element={<ComingSoon title="Pagamentos" icon={CreditCard} description="Para informações sobre mensalidades e boletos, entre em contato com a secretaria." />} />
+              {/* Financeiro do aluno (2d) — vê o próprio, PIX, envia comprovante */}
+              <Route path="pagamentos"  element={<RoleGuard allowedRoles={['aluno','superadmin']}><MeuFinanceiro /></RoleGuard>} />
               <Route path="suporte"     element={<ComingSoon title="Suporte" icon={HelpCircle} description="Central de atendimento pastoral e técnico em desenvolvimento." />} />
 
               {/* Professor */}

@@ -276,6 +276,9 @@ export default function Financeiro() {
                               {new Date(m.mes_referencia + 'T12:00').toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}
                             </span>
                             <span className="ml-2 text-muted-foreground">R$ {m.valor.toFixed(2)}</span>
+                            {m.comprovante_enviado_em && (
+                              <span className="ml-2 text-[11px] text-amber-600 font-medium">📎 comprovante recebido — aguardando confirmação</span>
+                            )}
                           </div>
                           <Button size="sm" className="h-7 text-xs bg-primary text-primary-foreground hover:bg-primary/80"
                             onClick={() => setModalMens(m)}>

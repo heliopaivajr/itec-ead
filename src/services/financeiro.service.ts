@@ -25,6 +25,7 @@ export interface Mensalidade {
   data_pagamento: string | null;
   valor_com_atraso?: number | null;   // 070 — snapshot da multa (após dia 10)
   comprovante_url: string | null;
+  comprovante_enviado_em?: string | null;   // 077 — aluno enviou, aguardando confirmação
   registrado_por: string | null;
   observacoes: string | null;
   criado_em: string;
@@ -319,6 +320,7 @@ export interface MensalidadeVw extends Mensalidade {
   data_estorno?: string | null;
   motivo_estorno?: string | null;
   motivo_cancelamento?: string | null;
+  comprovante_enviado_em?: string | null;   // 077 — aluno subiu, aguardando confirmação
 }
 
 export async function getMensalidadesVw(alunoId: string): Promise<MensalidadeVw[]> {
@@ -605,6 +607,45 @@ export async function getResumoFinanceiroAluno(alunoId: string): Promise<ResumoF
     mensalidades_atrasadas:  atrasadas.length,
     proxima_mensalidade:     proxima,
   };
+}
+
+// ─── Etapa 2d: financeiro do ALUNO (tela "Meu Financeiro") ───────────────────
+
+// Config PIX institucional (config_financeiro, 077). Qualquer autenticado lê (RLS).
+export interface ConfigFinanceiro {
+  chave_pix: string | null;
+  tipo_chave: string | null;
+  beneficiario: string | null;
+  cidade: string | null;
+  instrucoes: string | null;
+}
+
+export async function getConfigFinanceiro(): Promise<ConfigFinanceiro | null> {
+  const { data, error } = await supabase
+    .from('config_financeiro')
+    .select('chave_pix, tipo_chave, beneficiario, cidade, instrucoes')
+    .eq('id', 1)
+    .maybeSingle();
+  if (error) {
+    console.error('[getConfigFinanceiro]', error.message);
+    return null;
+  }
+  return (data as ConfigFinanceiro) ?? null;
+}
+
+// O aluno vincula o comprovante à PRÓPRIA mensalidade (RPC 077, SECURITY DEFINER).
+// NÃO confirma o pagamento — só carimba "enviado, aguardando" (quem confirma é o staff).
+// Posse validada no banco (mensalidade.aluno_id = auth.uid()).
+export async function alunoEnviarComprovante(mensalidadeId: string, path: string): Promise<ServiceResult> {
+  const { error } = await supabase.rpc('aluno_enviar_comprovante', {
+    p_mensalidade_id: mensalidadeId,
+    p_path: path,
+  });
+  if (error) {
+    console.error('[alunoEnviarComprovante]', error.message);
+    return { error: error.message };
+  }
+  return { error: null };
 }
 
 // ─── Etapa 2c: geração por valor efetivo (070) ───────────────────────────────

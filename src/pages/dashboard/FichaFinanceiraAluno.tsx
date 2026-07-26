@@ -435,6 +435,8 @@ export default function FichaFinanceiraAluno() {
                     : isCancel && m.motivo_cancelamento
                     ? `cancelado — ${m.motivo_cancelamento}`
                     : null;
+                  // 2d: aluno enviou comprovante e ainda está em aberto → aguardando confirmação do staff
+                  const aguardandoComp = isAberto && !!m.comprovante_enviado_em;
                   return (
                     <tr key={m.id} className={`border-b border-border/60 last:border-0 ${isCancel ? 'opacity-60' : ''}`}>
                       <td className={`py-2 pr-3 capitalize text-foreground ${isCancel ? 'line-through' : ''}`}>
@@ -442,6 +444,11 @@ export default function FichaFinanceiraAluno() {
                         {selo && (
                           <span className="block text-[10px] not-italic text-muted-foreground normal-case no-underline flex items-center gap-1 mt-0.5">
                             <Info className="h-3 w-3 shrink-0" /> {selo}
+                          </span>
+                        )}
+                        {aguardandoComp && (
+                          <span className="block text-[10px] not-italic text-amber-600 normal-case no-underline flex items-center gap-1 mt-0.5">
+                            <Paperclip className="h-3 w-3 shrink-0" /> comprovante recebido — aguardando confirmação
                           </span>
                         )}
                       </td>
