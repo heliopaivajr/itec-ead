@@ -4,6 +4,7 @@ import { PDFDownloadLink } from '@react-pdf/renderer';
 import {
   ArrowLeft, Loader2, Coins, CalendarClock, Wallet, MessageCircle,
   FileText, CheckCircle2, Pencil, Paperclip, Plus, X, Save, RotateCcw, Ban, Info,
+  ChevronLeft, ChevronRight,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -199,6 +200,15 @@ export default function FichaFinanceiraAluno() {
     else toast({ title: 'Comprovante indisponível', variant: 'destructive' });
   };
 
+  // Navegação de mês por setas (◀ ▶) — mesmo recurso da aba "Gerar Mensalidades",
+  // que funciona independente do calendário nativo do type="month".
+  const shiftMes = (delta: number) => {
+    const mm = /^(\d{4})-(\d{2})$/.exec(gerarMes);
+    const base = mm ? new Date(parseInt(mm[1], 10), parseInt(mm[2], 10) - 1, 1) : new Date();
+    base.setMonth(base.getMonth() + delta);
+    setGerarMes(`${base.getFullYear()}-${String(base.getMonth() + 1).padStart(2, '0')}`);
+  };
+
   const gerarProximoMes = async () => {
     const m = /^(\d{4})-(\d{2})$/.exec(gerarMes);
     if (!m) { toast({ title: 'Selecione o mês', variant: 'destructive' }); return; }
@@ -211,8 +221,8 @@ export default function FichaFinanceiraAluno() {
     );
     setGerando(false);
     if (error) { toast({ title: 'Erro ao gerar', description: error, variant: 'destructive' }); return; }
-    if (resultado?.geradas) toast({ title: `Mensalidade gerada para ${fmtMes(m[0] + '-01')}` });
-    else if (resultado?.ja_existiam) toast({ title: 'Já existia mensalidade nesse mês (nada alterado)' });
+    if (resultado?.geradas) toast({ title: `Mensalidade gerada/reativada para ${fmtMes(m[0] + '-01')}` });
+    else if (resultado?.ja_existiam) toast({ title: 'Já existe mensalidade viva nesse mês (nada alterado)' });
     else if (resultado?.sem_preco) toast({ title: 'Sem preço resolvido — verifique a Zona 1', variant: 'destructive' });
     setGerarMes('');
     recarregarMensalidades();
@@ -371,8 +381,20 @@ export default function FichaFinanceiraAluno() {
         <div className="flex items-end gap-2 flex-wrap bg-muted/20 rounded-lg p-3">
           <div>
             <label className="text-xs text-muted-foreground mb-1 block">Mês de referência</label>
-            <Input type="month" value={gerarMes} onChange={e => setGerarMes(e.target.value)}
-              className="bg-background w-40" />
+            <div className="flex items-center gap-1">
+              <button type="button" onClick={() => shiftMes(-1)}
+                className="p-2 rounded-md border border-border text-muted-foreground hover:text-foreground hover:border-primary/40"
+                title="Mês anterior">
+                <ChevronLeft className="h-4 w-4" />
+              </button>
+              <Input type="month" value={gerarMes} onChange={e => setGerarMes(e.target.value)}
+                className="bg-background border-border text-foreground text-center w-44" />
+              <button type="button" onClick={() => shiftMes(1)}
+                className="p-2 rounded-md border border-border text-muted-foreground hover:text-foreground hover:border-primary/40"
+                title="Próximo mês">
+                <ChevronRight className="h-4 w-4" />
+              </button>
+            </div>
           </div>
           <div>
             <label className="text-xs text-muted-foreground mb-1 block">Dia venc.</label>
