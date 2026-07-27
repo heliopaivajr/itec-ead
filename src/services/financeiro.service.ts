@@ -450,6 +450,7 @@ export interface FichaAlunoInfo {
   matricula_status: string | null;
   motivo_suspensao: string | null;    // 078 — quando status='suspensa'
   data_suspensao: string | null;      // 078
+  turma_id: string | null;            // p/ histórico acadêmico (dossiê 2i)
   turma_nome: string | null;
   curso_nome: string | null;
   // Dia de vencimento padrão do aluno — coluna persistente matriculas.dia_vencimento_padrao (074).
@@ -517,6 +518,7 @@ export async function getFichaAlunoInfo(alunoId: string): Promise<FichaAlunoInfo
     matricula_status:    matricula?.status ?? null,
     motivo_suspensao:    matricula?.motivo_suspensao ?? null,
     data_suspensao:      matricula?.data_suspensao ?? null,
+    turma_id:            matricula?.turma_id ?? null,
     turma_nome:          turmaNome,
     curso_nome:          cursoNome,
     dia_vencimento_padrao: diaVenc,
