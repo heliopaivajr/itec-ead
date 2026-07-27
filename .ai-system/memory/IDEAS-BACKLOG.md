@@ -323,6 +323,25 @@ Ambos com impressão (**PDF/Excel**), reusando `@react-pdf` + `xlsx` do R02.
 
 ## 8. FINANCEIRO
 
+> ## ✅ MÓDULO FINANCEIRO — COMPLETO (2026-07-26)
+> **Migrações 067–078 aplicadas e validadas por query.** Fluxo completo testado em produção
+> (suspender → tela de bloqueio → aluno paga → confirmar → reativar). **Auth intocado** em todas.
+> Régua de valor única no banco (`resolver_valor_efetivo`, LICAO-042); billing sagrado (LICAO-043).
+>
+> **Entregue:** E1 acesso Breno (067) · E2a preços editáveis (068) · E2b override por matrícula (069) ·
+> E2c geração por valor efetivo + seletiva (070/071) · E2c.2 valor inline grava override (072) ·
+> 2f confirmação de pagamento + bucket privado + status automático (073) · 2g Ficha Financeira do
+> aluno + dia de vencimento por aluno (074) · 2h corrigir sem medo — estorno/cancelamento/guard/
+> auditoria (075) · 2g.1 regenerar mês cancelado (076) · 2d o aluno vê/paga + PIX + comprovante (077) ·
+> config PIX editável (staff/financeiro) · 2e Painel Visão Geral (lista + situação + export) ·
+> **E5** travamento por inadimplência 30/90 (078) + telas (banner progressivo · tela de bloqueio ·
+> suspender/reativar) · **E5.1** destravar fluido + inadimplente visível na lista/relatório + cobrança
+> pronta (WhatsApp/e-mail, 2 modelos pastorais).
+>
+> **Backlog remanescente do módulo:** 8.7 (rápidas de agosto: recibo PDF · aviso de vencimento ·
+> badge de comprovantes no sino) e 8.1/8.4 (gateway Asaas — boleto/cartão, futuro SaaS). O resto
+> desta seção 8 abaixo é **histórico** das etapas (mantido para rastreabilidade).
+
 ### 8.0 [SEGURANÇA] Bucket `comprovantes-pagamento` — quebrado + risco de PII
 **Descrição**: `Financeiro.tsx` faz `supabase.storage.from('comprovantes-pagamento').upload(...)` direto na page (viola services-only), mas o bucket **não existe em nenhuma migração** (sem policies versionadas). A feature provavelmente está quebrada; se o bucket existir criado à mão como **público**, comprovantes de pagamento (PII financeira do aluno) ficam acessíveis sem login.
 **Agravantes**: usa `getPublicUrl` (não signed URL) e path **previsível** `comprovantes/{aluno_id}_{mes_referencia}_{nome}` (sem UUID, expõe `aluno_id`).
@@ -330,7 +349,7 @@ Ambos com impressão (**PDF/Excel**), reusando `@react-pdf` + `xlsx` do R02.
 **Origem**: achado correlato do report-B (diagnóstico Storage, 2026-07-06) — fora do escopo da migração 055.
 **Prioridade**: ALTA (verificar já; correção junto da revisão financeira)
 **Versão alvo**: V1 (antes de agosto) — pelo menos a verificação
-**Status**: Registrado — pendente revisão do módulo financeiro
+**Status**: ✅ **RESOLVIDO (073, 2026-07-22)** — bucket `comprovantes-pagamento` recriado **PRIVADO** com 4 policies (aluno sobe/vê o próprio via `foldername[1]=aluno_id`; staff/financeiro tudo), download por **signed URL** (nunca `getPublicUrl`), upload movido para `financeiro.service` (`uploadComprovante`/`getComprovanteUrl`). O aluno anexa via RPC gated (077).
 
 ### 8.1 Gateway de Pagamento PIX/Boleto
 **Descrição**: Integração com Asaas para pagamento online de mensalidades.  

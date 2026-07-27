@@ -958,4 +958,23 @@ A ponte entre os mundos é `professores.user_id = auth.uid()` (é o que `profess
 
 ---
 
+## LICAO-043 — Financeiro: billing é sagrado (idempotência, estorno com log, travamento assistido, role é a fonte do acesso)
+
+**Contexto:** módulo Financeiro completo (migrações 067–078, ✅ COMPLETO 2026-07-26). Cinco princípios que se repetiram e passam a valer para qualquer feature que mexa em dinheiro/acesso:
+
+1. **Idempotência no banco, nunca no front.** A geração de mensalidades usa `INSERT ... ON CONFLICT (aluno_id, mes_referencia) DO NOTHING` (070/071) — reexecutar o mês **nunca** duplica nem sobrescreve. A confirmação de pagamento (073) é idempotente (já pago → EXCEPTION). Regenerar um mês **cancelado** só reativa via `ON CONFLICT DO UPDATE ... WHERE status='cancelado'` (076) — o predicado é a trava.
+2. **NUNCA reativar/sobrescrever uma mensalidade `'pago'`.** Todo caminho que toca `mensalidades` protege o pago: o guard de `confirmar_pagamento` só aceita `pendente`/`atrasado`; o `DO UPDATE` condicional exclui pago; editar uma paga é bloqueado (estorne primeiro).
+3. **Correção = estorno com LOG, não edição silenciosa.** Desfazer um pagamento é `estornar_pagamento` (075) — volta a `'pendente'`, limpa os campos de pagamento, **preserva o comprovante** e grava **quem/quando/motivo** (motivo obrigatório). Cancelar mensalidade é SOFT (`'cancelado'` + motivo) — rastro > exclusão. "Corrigir sem medo" = reversível **e auditável**.
+4. **Travamento por inadimplência é sempre ASSISTIDO.** A suspensão (078) nunca é automática — o financeiro **revê a lista de candidatos (90+) e confirma** um a um; reativar ao quitar é **1 clique de confirmação** (não cego). Regra de ouro: um humano revisa antes de cortar/devolver acesso.
+5. **`profiles.role` é a FONTE ÚNICA do acesso.** `user_roles` é uma VIEW sobre `profiles` (032) com writes revogados (054) — o efeito de acesso completo é **`UPDATE profiles SET role`** (a view reflete). Suspender = `role 'pendente'` (→ /aguardando, sem tocar no ProtectedRoute — cicatriz 2d79368); reativar = `role 'aluno'` (restaura acesso COMPLETO, senão vira "ativa sem acesso" — LICAO-039). O gate de **inadimplência** é **conteúdo condicional** nas telas, jamais o gate de **sessão**.
+
+**Bônus de arquitetura (repetido em todo o módulo):** o `financeiro` entra nas ações via **RPC SECURITY DEFINER gated `is_staff() OR is_financeiro()`** (escreve 1 campo) em vez de UPDATE amplo — preserva a fronteira 067. E o valor é **régua única no banco** (`resolver_valor_efetivo`, LICAO-042): o front espelha, nunca recalcula.
+
+**Validado em produção:** fluxo completo suspender → tela de bloqueio → aluno paga → confirmar → "dívida quitada, reativar?" → reativar → acesso volta. Migrações 067–078 aplicadas e validadas por query. Auth intocado em todas as etapas.
+**Agentes impactados:** 04-db-architect, 05-backend-engineer, 06-frontend, 11-security-auditor
+**Como aplicar no futuro:** qualquer feature que mexa em dinheiro ou em acesso — perguntar antes: "é idempotente? o pago está protegido? a correção fica logada? o corte/devolução é assistido? quem é a fonte única do acesso (role em profiles)?"
+**Status:** aplicado (Financeiro 067–078 ✅, 2026-07-26).
+
+---
+
 *Mantido pelo agente-Osabio · ITEC-EAD · 2025*
