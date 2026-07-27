@@ -23,8 +23,10 @@ import { aprovarMatricula } from '@/services/matriculas.service';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from '@/components/ui/dialog';
-import { PDFDownloadLink } from '@react-pdf/renderer';
+import { PDFDownloadLink, pdf } from '@react-pdf/renderer';
 import { DeclaracaoMatriculaPDF } from '@/components/dashboard/DeclaracaoMatriculaPDF';
+import { DossieAlunoPDF } from '@/components/dashboard/DossieAlunoPDF';
+import { getMensalidadesVw } from '@/services/financeiro.service';
 import LancamentoRetroativo from '@/components/dashboard/LancamentoRetroativo';
 import { ValoresMatriculaPanel } from '@/components/dashboard/ValoresMatriculaPanel';
 import { useToast } from '@/hooks/use-toast';
@@ -82,7 +84,47 @@ export default function FichaAluno() {
   const [loadingHist, setLoadingHist] = useState(false);
   const [aprovandoId, setAprovandoId] = useState<string | null>(null);
   const [confirmDialog, setConfirmDialog] = useState<{ matriculaId: string; turma: string } | null>(null);
+  const [gerandoDossie, setGerandoDossie] = useState(false);   // 2i — dossiê nesta ficha
   const { toast } = useToast();
+
+  // 2i: dossiê completo (dados + financeiro + acadêmico) direto da ficha da secretaria.
+  // Reusa DossieAlunoPDF; o financeiro vem de vw_mensalidades (status_efetivo + auditoria).
+  // Mantém-se PII-FREE (DossieAlunoPDF não recebe CPF/RG), mesmo emitido daqui.
+  const gerarDossie = async () => {
+    if (!perfil) return;
+    setGerandoDossie(true);
+    try {
+      const matAtiva = matriculas.find(m => m.status === 'ativa' && m.turma_id) ?? matriculas.find(m => m.turma_id) ?? matriculas[0];
+      const mensalidadesVw = await getMensalidadesVw(perfil.id);
+      const blob = await pdf(
+        <DossieAlunoPDF
+          aluno={{
+            nome: perfil.full_name, codigo_itec: perfil.codigo_itec,
+            curso_nome: (matAtiva?.turma as { cursos?: { nome?: string } } | undefined)?.cursos?.nome ?? null,
+            turma_nome: matAtiva?.turma?.nome ?? matAtiva?.turma?.codigo ?? null,
+            email: perfil.email, telefone: perfil.telefone,
+            matricula_status: matAtiva?.status ?? null,
+            motivo_suspensao: (matAtiva as { motivo_suspensao?: string | null } | undefined)?.motivo_suspensao ?? null,
+            data_suspensao: (matAtiva as { data_suspensao?: string | null } | undefined)?.data_suspensao ?? null,
+          }}
+          mensalidades={mensalidadesVw}
+          historico={historico}
+          emitidoPor={adminProfile.full_name ?? 'Secretaria ITEC'}
+        />,
+      ).toBlob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `dossie-${perfil.full_name.replace(/\s+/g, '-').toLowerCase()}-${new Date().toISOString().split('T')[0]}.pdf`;
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      console.error('[gerarDossie]', e);
+      toast({ title: 'Erro ao gerar o dossiê', variant: 'destructive' });
+    } finally {
+      setGerandoDossie(false);
+    }
+  };
 
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -204,6 +246,12 @@ export default function FichaAluno() {
           <ArrowLeft className="h-5 w-5" />
         </button>
         <h1 className="text-xl font-bold">Ficha do Aluno</h1>
+        {/* 2i: dossiê completo (acadêmico + financeiro) — a secretaria gera daqui */}
+        <Button variant="outline" size="sm" onClick={gerarDossie} disabled={gerandoDossie}
+          className="ml-auto border-border">
+          {gerandoDossie ? <Loader2 className="h-4 w-4 animate-spin mr-1.5" /> : <FileText className="h-4 w-4 mr-1.5 text-[#BF9000]" />}
+          Dossiê completo (PDF)
+        </Button>
       </div>
 
       {/* Dados pessoais */}
