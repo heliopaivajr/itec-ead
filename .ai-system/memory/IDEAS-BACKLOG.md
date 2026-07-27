@@ -679,6 +679,78 @@ Ambos com impressão (**PDF/Excel**), reusando `@react-pdf` + `xlsx` do R02.
 
 ---
 
+## 14. CENTRAL DE RELATÓRIOS
+
+> **Requisito do Hélio (2026-07-26):** a central deve ser **rica** (muitos relatórios, não 6), organizada,
+> com **PDF e Excel em todos** e acesso fácil (diretriz 8.10). Diagnóstico completo abaixo.
+> **Legenda de esforço:** 🟢 gerador já existe (só levar à central, esforço P) · 🟡 novo, fonte pronta · 🔴 novo, mais esforço.
+
+### 14.0 Inventário atual (o que já existe — 6 relatórios, grade plana)
+| ID | Mostra | Formatos | Fonte (`relatorios.service`) |
+|---|---|---|---|
+| **R01** Alunos por Turma | matriculados por turma | PDF · Excel · CSV | `getAlunosPorTurma` |
+| **R02** Lista de Presença | presença por disciplina/período | PDF · Excel · CSV | `getListaPresencaRelatorio` |
+| **R03** Disciplinas por Aluno | cursadas/andamento/pendentes | PDF · Excel · CSV | `getDisciplinasPorAlunoRelatorio` |
+| **R04** Situação Financeira | status de pagamento | PDF · Excel · CSV | `getSituacaoFinanceiraRelatorio` |
+| **R05** Inadimplentes | atrasos por aluno | PDF · Excel · CSV | `getInadimplentesRelatorio` |
+| **R06** Histórico Acadêmico | histórico individual | **PDF só** (falta Excel) | `getHistoricoAcademicoR06` |
+
+Infra pronta e reusável: `RelatorioLayout.tsx`, `exporters/excelExporter.ts` (xlsx + CSV), `pdf/R0x_PDF.tsx`, queries **LICAO-026** (separadas). **Gap do menu:** grade plana de 6 cards, sem categorias/busca/filtros globais.
+
+### 14.1 [📚 ACADÊMICOS] a criar
+| Relatório | Fonte (reusa) | Esforço | Prio |
+|---|---|---|---|
+| Boletim/Dossiê do aluno | 🟢 `DossieAlunoPDF` (2i) | P | Alta |
+| Declaração de matrícula | 🟢 `DeclaracaoMatriculaPDF` (na ficha) | P | Alta |
+| Notas por turma/disciplina | 🟡 `getConsolidadoTurma` | P/M | Alta |
+| Frequência por turma | 🟡 `get_alunos_operacional`/VerTurma (064) | P/M | Alta |
+| Alunos em risco (nota<7 / freq<75) | 🟡 consolidado 065 | P | Alta |
+| Ata de resultados (turma×disciplina) | 🟡 `getConsolidadoTurma` | M | Média |
+| Histórico escolar | ✅ R06 existe | — | — |
+
+### 14.2 [💰 FINANCEIROS] a criar
+| Relatório | Fonte (reusa) | Esforço | Prio |
+|---|---|---|---|
+| Extrato do aluno | 🟢 `ExtratoFinanceiroPDF` (2g) | P | Alta |
+| Visão geral financeira | 🟢 `VisaoGeralFinanceiraPDF` (2e) | P | Alta |
+| Recebimentos do mês | 🟡 `mensalidades` pagas/mês · `getKpisFinanceiro` | P/M | Alta |
+| A receber / previsão | 🟡 `mensalidades` pendentes futuras | M | Média |
+| Mensalidades por turma | 🟡 `mensalidades` + `matriculas.turma` | M | Média |
+| Fluxo de caixa (recebido×previsto/mês) | 🔴 agregação `mensalidades` (= 8.7 v1.1) | M | Média |
+| Inadimplência / Situação financeira | ✅ R05/R04 existem | — | — |
+
+### 14.3 [🏫 GESTÃO] a criar
+| Relatório | Fonte (reusa) | Esforço | Prio |
+|---|---|---|---|
+| Matrículas por período | 🟡 `matriculas` por `created_at` | M | Média |
+| Leads / captação (funil) | 🟡 `leads_cursos` (ver 12.1) | M | Média |
+| Professores / contratos | 🟡 `professores` + `contratos_professor` | M | Média |
+| Visão geral da escola (KPIs: nº alunos/turmas, inadimplência %, média geral) | 🔴 agrega vários | M/G | Alta |
+| Alunos por turma | ✅ R01 existe | — | — |
+
+**Insight:** ~metade da "central rica" é **agregar geradores que já existem** (Dossiê 2i · Extrato 2g · Visão Geral 2e · Declaração) — esforço P, ganho alto. A outra metade tem **fonte pronta** (consolidado 065, mensalidades, leads).
+
+### 14.4 Arquitetura da central
+- **3 categorias** (📚 Acadêmicos · 💰 Financeiros · 🏫 Gestão) em **abas/seções de cards** + **busca** no topo (diretriz **8.10** — acesso fácil).
+- **Cada relatório**: tela com **filtros** (turma / período / aluno / disciplina / situação, conforme o caso) + **sempre PDF e Excel** (meta: padronizar; adicionar Excel ao R06).
+- **Reuso**: `RelatorioLayout` (casca) + `exporters` (xlsx/CSV) + padrão `@react-pdf` — um "kit de relatório" comum (layout + filtros + 2 botões).
+- Geradores hoje escondidos em fichas (Dossiê/Extrato/Declaração) ganham **entrada também na central** — sem sair da ficha (dois caminhos).
+
+### 14.5 Faseamento
+- **Fase A (P):** reorganizar a central em categorias + **trazer Dossiê/Extrato/Visão Geral/Declaração** para lá + **Excel no R06**.
+- **Fase B (M):** novos com fonte pronta — Notas/Frequência por turma, Alunos em risco, Recebimentos do mês, Matrículas por período.
+- **Fase C (M/G):** Fluxo de caixa, Visão geral da escola, Leads, Professores/contratos.
+
+### 14.6 Nota — duas fichas do aluno (decisão registrada)
+**Manter separadas**, com o **dossiê disponível em ambas**:
+- **Ficha do Aluno** (staff, `aluno/:id`) — COM PII (CPF/RG/endereço) + docs + obs internas + aprovar matrícula + lançamento retroativo + convalidações.
+- **Ficha Financeira 2g** (staff + financeiro, `financeiro/aluno/:id`) — **PII-free** (fronteira 067: o Breno não vê CPF/RG).
+**Não unificar** (uniria PII ao financeiro). Redução de duplicação futura = **componentizar blocos** compartilhados (`<HistoricoAlunoPanel>`, `<FinanceiroAlunoPanel>`), nunca fundir as telas. O botão "Dossiê completo (PDF)" já está nas **duas** (branch `feat/dossie-e-relatorios`).
+
+**Status**: Registrado — diagnóstico do Hélio (2026-07-26).
+
+---
+
 ## REGRA CRÍTICA — Camada Analítica
 
 **APENAS avaliar após lançamento de agosto 2026.**
