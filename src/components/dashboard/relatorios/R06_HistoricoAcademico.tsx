@@ -17,6 +17,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { pdf } from '@react-pdf/renderer';
 import { R06_PDF } from './pdf/R06_PDF';
+import { exportToExcel } from './exporters/excelExporter';
 
 const STATUS_CONFIG: Record<StatusHistorico, { label: string; color: string }> = {
   aprovado_direto: { label: 'Aprovado', color: 'bg-green-500/20 text-green-400 border-green-500/30' },
@@ -117,6 +118,25 @@ export default function R06_HistoricoAcademico() {
     URL.revokeObjectURL(url);
   };
 
+  // Excel (Fase A da central): achata as disciplinas do histórico em linhas.
+  const handleExportExcel = () => {
+    if (!dados) return;
+    const linhas = dados.historico.modulos.flatMap(mod =>
+      mod.disciplinas.map(d => ({
+        Módulo: mod.nome,
+        Disciplina: d.nome,
+        N1: d.notas.n1 ?? '',
+        N2: d.notas.n2 ?? '',
+        Média: d.notas.media_final ?? '',
+        'Frequência (%)': d.frequencia.percentual,
+        Faltas: Math.max(0, d.frequencia.total_aulas - d.frequencia.presencas),
+        Status: d.status,
+      })),
+    );
+    const nomeAluno = dados.dados_pessoais.nome_completo.replace(/\s+/g, '_');
+    exportToExcel(linhas, `R06_HistoricoAcademico_${nomeAluno}_${new Date().toISOString().split('T')[0]}`, 'Histórico');
+  };
+
   return (
     <RelatorioLayout
       titulo="R06 — Histórico Acadêmico Individual"
@@ -127,7 +147,7 @@ export default function R06_HistoricoAcademico() {
       }
       onPrint={handlePrint}
       onExportPDF={handleExportPDF}
-      onExportExcel={undefined}
+      onExportExcel={dados ? handleExportExcel : undefined}
       onExportCSV={undefined}
       loading={loading || loadingTurmas}
       hideExport={!dados}
