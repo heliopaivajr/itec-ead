@@ -427,6 +427,31 @@ Ambos com impressão (**PDF/Excel**), reusando `@react-pdf` + `xlsx` do R02.
 
 **Status**: Registrado — melhorias do Hélio (2026-07-26).
 
+### 8.8 [TELA] 2i — Relatório completo do aluno (dossiê acadêmico + financeiro, 1 PDF)
+**Descrição**: Um **"dossiê do aluno"** imprimível reunindo, num só documento PDF, **vida acadêmica + financeira**:
+- **Dados do aluno** (nome, código/nº de matrícula, contato) + **curso/turma**.
+- **Situação financeira completa**: todas as mensalidades (pagas / em aberto / atrasadas), **total pago no ano**, e **histórico de estornos/cancelamentos** (usa a auditoria da 075: `estornado_por/data_estorno/motivo_estorno`, `motivo_cancelamento`).
+- **Resumo acadêmico**: disciplinas, notas, frequência (lê o **consolidado** — LICAO-042; não recalcula).
+**Fonte**: reusa `@react-pdf` (padrão do extrato 2g / R02 / declaração). Queries separadas sob RLS (LICAO-026).
+**Acesso**: staff + financeiro (PII: é o dossiê completo — diferente do extrato PII-free 2g). Confirmar no SDD o que expor.
+**Esforço**: **M**.
+**Prioridade**: antes de fechar o módulo (acabamento) — não bloqueia agosto.
+**Status**: Registrado — requisito do Hélio (2026-07-26).
+
+### 8.9 [CADASTRO] Número de matrícula (`codigo_itec`) EDITÁVEL pela secretaria/staff
+**Descrição**: O **número de matrícula** deve ser **editável** pela secretaria/staff (requisito do Hélio) — hoje é **gerado automático** e não há tela para corrigir.
+**Investigar no SDD** (achado preliminar): o número mora em **`profiles.codigo_itec`** (TEXT UNIQUE nullable, migração 030) e é **gerado pela Edge Function `criar-aluno`** no cadastro. Confirmar se há também `matriculas.numero_matricula` (R1/051) e **qual é o "número de matrícula" que o Hélio quer editar** (o `codigo_itec` do perfil ou o `numero_matricula` da matrícula — provavelmente o `codigo_itec`).
+**O que fazer**: edição inline na Ficha 360 / cadastro (staff), respeitando a **unicidade** (`UNIQUE`) — validar duplicata antes de salvar; via service (nunca `supabase.from` na page). RLS de `profiles` já permite staff editar (`profiles_update_staff`), mas **role/CPF continuam travados** — a edição do número não pode reabrir escalação (11-security-auditor validar o WITH CHECK).
+**Esforço**: **P/M**.
+**Prioridade**: requisito do Hélio — antes de fechar cadastro.
+**Status**: Registrado — requisito do Hélio (2026-07-26).
+
+### 8.10 [DIRETRIZ TRANSVERSAL] A Secretaria edita TUDO — inline, no lugar, fácil pelos menus
+**Descrição**: A **secretaria é o braço direito do ITEC**. Princípio transversal para **todas as telas do staff** (não só financeiro): tudo que a secretaria precisa alterar deve ser **editável por ela de forma rápida e NO LUGAR** (inline, sem pular de tela), com **acesso fácil pelos menus**.
+**Aplica-se a**: **notas · frequência · cadastro · matrícula · financeiro** (e o que vier).
+**Relação**: é a generalização do 8.6 (que era só o dashboard financeiro). Ao construir/rever qualquer tela de staff, perguntar: "a secretaria consegue **corrigir isto aqui mesmo**, em 1–2 cliques, ou tem que pedir para alguém / pular de tela?". A régua de valor/consolidado continua no banco (LICAO-042/043) — inline persiste na fonte única, não é ajuste efêmero de tela.
+**Status**: Registrado — diretriz do Hélio (2026-07-26).
+
 ---
 
 ## 9. OUTRAS IDEIAS
