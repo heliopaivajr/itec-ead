@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useParams, useNavigate, useOutletContext } from 'react-router-dom';
-import { PDFDownloadLink } from '@react-pdf/renderer';
+import { PDFDownloadLink, pdf } from '@react-pdf/renderer';
 import {
   ArrowLeft, Loader2, Coins, CalendarClock, Wallet, MessageCircle, Mail,
   FileText, CheckCircle2, Pencil, Paperclip, Plus, X, Save, RotateCcw, Ban, Info,
@@ -13,6 +13,8 @@ import { useToast } from '@/hooks/use-toast';
 import { ValoresMatriculaPanel } from '@/components/dashboard/ValoresMatriculaPanel';
 import { ConfirmarPagamentoModal } from '@/components/dashboard/ConfirmarPagamentoModal';
 import { ExtratoFinanceiroPDF } from '@/components/dashboard/ExtratoFinanceiroPDF';
+import { DossieAlunoPDF } from '@/components/dashboard/DossieAlunoPDF';
+import { getHistoricoAluno } from '@/services/academico.service';
 import {
   getFichaAlunoInfo,
   getMensalidadesVw,
@@ -92,6 +94,8 @@ export default function FichaFinanceiraAluno() {
   // E5.1: sugerir reativação após quitar (dívida zerada + matrícula suspensa)
   const [sugereReativar, setSugereReativar] = useState(false);
   const [config, setConfig]                 = useState<ConfigFinanceiro | null>(null);
+  // 2i: dossiê completo (gerado sob demanda para não pesar a ficha)
+  const [gerandoDossie, setGerandoDossie]   = useState(false);
 
   // dia de vencimento padrão do aluno (Zona 1 — persiste em matriculas.dia_vencimento_padrao)
   const [diaPadrao, setDiaPadrao]   = useState('10');
@@ -291,6 +295,42 @@ export default function FichaFinanceiraAluno() {
     if (info?.matricula_status === 'suspensa' && !aindaDeve) setSugereReativar(true);
   };
 
+  // 2i: dossiê completo (dados + financeiro + acadêmico). Busca o histórico sob
+  // demanda (getHistoricoAluno, consolidado 065) e gera o PDF imperativamente.
+  const gerarDossie = async () => {
+    if (!info) return;
+    setGerandoDossie(true);
+    try {
+      const historico = info.turma_id ? await getHistoricoAluno(info.aluno_id, info.turma_id) : null;
+      const blob = await pdf(
+        <DossieAlunoPDF
+          aluno={{
+            nome: info.nome, codigo_itec: info.codigo_itec, curso_nome: info.curso_nome,
+            turma_nome: info.turma_nome, email: info.email, telefone: info.telefone,
+            matricula_status: info.matricula_status, motivo_suspensao: info.motivo_suspensao,
+            data_suspensao: info.data_suspensao,
+          }}
+          mensalidades={mensalidades}
+          historico={historico}
+          emitidoPor={profile.full_name ?? 'Secretaria ITEC'}
+        />,
+      ).toBlob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `dossie-${info.nome.replace(/\s+/g, '-').toLowerCase()}-${new Date().toISOString().split('T')[0]}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      console.error('[gerarDossie]', e);
+      toast({ title: 'Erro ao gerar o dossiê', variant: 'destructive' });
+    } finally {
+      setGerandoDossie(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center gap-2 text-muted-foreground p-8">
@@ -434,6 +474,11 @@ export default function FichaFinanceiraAluno() {
             </Button>
           )}
         </PDFDownloadLink>
+        <Button variant="outline" onClick={gerarDossie} disabled={gerandoDossie}
+          className="border-border bg-[#1F3864]/5">
+          {gerandoDossie ? <Loader2 className="h-4 w-4 animate-spin mr-1.5" /> : <FileText className="h-4 w-4 mr-1.5 text-[#BF9000]" />}
+          Dossiê completo (PDF)
+        </Button>
       </div>
 
       {/* ───── ZONA 1: configuração (valores) ───── */}
