@@ -69,6 +69,8 @@ const ComingSoonPage     = lazy(() => import("./pages/dashboard/ComingSoonPage")
 const ConsolidadoNotas   = lazy(() => import("./pages/dashboard/ConsolidadoNotas"));
 const CalendarioAcademico = lazy(() => import("./pages/dashboard/CalendarioAcademico"));
 const Relatorios              = lazy(() => import("./pages/dashboard/Relatorios"));
+const RelatoriosPorAluno      = lazy(() => import("./pages/dashboard/RelatoriosPorAluno"));
+const RelVisaoGeralFinanceira = lazy(() => import("./pages/dashboard/RelVisaoGeralFinanceira"));
 const R01_AlunosPorTurma      = lazy(() => import("./components/dashboard/relatorios/R01_AlunosPorTurma"));
 const R02_ListaPresenca       = lazy(() => import("./components/dashboard/relatorios/R02_ListaPresenca"));
 const R03_DisciplinasPorAluno = lazy(() => import("./components/dashboard/relatorios/R03_DisciplinasPorAluno"));
@@ -155,6 +157,9 @@ const App = () => (
               <Route path="relatorios/situacao-financeira" element={<RoleGuard allowedRoles={['superadmin','admin','administracao','financeiro']}><R04_SituacaoFinanceira /></RoleGuard>} />
               <Route path="relatorios/inadimplentes" element={<RoleGuard allowedRoles={['superadmin','admin','administracao','financeiro']}><R05_Inadimplentes /></RoleGuard>} />
               <Route path="relatorios/historico-academico" element={<RoleGuard allowedRoles={['superadmin','admin','administracao']}><R06_HistoricoAcademico /></RoleGuard>} />
+              {/* Central Fase A — geradores existentes trazidos p/ a central */}
+              <Route path="relatorios/por-aluno" element={<RoleGuard allowedRoles={['superadmin','admin','administracao','financeiro']}><RelatoriosPorAluno /></RoleGuard>} />
+              <Route path="relatorios/visao-geral-financeira" element={<RoleGuard allowedRoles={['superadmin','admin','administracao','financeiro']}><RelVisaoGeralFinanceira /></RoleGuard>} />
               <Route path="calendario"    element={<CalendarioAcademico />} />
               <Route path="nova-matricula" element={<RoleGuard allowedRoles={['superadmin','admin','administracao']}><NovaMatricula /></RoleGuard>} />
               <Route path="financeiro"    element={<RoleGuard allowedRoles={['superadmin','admin','administracao','financeiro']}><FinanceiroPage /></RoleGuard>} />
