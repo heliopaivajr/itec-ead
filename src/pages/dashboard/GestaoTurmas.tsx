@@ -319,8 +319,8 @@ export default function GestaoTurmas() {
                         <CalendarCheck className="h-3.5 w-3.5 mr-1" /> Frequência
                       </Link>
                     </Button>
-                    <Button asChild variant="outline" size="sm" title="Notas consolidadas da turma nesta disciplina">
-                      <Link to={`/dashboard/notas/${acompModal?.id}/${d.id}`} onClick={() => setAcompModal(null)}>
+                    <Button asChild variant="outline" size="sm" title="Painel de notas editável (grade da turma nesta disciplina)">
+                      <Link to={`/dashboard/painel-academico/${acompModal?.id}/${d.id}`} onClick={() => setAcompModal(null)}>
                         <Star className="h-3.5 w-3.5 mr-1" /> Notas
                       </Link>
                     </Button>

@@ -71,6 +71,7 @@ const CalendarioAcademico = lazy(() => import("./pages/dashboard/CalendarioAcade
 const Relatorios              = lazy(() => import("./pages/dashboard/Relatorios"));
 const RelatoriosPorAluno      = lazy(() => import("./pages/dashboard/RelatoriosPorAluno"));
 const RelVisaoGeralFinanceira = lazy(() => import("./pages/dashboard/RelVisaoGeralFinanceira"));
+const PainelAcademicoTurma    = lazy(() => import("./pages/dashboard/PainelAcademicoTurma"));
 const R01_AlunosPorTurma      = lazy(() => import("./components/dashboard/relatorios/R01_AlunosPorTurma"));
 const R02_ListaPresenca       = lazy(() => import("./components/dashboard/relatorios/R02_ListaPresenca"));
 const R03_DisciplinasPorAluno = lazy(() => import("./components/dashboard/relatorios/R03_DisciplinasPorAluno"));
@@ -160,6 +161,9 @@ const App = () => (
               {/* Central Fase A — geradores existentes trazidos p/ a central */}
               <Route path="relatorios/por-aluno" element={<RoleGuard allowedRoles={['superadmin','admin','administracao','financeiro']}><RelatoriosPorAluno /></RoleGuard>} />
               <Route path="relatorios/visao-geral-financeira" element={<RoleGuard allowedRoles={['superadmin','admin','administracao','financeiro']}><RelVisaoGeralFinanceira /></RoleGuard>} />
+              {/* Painel Acadêmico da Turma (2.13a — grade de notas inline). Staff — financeiro NÃO edita nota (fronteira 067). */}
+              <Route path="painel-academico" element={<RoleGuard allowedRoles={['superadmin','admin','administracao']}><PainelAcademicoTurma /></RoleGuard>} />
+              <Route path="painel-academico/:turmaId/:disciplinaId" element={<RoleGuard allowedRoles={['superadmin','admin','administracao']}><PainelAcademicoTurma /></RoleGuard>} />
               <Route path="calendario"    element={<CalendarioAcademico />} />
               <Route path="nova-matricula" element={<RoleGuard allowedRoles={['superadmin','admin','administracao']}><NovaMatricula /></RoleGuard>} />
               <Route path="financeiro"    element={<RoleGuard allowedRoles={['superadmin','admin','administracao','financeiro']}><FinanceiroPage /></RoleGuard>} />
