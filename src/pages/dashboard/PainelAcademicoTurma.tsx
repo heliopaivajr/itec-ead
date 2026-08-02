@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useParams, useOutletContext } from 'react-router-dom';
-import { GraduationCap, Loader2, Printer, Star, AlertTriangle, CheckCircle2 } from 'lucide-react';
+import { GraduationCap, Loader2, Printer, Star, AlertTriangle, CheckCircle2, Check, X, Plus, ClipboardCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -11,7 +11,10 @@ import {
   getConsolidadoTurma, getAvaliacoesByDisciplina, createAvaliacao, lancarNota,
   type ConsolidadoAluno, type Avaliacao,
 } from '@/services/notas.service';
-import { getAlunosEmRiscoByTurma } from '@/services/frequencia.service';
+import {
+  getAlunosEmRiscoByTurma, getFrequenciaByDisciplina, lancarFrequencia,
+  type RegistroFrequencia,
+} from '@/services/frequencia.service';
 import type { DashboardContext } from '../Dashboard';
 
 // Painel Acadêmico da Turma — aba NOTAS (2.13a). Grade por turma+disciplina:
@@ -52,6 +55,13 @@ export default function PainelAcademicoTurma() {
   const [cellVal, setCellVal] = useState('');
   const [salvando, setSalvando] = useState(false);
 
+  // 2.13b — aba Chamada (frequência aluno × data)
+  const [aba, setAba] = useState<'notas' | 'chamada'>('notas');
+  const [registros, setRegistros] = useState<RegistroFrequencia[]>([]);
+  const [datasExtra, setDatasExtra] = useState<string[]>([]);   // datas novas ainda sem registro
+  const [novaData, setNovaData] = useState('');
+  const [savingCell, setSavingCell] = useState<string | null>(null);  // "aluno|data"
+
   useEffect(() => { getTurmasAtivas().then(setTurmas); }, []);
 
   const carregarDisciplinas = useCallback(async (tid: string) => {
@@ -75,6 +85,57 @@ export default function PainelAcademicoTurma() {
   }, [turmaId, disciplinaId]);
 
   useEffect(() => { carregarGrade(); }, [carregarGrade]);
+
+  // ─── Chamada (2.13b) ──────────────────────────────────────────────────────
+  const carregarChamada = useCallback(async () => {
+    if (!turmaId || !disciplinaId) { setRegistros([]); return; }
+    setRegistros(await getFrequenciaByDisciplina(disciplinaId));
+    setDatasExtra([]);
+  }, [turmaId, disciplinaId]);
+
+  useEffect(() => { if (aba === 'chamada') carregarChamada(); }, [aba, carregarChamada]);
+
+  // Colunas = datas com chamada já lançada + datas novas adicionadas nesta sessão.
+  const datas = useMemo(() => {
+    const s = new Set<string>(registros.map(r => r.data_aula));
+    datasExtra.forEach(d => s.add(d));
+    return [...s].sort();
+  }, [registros, datasExtra]);
+
+  // presença[aluno|data] = boolean (undefined = ainda não marcada nessa data)
+  const presenca = useMemo(() => {
+    const m = new Map<string, boolean>();
+    for (const r of registros) m.set(`${r.aluno_id}|${r.data_aula}`, r.presente);
+    return m;
+  }, [registros]);
+
+  const faltasDoAluno = useCallback((alunoId: string) =>
+    registros.filter(r => r.aluno_id === alunoId && r.presente === false).length,
+  [registros]);
+
+  const adicionarData = () => {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(novaData)) { toast({ title: 'Escolha uma data válida', variant: 'destructive' }); return; }
+    if (datas.includes(novaData)) { toast({ title: 'Essa data já está na grade' }); return; }
+    setDatasExtra(prev => [...prev, novaData]);
+    setNovaData('');
+  };
+
+  // Toggle presente/falta → lancarFrequencia (BRUTO, upsert cria a linha) → re-lê consolidado.
+  const togglePresenca = async (alunoId: string, data: string) => {
+    const atual = presenca.get(`${alunoId}|${data}`);
+    const novo = atual === undefined ? false : !atual;   // 1º clique = marca FALTA; alterna depois
+    setSavingCell(`${alunoId}|${data}`);
+    const { error } = await lancarFrequencia([{
+      disciplina_id: disciplinaId, aluno_id: alunoId, professor_id: profile.id,
+      data_aula: data, presente: novo, justificada: false, documento_url: null, observacao: null,
+    }]);
+    if (error) { setSavingCell(null); toast({ title: 'Erro ao salvar chamada', description: error, variant: 'destructive' }); return; }
+    // re-lê o bruto (para a data/aluno) + o consolidado (freq%/faltas recalculados pelo trigger)
+    const [regs, cons] = await Promise.all([getFrequenciaByDisciplina(disciplinaId), getConsolidadoTurma(turmaId, disciplinaId)]);
+    setRegistros(regs);
+    setRows(cons);
+    setSavingCell(null);
+  };
 
   // Resolve (ou cria) a avaliação do tipo — mesma lógica do LancarNotas (não duplica regra).
   const ensureAvaliacao = async (tipo: 'N1' | 'N2'): Promise<Avaliacao | null> => {
@@ -170,10 +231,36 @@ export default function PainelAcademicoTurma() {
         </div>
       </div>
 
+      {/* Abas Notas | Chamada */}
+      <div className="flex items-center gap-1 bg-muted/40 border border-border rounded-xl p-1 w-fit">
+        {([['notas', 'Notas', Star], ['chamada', 'Chamada', ClipboardCheck]] as const).map(([key, label, Ico]) => (
+          <button key={key} onClick={() => setAba(key)}
+            className={`text-sm px-4 py-1.5 rounded-lg transition-colors flex items-center gap-1.5 ${aba === key ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}>
+            <Ico className="h-3.5 w-3.5" /> {label}
+          </button>
+        ))}
+      </div>
+
+      {/* Nova chamada (só na aba Chamada) */}
+      {aba === 'chamada' && turmaId && disciplinaId && (
+        <div className="flex items-end gap-2 flex-wrap bg-muted/20 rounded-lg p-3">
+          <div>
+            <label className="text-xs text-muted-foreground mb-1 block">Nova chamada (data da aula)</label>
+            <Input type="date" value={novaData} onChange={e => setNovaData(e.target.value)} className="bg-background w-44" />
+          </div>
+          <Button variant="outline" onClick={adicionarData} className="border-border">
+            <Plus className="h-4 w-4 mr-1.5" /> Adicionar coluna
+          </Button>
+          <p className="text-[11px] text-muted-foreground flex-1 min-w-[12rem]">
+            Marque cada aluno como presente/falta na coluna da data. A coluna vira permanente ao marcar o 1º aluno.
+          </p>
+        </div>
+      )}
+
       {/* Grade */}
       {!turmaId || !disciplinaId ? (
         <div className="bg-card border border-border rounded-xl p-10 text-center text-muted-foreground">
-          Escolha a turma e a disciplina para ver a grade de notas.
+          Escolha a turma e a disciplina para ver a grade.
         </div>
       ) : loading ? (
         <div className="space-y-2">{[1,2,3,4,5].map(i => <Skeleton key={i} className="h-11 rounded-lg" />)}</div>
@@ -181,7 +268,7 @@ export default function PainelAcademicoTurma() {
         <div className="bg-card border border-border rounded-xl p-10 text-center text-muted-foreground">
           {rows.length === 0 ? 'Nenhum aluno matriculado nesta turma.' : 'Nenhum aluno para o filtro atual.'}
         </div>
-      ) : (
+      ) : aba === 'notas' ? (
         <>
           <p className="text-xs text-muted-foreground">
             {discSel?.nome} · {turmaSel?.codigo} — {filtrados.length} de {rows.length} aluno(s). Clique em N1/N2 para editar (Enter salva).
@@ -249,6 +336,64 @@ export default function PainelAcademicoTurma() {
           </div>
           <p className="text-[11px] text-muted-foreground">
             A nota é gravada na fonte (notas_aluno) e a média/situação/frequência são recalculadas pelo sistema — os mesmos números aparecem para o aluno e nos relatórios.
+          </p>
+        </>
+      ) : (
+        /* ─── Aba CHAMADA: aluno × data ─── */
+        <>
+          <p className="text-xs text-muted-foreground">
+            {discSel?.nome} · {turmaSel?.codigo} — {filtrados.length} aluno(s) · {datas.length} chamada(s). Clique numa célula para alternar presente/falta.
+          </p>
+          {datas.length === 0 ? (
+            <div className="bg-card border border-border rounded-xl p-8 text-center text-muted-foreground">
+              Nenhuma chamada lançada nesta disciplina. Use “Nova chamada” acima para criar a primeira data.
+            </div>
+          ) : (
+            <div className="bg-card border border-border rounded-xl overflow-x-auto">
+              <table className="text-sm border-collapse">
+                <thead>
+                  <tr className="text-xs text-muted-foreground border-b border-border">
+                    <th className="px-4 py-2.5 font-medium text-left sticky left-0 bg-card z-10 min-w-[12rem]">Aluno</th>
+                    {datas.map(d => (
+                      <th key={d} className="px-2 py-2.5 font-medium text-center whitespace-nowrap min-w-[3.5rem]">
+                        {new Date(d + 'T12:00').toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}
+                      </th>
+                    ))}
+                    <th className="px-3 py-2.5 font-medium text-center whitespace-nowrap">Faltas</th>
+                    <th className="px-3 py-2.5 font-medium text-center whitespace-nowrap">Freq.</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filtrados.map(r => (
+                    <tr key={r.aluno_id} className="border-b border-border/60 last:border-0 hover:bg-muted/20">
+                      <td className="px-4 py-2 text-foreground sticky left-0 bg-card z-10">{r.nome}</td>
+                      {datas.map(d => {
+                        const key = `${r.aluno_id}|${d}`;
+                        const val = presenca.get(key);   // true=presente · false=falta · undefined=não marcado
+                        const saving = savingCell === key;
+                        return (
+                          <td key={d} className="px-2 py-1.5 text-center">
+                            <button onClick={() => togglePresenca(r.aluno_id, d)} disabled={saving}
+                              title={val === undefined ? 'Não marcado — clique para marcar falta' : val ? 'Presente' : 'Falta'}
+                              className={`h-7 w-7 rounded-md inline-flex items-center justify-center transition-colors ${
+                                val === true ? 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300'
+                                : val === false ? 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300'
+                                : 'bg-muted/40 text-muted-foreground hover:bg-muted'}`}>
+                              {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : val === true ? <Check className="h-3.5 w-3.5" /> : val === false ? <X className="h-3.5 w-3.5" /> : '·'}
+                            </button>
+                          </td>
+                        );
+                      })}
+                      <td className="px-3 py-2 text-center tabular-nums font-semibold text-foreground">{faltasDoAluno(r.aluno_id)}</td>
+                      <td className={`px-3 py-2 text-center tabular-nums ${r.frequencia < 75 ? 'text-red-600 font-medium' : 'text-muted-foreground'}`}>{r.frequencia}%</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+          <p className="text-[11px] text-muted-foreground">
+            ✅ presente · ❌ falta · · não marcado. A chamada é gravada na fonte (frequencia); faltas e % são recalculados pelo sistema após cada marcação.
           </p>
         </>
       )}
