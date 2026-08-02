@@ -162,7 +162,24 @@ Ambos com impressão (**PDF/Excel**), reusando `@react-pdf` + `xlsx` do R02.
 **Relação com itens existentes**: o **R03** (Disciplinas por Aluno) já faz parte de (a) em formato de relatório — **avaliar no SDD se é evoluir o R03 ou tela nova**. **2.10** (impressão nas Notas) e **2.11** (planilha visual de frequência) são os equivalentes do professor — **verificar reuso de componentes**.
 **Esforço**: **M**.
 **Prioridade**: acabamentos (**após integração ✅, Auth, Financeiro**). **Não bloqueia agosto** — o staff já consegue ver tudo pelo Acompanhar.
-**Status**: Registrado (2026-07-17).
+**Status**: ✅ **EM ANDAMENTO/FEITO** — **2.13a** Grade de Notas inline (`PainelAcademicoTurma`, PR `feat/painel-acad-notas`) · **2.13b** aba Chamada aluno×data (PR `feat/painel-acad-chamada`) · **Frequência tela cheia + menu direto** (`FrequenciaChamada`, PR `feat/frequencia-tela-cheia`). Escrita no bruto (lancarNota/lancarFrequencia) + trigger 065; nada no consolidado direto.
+
+### 2.13c [DÍVIDA TÉCNICA] Chamada duplicada — extrair `ChamadaGrid` compartilhado
+**Descrição**: A grade aluno×data existe em **2 lugares** — aba Chamada do `PainelAcademicoTurma` (2.13b) + a tela cheia `FrequenciaChamada` (menu direto). Funciona, mas o **JSX foi replicado** (mesma lógica em 2 componentes). **Futuro**: extrair um `<ChamadaGrid turmaId disciplinaId/>` compartilhado (uma fonte só) reusado pelos dois.
+**Esforço**: **P/M**. **Prioridade**: baixa (não urgente — só reduz manutenção). **Status**: Registrado (2026-08-01).
+
+### 2.13d [FEATURE] Editar/mover data de chamada
+**Descrição**: Hoje **não há UI** para corrigir uma **data lançada errada** (mover os registros de uma `data_aula` X → Y). Se o professor lança na data errada, corrige aluno a aluno, mas **não renomeia a coluna**. Criar um "editar data da chamada" (mover/renomear registros da data). Atenção do Hélio: datas de aula **podem mudar**.
+**Fonte**: `frequencia.data_aula` (UPDATE por staff via RLS 061). **Esforço**: **M**. **Prioridade**: média (evita retrabalho). **Status**: Registrado (2026-08-01).
+
+### 2.13e [FEATURE] Folha de chamada FUTURA em branco (PDF)
+**Descrição**: Imprimir uma **folha com datas futuras vazias** para preencher à mão. O **R02** (Lista de Presença) só imprime **datas já lançadas** (aulas que aconteceram) — não gera colunas futuras. Novo gerador: recebe as datas futuras (ou um intervalo/semanas) → PDF aluno×data em branco. Reusa `@react-pdf`.
+**Esforço**: **M**. **Prioridade**: média. **Status**: Registrado (2026-08-01).
+
+### 2.13f [PARTE 2] Frequência FP — meia presença (3º estado F/P/FP)
+**Descrição**: Adicionar um **3º estado** à chamada — **F (falta) / P (presente) / FP (meia presença)**. Hoje é só presente/falta (boolean).
+**EXIGE (não é só front)**: **migração** (`frequencia.tipo_presenca` OU um `peso` numérico em vez do boolean `presente`) + **ajuste do trigger 065** (`recalcular_consolidado`) para contar **FP = 0,5 presença** no cálculo de faltas/frequência % + **a regra de reprovação por falta com FP definida pelo Hélio** (como a meia-falta pesa nos 75%). Régua **no banco** (LICAO-042/043) — o front só espelha.
+**Esforço**: **M/G**. **Prioridade**: **aguarda a regra do Hélio** (não construir antes). **Status**: Registrado — Parte 2 (2026-08-01).
 
 ### 2.1 Gestão Dinâmica de Permissões
 **Descrição**: Tela administrativa para superadmin gerenciar quais roles acessam quais módulos/rotas.  
