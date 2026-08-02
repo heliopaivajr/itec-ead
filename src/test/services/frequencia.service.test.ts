@@ -49,6 +49,23 @@ describe('frequencia.service', () => {
       expect(resumo.status).toBe('ok');
     });
 
+    it('2.13f: pondera FP (meia = 0,5) — 7P + 2FP + 1F em 10 → 80% e faltas 2,0', async () => {
+      const data = [
+        ...Array.from({ length: 7 }, () => ({ tipo_presenca: 'presente', presente: true, justificada: false })),
+        ...Array.from({ length: 2 }, () => ({ tipo_presenca: 'meia', presente: false, justificada: false })),
+        { tipo_presenca: 'falta', presente: false, justificada: false },
+      ];
+      mockSelectEq({ data, error: null });
+
+      const resumo = await getResumoFrequencia('aluno-1', 'disc-1');
+
+      expect(resumo.total_aulas).toBe(10);
+      expect(resumo.presencas).toBe(7);              // só presenças cheias
+      expect(resumo.percentual_presenca).toBe(80);   // (7·1 + 2·0,5 + 1·0)/10 = 80%
+      expect(resumo.faltas).toBe(2);                 // 1 falta + 2·0,5 = 2,0
+      expect(resumo.status).toBe('ok');
+    });
+
     it('retorna status alerta (60-74%)', async () => {
       // 10 aulas, 6 presenças → 60%
       mockSelectEq({ data: makeRegistros(10, 6), error: null });
@@ -95,7 +112,27 @@ describe('frequencia.service', () => {
       const resultado = await lancarFrequencia(registros);
 
       expect(resultado.error).toBeNull();
-      expect(upsertFn).toHaveBeenCalledWith(registros, { onConflict: 'disciplina_id,aluno_id,data_aula' });
+      // 2.13f: o service normaliza — presente=true → tipo_presenca='presente' (grava os dois).
+      expect(upsertFn).toHaveBeenCalledWith(
+        [{ ...registros[0], tipo_presenca: 'presente', presente: true }],
+        { onConflict: 'disciplina_id,aluno_id,data_aula' },
+      );
+    });
+
+    it('2.13f: grava tipo_presenca quando informado e sincroniza presente (meia → presente=false)', async () => {
+      vi.mocked(supabase.from).mockReset();
+      const upsertFn = vi.fn().mockResolvedValue({ error: null });
+      vi.mocked(supabase.from).mockReturnValue({ upsert: upsertFn } as any);
+
+      await lancarFrequencia([{
+        disciplina_id: 'd1', aluno_id: 'a1', professor_id: 'p1', data_aula: '2026-05-26',
+        tipo_presenca: 'meia', justificada: false, documento_url: null, observacao: null,
+      }]);
+
+      expect(upsertFn).toHaveBeenCalledWith(
+        [expect.objectContaining({ tipo_presenca: 'meia', presente: false })],
+        { onConflict: 'disciplina_id,aluno_id,data_aula' },
+      );
     });
 
     it('retorna erro quando upsert falha', async () => {

@@ -87,7 +87,7 @@ export interface ListaPresencaRelatorio {
     codigo_itec: string | null;
     presencas: {
       data_aula: string;
-      status: 'P' | 'F' | null;
+      status: 'P' | 'MP' | 'F' | null;   // 2.13f — MP = meia-presença (0,5)
       justificada?: boolean;
     }[];
     resumo: {
@@ -400,7 +400,7 @@ export async function getListaPresencaRelatorio(
   // Query 6: buscar frequências do período
   const { data: frequencias, error: errorFreq } = await supabase
     .from('frequencia')
-    .select('aluno_id, data_aula, presente, justificada')
+    .select('aluno_id, data_aula, presente, tipo_presenca, justificada')
     .eq('disciplina_id', disciplinaId)
     .in('aluno_id', alunoIds)
     .gte('data_aula', periodoInicio)
@@ -411,13 +411,15 @@ export async function getListaPresencaRelatorio(
     console.error('[R02] Erro ao buscar frequências:', errorFreq.message);
   }
 
-  // Criar mapa de frequências: aluno_id:data_aula -> registro
+  // Criar mapa de frequências: aluno_id:data_aula -> tipo (2.13f)
   type FreqKey = string;
-  const freqMap = new Map<FreqKey, { presente: boolean; justificada: boolean }>();
+  type FreqTipo = 'presente' | 'meia' | 'falta';
+  const freqMap = new Map<FreqKey, { tipo: FreqTipo; justificada: boolean }>();
   if (frequencias) {
     for (const f of frequencias) {
       const key = `${f.aluno_id}:${f.data_aula}`;
-      freqMap.set(key, { presente: f.presente, justificada: f.justificada });
+      const tipo: FreqTipo = (f.tipo_presenca as FreqTipo) ?? (f.presente ? 'presente' : 'falta');
+      freqMap.set(key, { tipo, justificada: f.justificada });
     }
   }
 
@@ -457,26 +459,26 @@ export async function getListaPresencaRelatorio(
     const perfil = perfilPorAluno.get(alunoId);
     const presencas: {
       data_aula: string;
-      status: 'P' | 'F' | null;
+      status: 'P' | 'MP' | 'F' | null;
       justificada?: boolean;
     }[] = [];
 
-    let totalPresencas = 0;
-    let totalFaltas = 0;
+    let pesoPresenca = 0;   // presente 1,0 · meia 0,5 · falta 0,0
+    let totalRegistros = 0;
 
     for (const data of datasFinais) {
       const key = `${alunoId}:${data}`;
       const freq = freqMap.get(key);
 
       if (freq) {
-        const status = freq.presente ? 'P' : 'F';
+        const status = freq.tipo === 'presente' ? 'P' : freq.tipo === 'meia' ? 'MP' : 'F';
         presencas.push({
           data_aula: data,
           status,
           justificada: freq.justificada || undefined,
         });
-        if (freq.presente) totalPresencas++;
-        else totalFaltas++;
+        pesoPresenca   += freq.tipo === 'presente' ? 1 : freq.tipo === 'meia' ? 0.5 : 0;
+        totalRegistros += 1;
       } else {
         presencas.push({
           data_aula: data,
@@ -485,9 +487,12 @@ export async function getListaPresencaRelatorio(
       }
     }
 
+    // faltas ponderadas (falta + 0,5·meia) e % com pesos
+    const totalPresencas = Math.round(pesoPresenca * 10) / 10;
+    const totalFaltas = Math.round((totalRegistros - pesoPresenca) * 10) / 10;
     const percentual =
-      datasFinais.length > 0
-        ? Math.round((totalPresencas / (totalPresencas + totalFaltas || 1)) * 100)
+      totalRegistros > 0
+        ? Math.round((pesoPresenca / totalRegistros) * 100)
         : 0;
 
     resultado.alunos.push({
