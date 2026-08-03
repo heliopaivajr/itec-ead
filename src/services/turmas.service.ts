@@ -151,6 +151,53 @@ export interface DisciplinaTurma {
   id: string;
   nome: string;
   codigo: string;
+  modulo_ordem: number | null;   // disciplinas_v2.modulo_id → modulos.ordem (filtro por módulo)
+}
+
+export interface ModuloInfo {
+  ordem: number;
+  nome: string;
+  data_inicio: string;
+  data_fim: string | null;
+}
+
+type DiscBasica = { id: string; nome: string; codigo: string };
+
+// Enriquece as disciplinas com a ordem do módulo (disciplinas_v2.modulo_id → modulos.ordem,
+// leitura pública 008). Uma query só; ordena por (módulo, nome) — default agrupado por módulo.
+async function enrichModuloOrdem(discs: DiscBasica[]): Promise<DisciplinaTurma[]> {
+  if (discs.length === 0) return [];
+  const { data, error } = await supabase
+    .from('disciplinas_v2')
+    .select('id, modulo:modulos(ordem)')
+    .in('id', discs.map(d => d.id))
+    .limit(60);
+  if (error) console.error('[getDisciplinasDaTurma] modulo:', error.message);
+
+  type Row = { id: string; modulo: { ordem: number } | { ordem: number }[] | null };
+  const ordemPorId = new Map<string, number | null>();
+  for (const r of ((data ?? []) as unknown as Row[])) {
+    const mo = Array.isArray(r.modulo) ? r.modulo[0] : r.modulo;
+    ordemPorId.set(r.id, mo?.ordem ?? null);
+  }
+  return discs
+    .map(d => ({ ...d, modulo_ordem: ordemPorId.get(d.id) ?? null }))
+    .sort((a, b) => (a.modulo_ordem ?? 99) - (b.modulo_ordem ?? 99) || a.nome.localeCompare(b.nome));
+}
+
+// Módulos do curso (default GRAD-TEO) — ordem + datas. Usado no gerador de datas
+// retroativas ("Módulo vai até {data_fim}") da tela de Frequência.
+export async function getModulosCurso(codigoCurso = 'GRAD-TEO'): Promise<ModuloInfo[]> {
+  const { data: curso } = await supabase
+    .from('cursos').select('id').eq('codigo', codigoCurso).single();
+  if (!curso) return [];
+  const { data, error } = await supabase
+    .from('modulos')
+    .select('ordem, nome, data_inicio, data_fim')
+    .eq('curso_id', (curso as { id: string }).id)
+    .order('ordem');
+  if (error) { console.error('[getModulosCurso]', error.message); return []; }
+  return (data ?? []) as ModuloInfo[];
 }
 
 // Disciplinas lecionadas numa turma — porta de Acompanhamento da secretaria (C2/E4).
@@ -159,7 +206,7 @@ export interface DisciplinaTurma {
 // grade não está cadastrada (ex.: Apologética tem aulas_recorrentes count=0).
 // Erros logados (LICAO-027).
 export async function getDisciplinasDaTurma(turmaId: string): Promise<DisciplinaTurma[]> {
-  type AulaRow = { disciplina_id: string; disciplinas_v2: DisciplinaTurma | DisciplinaTurma[] | null };
+  type AulaRow = { disciplina_id: string; disciplinas_v2: DiscBasica | DiscBasica[] | null };
 
   // Fonte 1: grade horária
   const { data: aulas, error: errAulas } = await supabase
@@ -171,13 +218,13 @@ export async function getDisciplinasDaTurma(turmaId: string): Promise<Disciplina
 
   if (errAulas) console.error('[getDisciplinasDaTurma] aulas_recorrentes:', errAulas.message);
 
-  const unicas = new Map<string, DisciplinaTurma>();
+  const unicas = new Map<string, DiscBasica>();
   for (const r of ((aulas ?? []) as unknown as AulaRow[])) {
     const d = Array.isArray(r.disciplinas_v2) ? r.disciplinas_v2[0] : r.disciplinas_v2;
     if (d) unicas.set(d.id, { id: d.id, nome: d.nome, codigo: d.codigo });
   }
   if (unicas.size > 0) {
-    return [...unicas.values()].sort((a, b) => a.nome.localeCompare(b.nome));
+    return enrichModuloOrdem([...unicas.values()]);
   }
 
   // Fallback: matrículas da turma → matriculas_disciplina → disciplinas_v2
@@ -208,7 +255,7 @@ export async function getDisciplinasDaTurma(turmaId: string): Promise<Disciplina
     .limit(60);
 
   if (errDiscs) console.error('[getDisciplinasDaTurma] disciplinas_v2:', errDiscs.message);
-  return (((discs ?? []) as DisciplinaTurma[])).sort((a, b) => a.nome.localeCompare(b.nome));
+  return enrichModuloOrdem((discs ?? []) as DiscBasica[]);
 }
 
 export async function getVagasDisponiveis(turmaId: string): Promise<number> {
