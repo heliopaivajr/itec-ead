@@ -82,6 +82,7 @@ const styles = StyleSheet.create({
   colResumo: { width: '5%', textAlign: 'center' },
   // Status colors
   statusP: { color: '#22c55e', fontWeight: 'bold' },
+  statusMP: { color: '#BF9000', fontWeight: 'bold' },
   statusF: { color: '#ef4444', fontWeight: 'bold' },
   statusNull: { color: '#999' },
   footer: {
@@ -215,6 +216,8 @@ export function R02_PDF({ dados }: R02_PDFProps) {
                 const statusStyle =
                   p.status === 'P'
                     ? styles.statusP
+                    : p.status === 'MP'
+                    ? styles.statusMP
                     : p.status === 'F'
                     ? styles.statusF
                     : styles.statusNull;
@@ -240,6 +243,10 @@ export function R02_PDF({ dados }: R02_PDFProps) {
             <View style={styles.legendaItem}>
               <Text style={styles.statusP}>P</Text>
               <Text>= Presente</Text>
+            </View>
+            <View style={styles.legendaItem}>
+              <Text style={styles.statusMP}>MP</Text>
+              <Text>= Meia-presença (0,5)</Text>
             </View>
             <View style={styles.legendaItem}>
               <Text style={styles.statusF}>F</Text>

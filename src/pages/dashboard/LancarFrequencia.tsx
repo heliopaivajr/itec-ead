@@ -9,7 +9,7 @@ import {
   getFrequenciaByDisciplina,
   lancarFrequencia,
   calcularResumosPorAluno,
-  type RegistroFrequencia,
+  type LancarRegistro,
 } from '@/services/frequencia.service';
 import { getProfessorByUserId, getAlunosOperacional } from '@/services/professor.service';
 import type { Disciplina } from '@/services/academico.service';
@@ -110,7 +110,7 @@ export default function LancarFrequencia() {
       return;
     }
     setSalvando(true);
-    const registros: Omit<RegistroFrequencia, 'id' | 'registrado_em'>[] = alunos.map(a => ({
+    const registros: LancarRegistro[] = alunos.map(a => ({
       disciplina_id: disciplinaId,
       aluno_id:      a.aluno_id,
       // FK: frequencia.professor_id → profiles(id) — vai o id do usuário logado

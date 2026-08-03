@@ -8,7 +8,7 @@ import { useToast } from '@/hooks/use-toast';
 import { getTurmasAtivas, getDisciplinasDaTurma, type Turma, type DisciplinaTurma } from '@/services/turmas.service';
 import { getConsolidadoTurma, type ConsolidadoAluno } from '@/services/notas.service';
 import {
-  getFrequenciaByDisciplina, lancarFrequencia, type RegistroFrequencia,
+  getFrequenciaByDisciplina, lancarFrequencia, type RegistroFrequencia, type TipoPresenca,
 } from '@/services/frequencia.service';
 import type { DashboardContext } from '../Dashboard';
 
@@ -65,13 +65,17 @@ export default function FrequenciaChamada() {
   }, [registros, datasExtra]);
 
   const presenca = useMemo(() => {
-    const m = new Map<string, boolean>();
-    for (const r of registros) m.set(`${r.aluno_id}|${r.data_aula}`, r.presente);
+    const m = new Map<string, TipoPresenca>();
+    for (const r of registros) m.set(`${r.aluno_id}|${r.data_aula}`, r.tipo_presenca ?? (r.presente ? 'presente' : 'falta'));
     return m;
   }, [registros]);
 
+  // faltas ponderadas: falta = 1 · meia = 0,5 (mesma régua do trigger 065)
   const faltasDoAluno = useCallback((alunoId: string) =>
-    registros.filter(r => r.aluno_id === alunoId && r.presente === false).length,
+    registros.filter(r => r.aluno_id === alunoId).reduce((s, r) => {
+      const t = r.tipo_presenca ?? (r.presente ? 'presente' : 'falta');
+      return s + (t === 'falta' ? 1 : t === 'meia' ? 0.5 : 0);
+    }, 0),
   [registros]);
 
   const alunos = useMemo(() => {
@@ -86,13 +90,16 @@ export default function FrequenciaChamada() {
     setNovaData('');
   };
 
+  // Ciclo dos 3 estados: (não marcado) → presente → meia → falta → presente …
+  const proximoEstado = (atual: TipoPresenca | undefined): TipoPresenca =>
+    atual === undefined ? 'presente' : atual === 'presente' ? 'meia' : atual === 'meia' ? 'falta' : 'presente';
+
   const togglePresenca = async (alunoId: string, data: string) => {
-    const atual = presenca.get(`${alunoId}|${data}`);
-    const novo = atual === undefined ? false : !atual;   // 1º clique = FALTA; alterna depois
+    const novo = proximoEstado(presenca.get(`${alunoId}|${data}`));
     setSavingCell(`${alunoId}|${data}`);
     const { error } = await lancarFrequencia([{
       disciplina_id: disciplinaId, aluno_id: alunoId, professor_id: profile.id,
-      data_aula: data, presente: novo, justificada: false, documento_url: null, observacao: null,
+      data_aula: data, tipo_presenca: novo, justificada: false, documento_url: null, observacao: null,
     }]);
     if (error) { setSavingCell(null); toast({ title: 'Erro ao salvar chamada', description: error, variant: 'destructive' }); return; }
     const [regs, cons] = await Promise.all([getFrequenciaByDisciplina(disciplinaId), getConsolidadoTurma(turmaId, disciplinaId)]);
@@ -165,7 +172,9 @@ export default function FrequenciaChamada() {
           <>
             <p className="text-xs text-muted-foreground mb-2">
               {discSel?.nome} · {turmaSel?.codigo} — {alunos.length} aluno(s) · {datas.length} chamada(s).
-              Clique numa célula: 1º clique marca <strong>falta</strong>, próximo alterna. ✅ presente · ❌ falta · · não marcado.
+              Clique numa célula para ciclar: <span className="text-green-600 font-medium">✓ presente</span> →
+              <span className="text-amber-600 font-medium"> ◐ meia (0,5)</span> →
+              <span className="text-red-600 font-medium"> ✕ falta</span> → presente. · = não marcado.
             </p>
             {datas.length === 0 ? (
               <div className="bg-card border border-border rounded-xl p-8 text-center text-muted-foreground">
@@ -200,17 +209,21 @@ export default function FrequenciaChamada() {
                           return (
                             <td key={d} className="px-2 py-1.5 text-center">
                               <button onClick={() => togglePresenca(r.aluno_id, d)} disabled={saving}
-                                title={val === undefined ? 'Não marcado — clique para marcar falta' : val ? 'Presente' : 'Falta'}
+                                title={val === undefined ? 'Não marcado — clique para ciclar' : val === 'presente' ? 'Presente' : val === 'meia' ? 'Meia-presença (0,5)' : 'Falta'}
                                 className={`h-7 w-7 rounded-md inline-flex items-center justify-center transition-colors ${
-                                  val === true ? 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300'
-                                  : val === false ? 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300'
+                                  val === 'presente' ? 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300'
+                                  : val === 'meia' ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300'
+                                  : val === 'falta' ? 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300'
                                   : 'bg-muted/40 text-muted-foreground hover:bg-muted'}`}>
-                                {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : val === true ? <Check className="h-3.5 w-3.5" /> : val === false ? <X className="h-3.5 w-3.5" /> : '·'}
+                                {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                  : val === 'presente' ? <Check className="h-3.5 w-3.5" />
+                                  : val === 'meia' ? <span className="text-xs font-bold">◐</span>
+                                  : val === 'falta' ? <X className="h-3.5 w-3.5" /> : '·'}
                               </button>
                             </td>
                           );
                         })}
-                        <td className="px-3 py-2 text-center tabular-nums font-semibold text-foreground">{faltasDoAluno(r.aluno_id)}</td>
+                        <td className="px-3 py-2 text-center tabular-nums font-semibold text-foreground">{faltasDoAluno(r.aluno_id).toLocaleString('pt-BR')}</td>
                         <td className={`px-3 py-2 text-center tabular-nums ${r.frequencia < 75 ? 'text-red-600 font-medium' : 'text-muted-foreground'}`}>{r.frequencia}%</td>
                       </tr>
                     ))}

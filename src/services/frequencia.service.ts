@@ -6,6 +6,11 @@ export interface AlunoBasico {
   email: string;
 }
 
+// 2.13f — 3 estados: presente(peso 1,0) · meia(0,5) · falta(0,0). A régua vive no
+// trigger 065 (LICAO-042); estes pesos espelham o banco só p/ o cálculo LIVE em JS.
+export type TipoPresenca = 'presente' | 'meia' | 'falta';
+export const PESO_PRESENCA: Record<TipoPresenca, number> = { presente: 1, meia: 0.5, falta: 0 };
+
 export interface RegistroFrequencia {
   id: string;
   disciplina_id: string;
@@ -15,7 +20,8 @@ export interface RegistroFrequencia {
   // (exceção do schema — as demais tabelas de professor apontam para professores).
   professor_id: string;
   data_aula: string;
-  presente: boolean;
+  presente: boolean;               // mantido em sincronia (presente = tipo === 'presente')
+  tipo_presenca: TipoPresenca;     // 079 — fonte real dos 3 estados
   justificada: boolean;
   documento_url: string | null;
   observacao: string | null;
@@ -48,7 +54,12 @@ export interface ResumoFrequencia {
   status: FrequenciaStatus;
 }
 
-export type LancarRegistro = Omit<RegistroFrequencia, 'id' | 'registrado_em'>;
+// presente e tipo_presenca são opcionais na entrada — lancarFrequencia normaliza
+// (deriva um do outro e grava os dois em sincronia). Telas 2 estados passam `presente`;
+// telas 3 estados passam `tipo_presenca`.
+export type LancarRegistro =
+  Omit<RegistroFrequencia, 'id' | 'registrado_em' | 'aluno' | 'presente' | 'tipo_presenca'>
+  & { presente?: boolean; tipo_presenca?: TipoPresenca };
 
 function calcularStatus(percentual: number): FrequenciaStatus {
   if (percentual >= 75) return 'ok';
@@ -73,6 +84,13 @@ export async function getFrequenciaByDisciplina(
   return (data as RegistroFrequencia[]) ?? [];
 }
 
+// Normaliza os 3 estados: deriva presente ⇄ tipo_presenca e grava os DOIS em sincronia
+// (compat: leitores antigos de `presente` seguem válidos; 'meia' lê como não-presente).
+function normalizarRegistro(r: LancarRegistro) {
+  const tipo: TipoPresenca = r.tipo_presenca ?? (r.presente === false ? 'falta' : 'presente');
+  return { ...r, tipo_presenca: tipo, presente: tipo === 'presente' };
+}
+
 // Lança frequência de uma aula inteira (array de registros por aluno)
 export async function lancarFrequencia(
   registros: LancarRegistro[]
@@ -81,10 +99,16 @@ export async function lancarFrequencia(
 
   const { error } = await supabase
     .from('frequencia')
-    .upsert(registros, { onConflict: 'disciplina_id,aluno_id,data_aula' });
+    .upsert(registros.map(normalizarRegistro), { onConflict: 'disciplina_id,aluno_id,data_aula' });
 
   if (error) return { error: error.message };
   return { error: null };
+}
+
+// Peso do registro (usa tipo_presenca; fallback ao boolean p/ linhas ainda não migradas).
+function pesoRegistro(r: { tipo_presenca?: TipoPresenca | null; presente?: boolean | null }): number {
+  const tipo: TipoPresenca = r.tipo_presenca ?? (r.presente ? 'presente' : 'falta');
+  return PESO_PRESENCA[tipo];
 }
 
 export async function getResumoFrequencia(
@@ -93,7 +117,7 @@ export async function getResumoFrequencia(
 ): Promise<ResumoFrequencia> {
   const { data, error } = await supabase
     .from('frequencia')
-    .select('presente, justificada')
+    .select('presente, tipo_presenca, justificada')
     .eq('disciplina_id', disciplinaId)
     .eq('aluno_id', alunoId)
     .limit(60); // ~2 anos de aulas semanais
@@ -103,10 +127,11 @@ export async function getResumoFrequencia(
   }
 
   const total            = data.length;
-  const presencas        = data.filter(r => r.presente).length;
-  const faltas           = total - presencas;
+  const peso             = data.reduce((s, r) => s + pesoRegistro(r), 0);   // FP = 0,5
+  const presencas        = data.filter(r => (r.tipo_presenca ?? (r.presente ? 'presente' : 'falta')) === 'presente').length;
+  const faltas           = Math.round((total - peso) * 10) / 10;            // ponderado (falta + 0,5·meia)
   const justificadas     = data.filter(r => !r.presente && r.justificada).length;
-  const percentual       = total > 0 ? Math.round((presencas / total) * 100) : 100;
+  const percentual       = total > 0 ? Math.round((peso / total) * 100) : 100;
 
   return {
     total_aulas:         total,
@@ -138,34 +163,34 @@ export async function getAlunosAbaixoLimite(
 ): Promise<AlunoEmRisco[]> {
   const { data, error } = await supabase
     .from('frequencia')
-    .select('aluno_id, presente, aluno:profiles!frequencia_aluno_id_fkey(full_name, email)')
+    .select('aluno_id, presente, tipo_presenca, aluno:profiles!frequencia_aluno_id_fkey(full_name, email)')
     .eq('disciplina_id', disciplinaId)
     .limit(120); // proteção: max alunos × aulas
 
   if (error || !data) return [];
 
-  type Row = { aluno_id: string; presente: boolean; aluno: { full_name: string; email: string }[] | null };
+  type Row = { aluno_id: string; presente: boolean; tipo_presenca: TipoPresenca | null; aluno: { full_name: string; email: string }[] | null };
 
-  // Agrega por aluno em JS
-  const porAluno = new Map<string, { total: number; presencas: number; nome: string; email: string }>();
+  // Agrega por aluno em JS — freq ponderada (FP = 0,5)
+  const porAluno = new Map<string, { total: number; peso: number; nome: string; email: string }>();
   for (const r of data as unknown as Row[]) {
     const aluno = Array.isArray(r.aluno) ? r.aluno[0] : r.aluno;
     const entry = porAluno.get(r.aluno_id) ?? {
-      total: 0, presencas: 0,
+      total: 0, peso: 0,
       nome:  aluno?.full_name ?? r.aluno_id,
       email: aluno?.email ?? '',
     };
     entry.total++;
-    if (r.presente) entry.presencas++;
+    entry.peso += pesoRegistro(r);
     porAluno.set(r.aluno_id, entry);
   }
 
   return Array.from(porAluno.entries())
-    .map(([aluno_id, { total, presencas, nome, email }]) => ({
+    .map(([aluno_id, { total, peso, nome, email }]) => ({
       aluno_id,
       nome,
       email,
-      percentual: total > 0 ? Math.round((presencas / total) * 100) : 100,
+      percentual: total > 0 ? Math.round((peso / total) * 100) : 100,
     }))
     .filter(a => a.percentual < limite)
     .sort((a, b) => a.percentual - b.percentual);
@@ -175,20 +200,21 @@ export async function getAlunosAbaixoLimite(
 export function calcularResumosPorAluno(
   registros: RegistroFrequencia[]
 ): Map<string, ResumoFrequencia> {
-  const byAluno = new Map<string, { total: number; presencas: number; justificadas: number }>();
+  const byAluno = new Map<string, { total: number; peso: number; presencas: number; justificadas: number }>();
 
   for (const r of registros) {
-    const entry = byAluno.get(r.aluno_id) ?? { total: 0, presencas: 0, justificadas: 0 };
+    const entry = byAluno.get(r.aluno_id) ?? { total: 0, peso: 0, presencas: 0, justificadas: 0 };
     entry.total++;
-    if (r.presente) entry.presencas++;
+    entry.peso += pesoRegistro(r);   // FP = 0,5
+    if ((r.tipo_presenca ?? (r.presente ? 'presente' : 'falta')) === 'presente') entry.presencas++;
     else if (r.justificada) entry.justificadas++;
     byAluno.set(r.aluno_id, entry);
   }
 
   const result = new Map<string, ResumoFrequencia>();
-  for (const [alunoId, { total, presencas, justificadas }] of byAluno) {
-    const faltas     = total - presencas;
-    const percentual = total > 0 ? Math.round((presencas / total) * 100) : 100;
+  for (const [alunoId, { total, peso, presencas, justificadas }] of byAluno) {
+    const faltas     = Math.round((total - peso) * 10) / 10;
+    const percentual = total > 0 ? Math.round((peso / total) * 100) : 100;
     result.set(alunoId, {
       total_aulas:         total,
       presencas,
@@ -209,7 +235,7 @@ export async function getResumoFrequenciaPorTurma(
 ): Promise<Map<string, ResumoFrequencia>> {
   let query = supabase
     .from('frequencia')
-    .select('aluno_id, presente, justificada')
+    .select('aluno_id, presente, tipo_presenca, justificada')
     .eq('disciplina_id', disciplinaId)
     .limit(500); // proteção: max 50 alunos × 10 aulas
 
@@ -221,7 +247,7 @@ export async function getResumoFrequenciaPorTurma(
   const result = new Map<string, ResumoFrequencia>();
   if (error || !data) return result;
 
-  type RawRow = { aluno_id: string; presente: boolean; justificada: boolean };
+  type RawRow = { aluno_id: string; presente: boolean; tipo_presenca: TipoPresenca | null; justificada: boolean };
   const byAluno = new Map<string, RawRow[]>();
   for (const r of data as RawRow[]) {
     const arr = byAluno.get(r.aluno_id) ?? [];
@@ -231,10 +257,11 @@ export async function getResumoFrequenciaPorTurma(
 
   for (const [alunoId, rows] of byAluno) {
     const total        = rows.length;
-    const presencas    = rows.filter(r => r.presente).length;
-    const faltas       = total - presencas;
+    const peso         = rows.reduce((s, r) => s + pesoRegistro(r), 0);   // FP = 0,5
+    const presencas    = rows.filter(r => (r.tipo_presenca ?? (r.presente ? 'presente' : 'falta')) === 'presente').length;
+    const faltas       = Math.round((total - peso) * 10) / 10;
     const justificadas = rows.filter(r => !r.presente && r.justificada).length;
-    const percentual   = total > 0 ? Math.round((presencas / total) * 100) : 100;
+    const percentual   = total > 0 ? Math.round((peso / total) * 100) : 100;
     result.set(alunoId, {
       total_aulas: total, presencas, faltas,
       faltas_justificadas: justificadas,
@@ -307,19 +334,19 @@ export async function getAlunosEmRiscoByTurma(
   // Query 3: toda a frequência desses alunos nessas disciplinas (1 query)
   const { data: freqData } = await supabase
     .from('frequencia')
-    .select('aluno_id, disciplina_id, presente, justificada')
+    .select('aluno_id, disciplina_id, presente, tipo_presenca, justificada')
     .in('aluno_id', alunoIds)
     .in('disciplina_id', disciplinaIds)
     .limit(alunoIds.length * disciplinaIds.length * 15);
 
-  type FreqRow = { aluno_id: string; disciplina_id: string; presente: boolean };
-  const porAlunoDisc = new Map<string, { total: number; presencas: number }>();
+  type FreqRow = { aluno_id: string; disciplina_id: string; presente: boolean; tipo_presenca: TipoPresenca | null };
+  const porAlunoDisc = new Map<string, { total: number; peso: number }>();
 
   for (const r of (freqData ?? []) as FreqRow[]) {
     const key = `${r.aluno_id}:${r.disciplina_id}`;
-    const entry = porAlunoDisc.get(key) ?? { total: 0, presencas: 0 };
+    const entry = porAlunoDisc.get(key) ?? { total: 0, peso: 0 };
     entry.total++;
-    if (r.presente) entry.presencas++;
+    entry.peso += pesoRegistro(r);   // FP = 0,5
     porAlunoDisc.set(key, entry);
   }
 
@@ -341,7 +368,7 @@ export async function getAlunosEmRiscoByTurma(
       const key = `${alunoId}:${discId}`;
       const freq = porAlunoDisc.get(key);
       if (!freq || freq.total === 0) continue;
-      const percentual = Math.round((freq.presencas / freq.total) * 100);
+      const percentual = Math.round((freq.peso / freq.total) * 100);
       if (percentual < limite) {
         const aluno = porAluno.get(alunoId);
         if (aluno) {
