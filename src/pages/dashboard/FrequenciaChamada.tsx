@@ -364,12 +364,17 @@ export default function FrequenciaChamada() {
               </div>
             </div>
 
-            {datas.length === 0 ? (
-              <div className="bg-card border border-border rounded-xl p-8 text-center text-muted-foreground">
-                Nenhuma chamada na grade. Use “Gerar datas” ou “Data única” acima para criar as colunas.
+            {/* A grade de alunos aparece SEMPRE que turma+disciplina estão escolhidas —
+                mesmo sem nenhuma data lançada (antes a tabela só renderizava com datas,
+                o que escondia a lista e exigia um passo extra). */}
+            {datas.length === 0 && (
+              <div className="mb-2 rounded-lg border border-dashed border-border bg-muted/20 px-4 py-2.5 text-xs text-muted-foreground print:hidden">
+                Ainda não há datas de chamada nesta disciplina — a lista de alunos abaixo já está carregada.
+                Use <strong>“Gerar datas”</strong> (dias da semana × período) ou <strong>“Data única”</strong> acima
+                para criar as colunas e lançar, inclusive retroativo.
               </div>
-            ) : (
-              <div className="border border-border rounded-xl overflow-auto max-h-[calc(100vh-14rem)]">
+            )}
+            <div className="border border-border rounded-xl overflow-auto max-h-[calc(100vh-14rem)]">
                 <table className="text-sm border-collapse">
                   <thead className="sticky top-0 z-10">
                     <tr className="text-xs text-muted-foreground bg-card border-b border-border">
@@ -424,8 +429,7 @@ export default function FrequenciaChamada() {
                     ))}
                   </tbody>
                 </table>
-              </div>
-            )}
+            </div>
             <p className="text-[11px] text-muted-foreground mt-2">
               As marcações ficam <strong>pendentes</strong> (só na tela) até “Salvar chamada”, que grava tudo de uma vez.
               Faltas e Freq.% são recalculados pelo sistema (consolidado) após salvar.

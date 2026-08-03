@@ -171,7 +171,7 @@ async function enrichModuloOrdem(discs: DiscBasica[]): Promise<DisciplinaTurma[]
     .from('disciplinas_v2')
     .select('id, modulo:modulos(ordem)')
     .in('id', discs.map(d => d.id))
-    .limit(60);
+    .limit(120);   // união grade ∪ enrollment pode passar de 36
   if (error) console.error('[getDisciplinasDaTurma] modulo:', error.message);
 
   type Row = { id: string; modulo: { ordem: number } | { ordem: number }[] | null };
@@ -200,62 +200,91 @@ export async function getModulosCurso(codigoCurso = 'GRAD-TEO'): Promise<ModuloI
   return (data ?? []) as ModuloInfo[];
 }
 
-// Disciplinas lecionadas numa turma — porta de Acompanhamento da secretaria (C2/E4).
-// Fonte 1: grade horária (aulas_recorrentes). Fallback: matrículas da turma →
-// matriculas_disciplina (queries SEPARADAS, LICAO-026) — caminho REAL quando a
-// grade não está cadastrada (ex.: Apologética tem aulas_recorrentes count=0).
-// Erros logados (LICAO-027).
+// Todas as disciplina_id das matrículas da turma, PAGINANDO.
+// ⚠️ Antes era `.limit(500)`: com 36 disciplinas por aluno (081) o teto estoura a
+// partir de ~14 alunos e cortava SILENCIOSAMENTE (PostgREST não tem DISTINCT, e sem
+// ORDER BY a ordem nem é determinística). Paginação ordenada + dedup em JS resolve
+// sem migração. Teto de segurança: MAX_PAGES × PAGE linhas.
+async function getDisciplinaIdsDoEnrollment(matriculaIds: string[]): Promise<string[]> {
+  const PAGE = 1000;
+  const MAX_PAGES = 10;   // 10k linhas ≈ 275 alunos × 36 — folga larga
+  const ids = new Set<string>();
+
+  for (let page = 0; page < MAX_PAGES; page++) {
+    const { data, error } = await supabase
+      .from('matriculas_disciplina')
+      .select('disciplina_id')
+      .in('matricula_id', matriculaIds)
+      .order('disciplina_id')                                   // paginação determinística
+      .range(page * PAGE, page * PAGE + PAGE - 1);
+
+    if (error) { console.error('[getDisciplinasDaTurma] matriculas_disciplina:', error.message); break; }
+    const rows = (data ?? []) as { disciplina_id: string }[];
+    rows.forEach(r => ids.add(r.disciplina_id));
+    if (rows.length < PAGE) break;                              // última página
+  }
+  return [...ids];
+}
+
+// Disciplinas de uma turma — porta de Acompanhamento da secretaria (C2/E4) e da
+// tela de Frequência/Chamada.
+//
+// As duas fontes são COMPLEMENTARES, não excludentes — retornamos a UNIÃO:
+//   • aulas_recorrentes      → o que está sendo LECIONADO agora (grade da secretaria);
+//   • matriculas_disciplina  → o CURRÍCULO do aluno (as 36 regulares dos 6 módulos, 081).
+//
+// ⚠️ BUG CORRIGIDO: antes havia `if (grade.size > 0) return grade` (early return). Uma
+// turma COM grade cadastrada via SÓ o módulo corrente (1ª turma: 8 do M3, incl. as 2
+// eletivas) e NUNCA as 36 do enrollment → o filtro de módulo ficava vazio em todos os
+// outros módulos. Turma SEM grade (2ª) caía no fallback e via as 36 — comportamento
+// invertido entre turmas, mesma função. Agora ambas veem tudo.
+// Queries SEPARADAS (LICAO-026) · erros logados (LICAO-027).
 export async function getDisciplinasDaTurma(turmaId: string): Promise<DisciplinaTurma[]> {
   type AulaRow = { disciplina_id: string; disciplinas_v2: DiscBasica | DiscBasica[] | null };
 
-  // Fonte 1: grade horária
-  const { data: aulas, error: errAulas } = await supabase
-    .from('aulas_recorrentes')
-    .select('disciplina_id, disciplinas_v2(id, nome, codigo)')
-    .eq('turma_id', turmaId)
-    .eq('ativo', true)
-    .limit(60);
+  // Fontes independentes → em paralelo.
+  const [aulasRes, matsRes] = await Promise.all([
+    supabase
+      .from('aulas_recorrentes')
+      .select('disciplina_id, disciplinas_v2(id, nome, codigo)')
+      .eq('turma_id', turmaId)
+      .eq('ativo', true)
+      .limit(60),
+    supabase
+      .from('matriculas')
+      .select('id')
+      .eq('turma_id', turmaId)
+      .limit(100),
+  ]);
 
-  if (errAulas) console.error('[getDisciplinasDaTurma] aulas_recorrentes:', errAulas.message);
+  if (aulasRes.error) console.error('[getDisciplinasDaTurma] aulas_recorrentes:', aulasRes.error.message);
+  if (matsRes.error)  console.error('[getDisciplinasDaTurma] matriculas:', matsRes.error.message);
 
+  // Fonte 1 — grade (já traz nome/código pelo embed).
   const unicas = new Map<string, DiscBasica>();
-  for (const r of ((aulas ?? []) as unknown as AulaRow[])) {
+  for (const r of ((aulasRes.data ?? []) as unknown as AulaRow[])) {
     const d = Array.isArray(r.disciplinas_v2) ? r.disciplinas_v2[0] : r.disciplinas_v2;
     if (d) unicas.set(d.id, { id: d.id, nome: d.nome, codigo: d.codigo });
   }
-  if (unicas.size > 0) {
-    return enrichModuloOrdem([...unicas.values()]);
+
+  // Fonte 2 — enrollment (currículo). Só busca os metadados de quem a grade não trouxe.
+  const matriculaIds = ((matsRes.data ?? []) as { id: string }[]).map(m => m.id);
+  if (matriculaIds.length > 0) {
+    const discIds  = await getDisciplinaIdsDoEnrollment(matriculaIds);
+    const faltando = discIds.filter(id => !unicas.has(id));
+
+    if (faltando.length > 0) {
+      const { data: discs, error: errDiscs } = await supabase
+        .from('disciplinas_v2')
+        .select('id, nome, codigo')
+        .in('id', faltando)
+        .limit(120);                                            // 36+ com folga
+      if (errDiscs) console.error('[getDisciplinasDaTurma] disciplinas_v2:', errDiscs.message);
+      for (const d of ((discs ?? []) as DiscBasica[])) unicas.set(d.id, d);
+    }
   }
 
-  // Fallback: matrículas da turma → matriculas_disciplina → disciplinas_v2
-  const { data: mats, error: errMats } = await supabase
-    .from('matriculas')
-    .select('id')
-    .eq('turma_id', turmaId)
-    .limit(100);
-
-  if (errMats) console.error('[getDisciplinasDaTurma] matriculas:', errMats.message);
-  const matriculaIds = ((mats ?? []) as { id: string }[]).map(m => m.id);
-  if (matriculaIds.length === 0) return [];
-
-  const { data: mds, error: errMds } = await supabase
-    .from('matriculas_disciplina')
-    .select('disciplina_id')
-    .in('matricula_id', matriculaIds)
-    .limit(500);
-
-  if (errMds) console.error('[getDisciplinasDaTurma] matriculas_disciplina:', errMds.message);
-  const discIds = [...new Set(((mds ?? []) as { disciplina_id: string }[]).map(m => m.disciplina_id))];
-  if (discIds.length === 0) return [];
-
-  const { data: discs, error: errDiscs } = await supabase
-    .from('disciplinas_v2')
-    .select('id, nome, codigo')
-    .in('id', discIds)
-    .limit(60);
-
-  if (errDiscs) console.error('[getDisciplinasDaTurma] disciplinas_v2:', errDiscs.message);
-  return enrichModuloOrdem((discs ?? []) as DiscBasica[]);
+  return enrichModuloOrdem([...unicas.values()]);
 }
 
 export async function getVagasDisponiveis(turmaId: string): Promise<number> {
