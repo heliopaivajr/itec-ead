@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { supabase } from '@/lib/supabase';
-import { calcularStatus, getConsolidadoTurma } from '@/services/notas.service';
+import { calcularStatus, getConsolidadoTurma, getAvaliacoesBatch } from '@/services/notas.service';
 import { getAlunosOperacional } from '@/services/professor.service';
 import { getResumoFrequenciaPorTurma } from '@/services/frequencia.service';
 
@@ -144,5 +144,68 @@ describe('getConsolidadoTurma — semeado pelo roster turma-aware (058)', () => 
     vi.mocked(getAlunosOperacional).mockResolvedValue([]);
     const r = await getConsolidadoTurma('t1', 'd1');
     expect(r).toEqual([]);
+  });
+});
+
+// ─── getAvaliacoesBatch (SPEC-16 P2a) ────────────────────────────────────────
+// avaliacoes: from().select().eq().in().in().order().limit() → { data, error }
+function mockAvaliacoesQuery(data: unknown[], error: unknown = null) {
+  vi.mocked(supabase.from).mockReset();
+  vi.mocked(supabase.from).mockReturnValue({
+    select: () => ({
+      eq: () => ({
+        in: () => ({
+          in: () => ({
+            order: () => ({ limit: () => Promise.resolve({ data, error }) }),
+          }),
+        }),
+      }),
+    }),
+  } as any);
+}
+
+describe('getAvaliacoesBatch — ids de avaliação para lançar nota no bruto', () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it('lista vazia de disciplinas → Map vazio, sem query', async () => {
+    vi.mocked(supabase.from).mockReset();
+    const r = await getAvaliacoesBatch('t1', []);
+    expect(r.size).toBe(0);
+    expect(supabase.from).not.toHaveBeenCalled();
+  });
+
+  it('agrupa por disciplina e indexa por tipo', async () => {
+    mockAvaliacoesQuery([
+      { id: 'a1', disciplina_id: 'd1', tipo: 'N1' },
+      { id: 'a2', disciplina_id: 'd1', tipo: 'N2' },
+      { id: 'a3', disciplina_id: 'd2', tipo: 'N1' },
+    ]);
+
+    const r = await getAvaliacoesBatch('t1', ['d1', 'd2']);
+
+    expect(r.get('d1')).toEqual({ N1: 'a1', N2: 'a2' });
+    expect(r.get('d2')).toEqual({ N1: 'a3' });
+  });
+
+  it('disciplina sem avaliação não entra no Map (RN4 → criar no ato)', async () => {
+    mockAvaliacoesQuery([{ id: 'a1', disciplina_id: 'd1', tipo: 'N1' }]);
+    const r = await getAvaliacoesBatch('t1', ['d1', 'd2']);
+    expect(r.get('d2')).toBeUndefined();
+    expect(r.get('d1')?.N2).toBeUndefined();
+  });
+
+  it('duplicata do mesmo tipo → mantém a PRIMEIRA (mais antiga, sem UNIQUE no banco)', async () => {
+    mockAvaliacoesQuery([
+      { id: 'antiga', disciplina_id: 'd1', tipo: 'N1' },
+      { id: 'nova',   disciplina_id: 'd1', tipo: 'N1' },
+    ]);
+    const r = await getAvaliacoesBatch('t1', ['d1']);
+    expect(r.get('d1')?.N1).toBe('antiga');
+  });
+
+  it('erro na query → Map vazio (não lança)', async () => {
+    mockAvaliacoesQuery(null as unknown as unknown[], { message: 'rls blocked' });
+    const r = await getAvaliacoesBatch('t1', ['d1']);
+    expect(r.size).toBe(0);
   });
 });
