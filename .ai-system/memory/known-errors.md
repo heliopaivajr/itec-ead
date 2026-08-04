@@ -431,6 +431,54 @@ Ver procedimento completo em `supabase/seed/RUNBOOK.md`.
 
 ---
 
+## ERR-INFRA-002 — Gate de tipos cego: `tsconfig.json` raiz com `"files": []`
+
+**Data:** 2026-08-04
+**Sprint:** 16 (P2a — Ficha inline)
+**Contexto:** `pnpm exec tsc --noEmit` vinha sendo usado como gate de build nos passos P0/P1/P2a.
+
+**Erro:**
+O `tsconfig.json` da raiz é *solution-style*: tem `"files": []` e apenas `references`
+para `tsconfig.app.json`/`tsconfig.node.json`. Rodar `tsc --noEmit` nele compila
+**ZERO arquivos** — o comando termina com sucesso sem checar nada.
+
+Descoberto no P2a: um `<AlertTriangle />` usado **sem import** passou limpo pelo gate.
+O `pnpm build` (vite/esbuild) **também não pega**: esbuild remove tipos e trata o
+identificador indefinido como referência global — quebraria só em **runtime**, na hora
+de renderizar o componente.
+
+**Impacto:**
+Os "0 erros" reportados no **P0 e P1 não verificaram nada**.
+Verificação posterior contra o baseline confirmou que **P0 e P1 estão limpos**
+(nenhum arquivo deles aparece nos erros reais) — **nada quebrado foi mergeado**.
+O bug do P2a foi capturado antes do commit.
+
+**Regra (INVIOLÁVEL daqui em diante):**
+O gate de tipos oficial do projeto é:
+```bash
+pnpm exec tsc -p tsconfig.app.json --noEmit
+```
+comparado com o **BASELINE atual: 35 erros pré-existentes em `main`**
+(tipagem de mocks do vitest em `InlineStatusSelect.test.tsx` + `R04_PDF.tsx:220`).
+
+Um passo só passa se:
+1. **não aumentar** esse número; **e**
+2. tiver **0 erros nos arquivos que tocou**.
+
+**Nunca** usar o `tsconfig.json` da raiz como gate. `pnpm build` isoladamente também
+não substitui o gate — ele não faz type-check completo.
+
+**Backlog vinculado:**
+- (a) Limpar os **35 erros pré-existentes** num passo próprio (mocks vitest + `R04_PDF:220`)
+  — enquanto existirem, o baseline precisa ser conferido a cada passo.
+- (b) Adicionar **`UNIQUE (disciplina_id, turma_id, tipo)` em `avaliacoes`** via `.sql`
+  (ERR-INFRA-001: criar o arquivo, não executar). Hoje a duplicata é evitada por
+  revalidação no código (P2a) — a trava deveria estar no banco.
+
+**Status:** registrado — regra ativa a partir do Sprint 16 P2a
+
+---
+
 ## ERR-DEBT-001 — Código morto em Alunos.tsx após substituição por InlineStatusSelect
 
 **Data:** 2026-06-01
