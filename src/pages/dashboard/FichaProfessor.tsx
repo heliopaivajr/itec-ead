@@ -10,7 +10,11 @@ import { Button } from '@/components/ui/button';
 import { getProfessorById, getContratosByProfessor, getDisciplinasAtivasProfessor } from '@/services/professor.service';
 import type { Professor, ContratoProfessor, DisciplinaAtiva } from '@/services/professor.service';
 import { ProfessorModal } from '@/components/dashboard/ProfessorModal';
+import { formatDatePtBR } from '@/utils/date';
 
+// fmt() = timestamptz (criado_em) — conversão normal.
+// ⚠️ Coluna DATE (data_nascimento) usa formatDatePtBR (utils/date):
+// `new Date('YYYY-MM-DD')` é meia-noite UTC e exibia 1 dia a menos em UTC-3 (BUG 15.1).
 function fmt(iso: string | null | undefined) {
   if (!iso) return '—';
   return new Date(iso).toLocaleDateString('pt-BR');
@@ -146,7 +150,7 @@ export default function FichaProfessor() {
           <InfoRow icon={<FileText className="h-4 w-4" />} label="CPF" value={professor.cpf} />
           {professor.rg && <InfoRow icon={<FileText className="h-4 w-4" />} label="RG" value={professor.rg} />}
           {professor.data_nascimento && (
-            <InfoRow icon={<User className="h-4 w-4" />} label="Nascimento" value={fmt(professor.data_nascimento)} />
+            <InfoRow icon={<User className="h-4 w-4" />} label="Nascimento" value={formatDatePtBR(professor.data_nascimento)} />
           )}
           {professor.endereco && (
             <InfoRow icon={<MapPin className="h-4 w-4" />} label="Endereço" value={professor.endereco} />
