@@ -30,6 +30,7 @@ import { getMensalidadesVw } from '@/services/financeiro.service';
 import LancamentoRetroativo from '@/components/dashboard/LancamentoRetroativo';
 import { ValoresMatriculaPanel } from '@/components/dashboard/ValoresMatriculaPanel';
 import { useToast } from '@/hooks/use-toast';
+import { formatDatePtBR } from '@/utils/date';
 import type { DashboardContext } from '../Dashboard';
 
 // ─── Helpers ─────────────────────────────────────────────────
@@ -54,6 +55,10 @@ const CONVALIDACAO_STATUS_COLORS: Record<string, string> = {
   rejeitado: 'bg-red-500/20 text-red-400 border-red-500/30',
 };
 
+// fmt() = timestamptz (created_at, enviado_em, solicitado_em) — conversão normal.
+// ⚠️ Colunas DATE (data_nascimento, data_vencimento, data_pagamento) usam
+// formatDatePtBR (utils/date) — `new Date('YYYY-MM-DD')` é meia-noite UTC e
+// exibia 1 dia a menos em UTC-3 (BUG 15.1).
 function fmt(iso: string | null | undefined) {
   if (!iso) return '—';
   return new Date(iso).toLocaleDateString('pt-BR');
@@ -312,7 +317,7 @@ export default function FichaAluno() {
             <InfoRow icon={<FileText className="h-4 w-4" />} label="RG" value={perfil.rg} />
           )}
           {perfil.data_nascimento && (
-            <InfoRow icon={<User className="h-4 w-4" />} label="Nascimento" value={fmt(perfil.data_nascimento)} />
+            <InfoRow icon={<User className="h-4 w-4" />} label="Nascimento" value={formatDatePtBR(perfil.data_nascimento)} />
           )}
           {perfil.sexo && (
             <InfoRow icon={<User className="h-4 w-4" />} label="Sexo" value={perfil.sexo} />
@@ -588,8 +593,8 @@ export default function FichaAluno() {
                 <tr key={m.id}>
                   <td className="py-2 font-mono text-xs">{m.mes_referencia}</td>
                   <td className="py-2">{moeda(m.valor)}</td>
-                  <td className="py-2">{fmt(m.data_vencimento)}</td>
-                  <td className="py-2">{fmt(m.data_pagamento)}</td>
+                  <td className="py-2">{formatDatePtBR(m.data_vencimento)}</td>
+                  <td className="py-2">{formatDatePtBR(m.data_pagamento)}</td>
                   <td className="py-2">
                     <Badge variant="outline" className={`text-xs ${STATUS_COLORS[m.status] ?? ''}`}>
                       {m.status}
