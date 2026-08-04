@@ -36,10 +36,28 @@ Sem ícone de lápis. Sem redirect. Sem modal de edição.
 | Dados pessoais (nome, e-mail, tel, CPF, RG, nasc., sexo, bio) | só leitura; campo vazio **some** | **inline**; campo vazio vira `— clique para preencher` |
 | Endereço | só leitura | **inline** |
 | Ministério (`igreja_local`) | só leitura | **inline** |
-| Histórico Acadêmico (N1/N2/Rec/Média/Freq/Status) | só leitura | **N1/N2/Rec/Falta editáveis inline no BRUTO**; Média/Freq/Status continuam derivados (read-only, do consolidado) |
+| Histórico Acadêmico (N1/N2/Rec/Média/Freq/Status) | só leitura | **N1/N2/Rec/Falta editáveis inline no BRUTO**; Média/Freq/Status continuam derivados (read-only, do consolidado). **→ ver "Nota de praticidade" abaixo** |
 | Documentos e Impressões | 1 ativo / 4 "Em breve" | **3 ativos** (+ Situação Financeira + Boletim); Certificado/Relatório saem |
 | Foto, Observações, `ValoresMatriculaPanel` | já inline | **inalterados** (são a referência de padrão) |
 | Matrículas (aprovar), Lançamento Retroativo | ação / modal | **inalterados** |
+
+#### 📌 NOTA DE PRATICIDADE — Histórico Acadêmico
+> *Reforço do Hélio, validado em tela na ficha da Secretaria.*
+
+O Histórico Acadêmico (visível ao clicar no aluno) deve ser um **centro de trabalho completo e inline** — não só "editar nota". A secretaria, ao clicar no aluno, precisa **ali mesmo, no lugar**, de forma fácil e rápida:
+
+- dar **OK/aprovar** a matéria (status da disciplina);
+- **lançar e editar nota** (N1/N2/Rec);
+- **ver e ajustar faltas/frequência**;
+- **criar, editar, deletar, ajustar e revisar**.
+
+Tudo **sem pular de tela, sem lápis, sem redirect**. Clicou no aluno → vai editando e salvando ali.
+**Praticidade é requisito, não enfeite** (Diretriz 8.10).
+
+**Limites técnicos (inalterados):**
+- Escopo técnico e regras (bruto/consolidado, trigger 065, **RN4**) permanecem os já definidos no **§2** e no **P2**.
+- **Média/Freq/Status seguem derivados** (read-only).
+- **Status de disciplina** (aprovado/reprovado/cursando) editável: **confirmar no início do P2** se grava no bruto ou é derivado do trigger — **decisão técnica do P2**.
 
 ### Regras de negócio
 
