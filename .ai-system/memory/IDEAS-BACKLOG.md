@@ -6,6 +6,25 @@ Este documento registra todas as ideias, melhorias e funcionalidades discutidas 
 
 ---
 
+## 0. ONDE PARAMOS — 2026-08-03
+
+**Financeiro** ✅ completo.
+
+**Fase 2 — Secretaria:**
+| Entrega | Status |
+|---|---|
+| Central de Relatórios A | ✅ |
+| Painel Acadêmico — Notas (2.13a) + Chamada (2.13b) | ✅ |
+| Frequência FP — meia-presença P/FP/F (079) | ✅ |
+| Raiz turma→disciplina — enrollment em massa (080/081) | ✅ aplicadas |
+| Frequência flex Fase 1+2 (filtros por módulo · retroativo em massa · save em lote) + fix do filtro (união grade ∪ enrollment) | ✅ **mergeado (PR #80)** |
+
+**PRÓXIMO:** **(1)** Ficha do Aluno toda editável inline (§16 — 🔴 trava os cadastros) · **(2)** menu **Notas** próprio (tela cheia, espelhando Frequência).
+
+**Pendências de Frequência (fases não feitas):** 2b editar/mover data lançada · 3 impressão da situação real (datas lançadas ∪ futuras até `modulos.data_fim`).
+
+---
+
 ## 1. CALENDÁRIO ACADÊMICO
 
 ### 1.1 Eventos Recorrentes
@@ -940,6 +959,38 @@ Razões:
 **Impacto**: dado exibido errado em ficha de aluno/professor **e em vencimentos financeiros**.
 **Prioridade**: 🔴 **ALTA** (dado errado na tela). **Esforço**: **P** (um util + 2 trocas).
 **Status**: Diagnosticado, **correção pendente** — reportado pelo Hélio (2026-08-03).
+
+---
+
+## 16. FICHA DO ALUNO — EDIÇÃO INLINE TOTAL (aplicação do 8.10)
+
+### 16.1 [MELHORIA] 🔴 Ficha do Aluno TODA editável inline — dados pessoais
+**Descrição (Hélio, 2026-08-03 — trava os cadastros)**: a secretaria precisa editar **TUDO na própria ficha**, sem pular de tela e **sem ícone de lápis**. Clica no dado (nome/CPF/telefone/nascimento/sexo/e-mail/endereço…) → **vira input no lugar** → salva embaixo. Números, textos e datas — tudo editável no local, **um botão salvar**.
+**Hoje**: `FichaAluno.tsx` mostra os dados pessoais como `InfoRow` **100% somente-leitura**. Para editar, a secretaria vai a **outra tela** (`Alunos.tsx`/`Usuarios.tsx`) e abre um **modal** (`updateUsuario`) — é a "volta" que o Hélio reclama.
+**⚠️ Agravante achado no diagnóstico**: os campos renderizam **condicionalmente** (`{perfil.cpf && …}`) → **campo vazio nem aparece na ficha**. Hoje é **impossível preencher** um CPF/RG/nascimento que esteja em branco a partir da ficha. No inline, todo campo deve aparecer sempre (vazio = placeholder editável).
+**A favor**: a camada de serviço **já está pronta** — `updatePerfil(alunoId, payloadParcial)` já é **importado e usado na própria ficha** (salva `observacoes_internas`). Falta só a UI. RLS `profiles_update_staff` já permite.
+**Cuidado**: `role` e `CPF` têm regra própria (ver 8.9 — unicidade + não reabrir escalação de privilégio); `sanitizeDate` no caminho da data.
+**Esforço**: **M**. **Prioridade**: 🔴 **ALTA**. **Status**: Diagnosticado (2026-08-03), desenho pendente de aprovação.
+
+### 16.2 [MELHORIA] 🔴 Histórico Acadêmico editável inline na própria ficha
+**Descrição**: N1/N2/Rec/Média/Freq/Status do histórico (por módulo) devem ser editáveis **na própria ficha** — hoje a secretaria precisa abrir **outra tela** (Painel Acadêmico/LancarNotas) "e se perde".
+**Hoje**: `Histórico Acadêmico` (`ModuloAccordion`) é **só leitura**. A edição existe em **"Lançamento Retroativo"**, que abre um **Dialog/modal** (`LancamentoRetroativo.tsx`) — de novo a "volta".
+**⚠️ DECISÃO ARQUITETURAL (o ponto crítico)**: existem **dois caminhos de escrita com semânticas diferentes** —
+1. **BRUTO** (`lancarNota` → `notas_aluno` / `lancarFrequencia` → `frequencia`) → **trigger 065** recalcula o consolidado. É o caminho vivo e correto (LICAO-042), mas **exige uma `avaliacoes` N1/N2 cadastrada** para turma+disciplina (`lancarNota` recebe `avaliacao_id`).
+2. **CONSOLIDADO** (`lancarDisciplinaRetroativa` → `matriculas_disciplina`) → grava direto nota/faltas/freq/status. Funciona sem avaliação cadastrada (histórico antigo), **mas o trigger 065 SOBRESCREVE** se depois surgir qualquer lançamento bruto do par (aluno, disciplina).
+**Regra proposta**: disciplina **com** avaliações/chamada → editar no **bruto**; disciplina **puramente retroativa** (sem bruto) → consolidado, **sinalizando na UI** qual caminho está em uso, para a secretaria não perder edição em silêncio.
+**Esforço**: **G**. **Prioridade**: 🔴 **ALTA** (junto do 16.1). **Status**: Diagnosticado (2026-08-03).
+
+### 16.3 [VERIFICAR] "Em breve" na Ficha do Aluno — mapear e ativar o que já dá
+**Onde**: bloco **"Documentos e Impressões"** (`FichaAluno.tsx:660-673`) — 4 botões desabilitados com selo **"Em breve"** (marcados "Sprint P"): **Boletim de Notas · Situação Financeira · Certificado de Conclusão · Relatório Final do Aluno**. Só **Declaração de Matrícula** está ativa.
+**Avaliação inicial**: **Situação Financeira** e **Boletim de Notas** provavelmente já podem ser ativados **reusando PDFs existentes** (`ExtratoFinanceiroPDF`, `VisaoGeralFinanceiraPDF`, `R06_PDF` de histórico, `DossieAlunoPDF` — que já reúne acadêmico + financeiro). **Certificado de Conclusão** depende de pré-requisitos ainda pendentes (assinaturas PNG + mockup aprovado). **Relatório Final** não existe.
+**Ação**: confirmar cobertura de cada um e ativar os que já têm PDF pronto; manter selo só no que realmente falta.
+**Esforço**: **P/M**. **Prioridade**: Média-alta. **Status**: Mapeado (2026-08-03).
+
+### 16.4 [DIRETRIZ REFORÇADA] Edição inline no LOCAL — padrão de plataforma
+**Reforço do 8.10 (Hélio, 2026-08-03)**: **clicar → editar → salvar, no lugar**. **SEM ícone de lápis** e **SEM redirecionar** para outra tela/modal. Vale para **TODOS os menus** — aluno, histórico, matrícula, cadastro. Deve ser **fácil de achar e manusear**.
+**Já existe como referência**: financeiro 2e/2g (valor/vencimento/status inline), grade de notas 2.13a, chamada 2.13b/Frequência flex, `InlineStatusSelect`.
+**Regra de ouro mantida**: o inline persiste na **fonte única** (LICAO-042/043) — nunca ajuste efêmero de tela.
 
 ---
 
