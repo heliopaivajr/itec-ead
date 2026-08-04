@@ -16,7 +16,7 @@ import {
   type MensalidadeFicha,
 } from '@/services/ficha-aluno.service';
 import type { Convalidacao } from '@/services/matricula-academica.service';
-import { updatePerfil } from '@/services/usuarios.service';
+import { updatePerfil, type UpdatePerfilPayload } from '@/services/usuarios.service';
 import { uploadAvatar } from '@/services/profile.service';
 import { getHistoricoAluno, type HistoricoAluno, type StatusHistorico } from '@/services/academico.service';
 import { aprovarMatricula } from '@/services/matriculas.service';
@@ -31,6 +31,10 @@ import LancamentoRetroativo from '@/components/dashboard/LancamentoRetroativo';
 import { ValoresMatriculaPanel } from '@/components/dashboard/ValoresMatriculaPanel';
 import { useToast } from '@/hooks/use-toast';
 import { formatDatePtBR } from '@/utils/date';
+import { sanitizeDate } from '@/utils/sanitize';
+import { InlineField } from '@/components/dashboard/InlineField';
+import { BarraSecaoEditavel } from '@/components/dashboard/BarraSecaoEditavel';
+import { useSecaoEditavel, type PayloadSecao } from '@/hooks/use-secao-editavel';
 import type { DashboardContext } from '../Dashboard';
 
 // ─── Helpers ─────────────────────────────────────────────────
@@ -190,6 +194,35 @@ export default function FichaAluno() {
     setSavingObs(false);
   };
 
+  // ─── P1: edição inline por seção (RN1/RN2/RN6) ──────────────────────────────
+  // Só staff edita. RN2: `role` NUNCA entra no payload — o WITH CHECK da policy
+  // profiles_update_administracao derrubaria o UPDATE inteiro.
+  const podeEditarDados = ['superadmin', 'admin', 'administracao'].includes(adminProfile.role);
+
+  const persistir = async (payload: PayloadSecao) => {
+    if (!alunoId) return { error: 'Aluno não identificado' };
+    // RN1: data_nascimento normalizada como no updateUsuario.
+    const final: PayloadSecao = { ...payload };
+    if ('data_nascimento' in final) {
+      final.data_nascimento = sanitizeDate(final.data_nascimento ?? undefined);
+    }
+    // `null` limpa a coluna — o tipo do service só prevê string, daí o cast no limite.
+    return updatePerfil(alunoId, final as UpdatePerfilPayload);
+  };
+
+  const aplicarNoPerfil = (payload: PayloadSecao) =>
+    setPerfil(prev => (prev ? { ...prev, ...(payload as Partial<PerfilAluno>) } : prev));
+
+  const secaoDados = useSecaoEditavel({
+    rotulo: 'Dados pessoais', onSalvar: persistir, onSucesso: aplicarNoPerfil,
+  });
+  const secaoEndereco = useSecaoEditavel({
+    rotulo: 'Endereço', onSalvar: persistir, onSucesso: aplicarNoPerfil,
+  });
+  const secaoMinisterio = useSecaoEditavel({
+    rotulo: 'Ministério', onSalvar: persistir, onSucesso: aplicarNoPerfil,
+  });
+
   const podeAprovar     = ['superadmin', 'admin', 'administracao'].includes(adminProfile.role);
 
   const handleAprovar = async () => {
@@ -234,14 +267,6 @@ export default function FichaAluno() {
   }
 
   const inadimplente = mensalidades.some(m => m.status === 'atrasado');
-  const enderecoCompleto = [
-    perfil.endereco,
-    perfil.numero && `nº ${perfil.numero}`,
-    perfil.complemento,
-    perfil.bairro,
-    perfil.cidade && perfil.estado ? `${perfil.cidade}/${perfil.estado}` : (perfil.cidade || perfil.estado),
-    perfil.cep && `CEP ${perfil.cep}`,
-  ].filter(Boolean).join(', ');
 
   return (
     <div className="space-y-6 max-w-4xl">
@@ -307,50 +332,87 @@ export default function FichaAluno() {
           </div>
         </div>
 
+        {/* Campos renderizados INCONDICIONALMENTE (P1): vazio vira placeholder clicável. */}
         <div className="grid sm:grid-cols-2 gap-3 text-sm">
-          <InfoRow icon={<Mail className="h-4 w-4" />}  label="E-mail"   value={perfil.email} />
-          <InfoRow icon={<Phone className="h-4 w-4" />} label="Telefone" value={perfil.telefone ?? '—'} />
-          {perfil.cpf && (
-            <InfoRow icon={<FileText className="h-4 w-4" />} label="CPF" value={perfil.cpf} />
-          )}
-          {perfil.rg && (
-            <InfoRow icon={<FileText className="h-4 w-4" />} label="RG" value={perfil.rg} />
-          )}
-          {perfil.data_nascimento && (
-            <InfoRow icon={<User className="h-4 w-4" />} label="Nascimento" value={formatDatePtBR(perfil.data_nascimento)} />
-          )}
-          {perfil.sexo && (
-            <InfoRow icon={<User className="h-4 w-4" />} label="Sexo" value={perfil.sexo} />
-          )}
-          {perfil.bio && (
-            <div className="sm:col-span-2">
-              <InfoRow icon={<MapPin className="h-4 w-4" />} label="Bio" value={perfil.bio} />
-            </div>
-          )}
+          <CampoInline icon={<User className="h-4 w-4" />} label="Nome completo"
+            valor={secaoDados.valorDe('full_name', perfil.full_name)}
+            onChange={v => secaoDados.setCampo('full_name', v)} disabled={!podeEditarDados} />
+          <CampoInline icon={<Mail className="h-4 w-4" />} label="E-mail"
+            valor={secaoDados.valorDe('email', perfil.email)}
+            onChange={v => secaoDados.setCampo('email', v)} disabled={!podeEditarDados} />
+          <CampoInline icon={<Phone className="h-4 w-4" />} label="Telefone"
+            valor={secaoDados.valorDe('telefone', perfil.telefone)}
+            onChange={v => secaoDados.setCampo('telefone', v)} disabled={!podeEditarDados} />
+          <CampoInline icon={<FileText className="h-4 w-4" />} label="CPF"
+            valor={secaoDados.valorDe('cpf', perfil.cpf)}
+            onChange={v => secaoDados.setCampo('cpf', v)} disabled={!podeEditarDados} />
+          <CampoInline icon={<FileText className="h-4 w-4" />} label="RG"
+            valor={secaoDados.valorDe('rg', perfil.rg)}
+            onChange={v => secaoDados.setCampo('rg', v)} disabled={!podeEditarDados} />
+          <CampoInline icon={<User className="h-4 w-4" />} label="Nascimento" type="date"
+            valor={secaoDados.valorDe('data_nascimento', perfil.data_nascimento)}
+            onChange={v => secaoDados.setCampo('data_nascimento', v)} disabled={!podeEditarDados} />
+          <CampoInline icon={<User className="h-4 w-4" />} label="Sexo" options={SEXO_OPCOES}
+            valor={secaoDados.valorDe('sexo', perfil.sexo)}
+            onChange={v => secaoDados.setCampo('sexo', v)} disabled={!podeEditarDados} />
+          <div className="sm:col-span-2">
+            <CampoInline icon={<MapPin className="h-4 w-4" />} label="Bio"
+              valor={secaoDados.valorDe('bio', perfil.bio)}
+              onChange={v => secaoDados.setCampo('bio', v)} disabled={!podeEditarDados} />
+          </div>
         </div>
+
+        {podeEditarDados && (
+          <BarraSecaoEditavel qtd={secaoDados.qtd} salvando={secaoDados.salvando}
+            onSalvar={secaoDados.salvar} onCancelar={secaoDados.cancelar} />
+        )}
       </div>
 
-      {/* Endereço */}
-      {enderecoCompleto && (
-        <Section title="Endereço" icon={<Home className="h-4 w-4" />}>
-          <div className="grid sm:grid-cols-2 gap-3 text-sm">
-            {perfil.endereco && <InfoRow icon={<MapPin className="h-4 w-4" />} label="Logradouro" value={perfil.endereco} />}
-            {perfil.numero    && <InfoRow icon={<MapPin className="h-4 w-4" />} label="Número"     value={perfil.numero} />}
-            {perfil.complemento && <InfoRow icon={<MapPin className="h-4 w-4" />} label="Complemento" value={perfil.complemento} />}
-            {perfil.bairro    && <InfoRow icon={<MapPin className="h-4 w-4" />} label="Bairro"     value={perfil.bairro} />}
-            {perfil.cidade    && <InfoRow icon={<MapPin className="h-4 w-4" />} label="Cidade"     value={perfil.cidade} />}
-            {perfil.estado    && <InfoRow icon={<MapPin className="h-4 w-4" />} label="Estado"     value={perfil.estado} />}
-            {perfil.cep       && <InfoRow icon={<MapPin className="h-4 w-4" />} label="CEP"        value={perfil.cep} />}
-          </div>
-        </Section>
-      )}
+      {/* Endereço — seção SEMPRE visível (P1): sem ela não havia como preencher
+          um endereço em branco pela ficha. */}
+      <Section title="Endereço" icon={<Home className="h-4 w-4" />}>
+        <div className="grid sm:grid-cols-2 gap-3 text-sm">
+          <CampoInline icon={<MapPin className="h-4 w-4" />} label="Logradouro"
+            valor={secaoEndereco.valorDe('endereco', perfil.endereco)}
+            onChange={v => secaoEndereco.setCampo('endereco', v)} disabled={!podeEditarDados} />
+          <CampoInline icon={<MapPin className="h-4 w-4" />} label="Número"
+            valor={secaoEndereco.valorDe('numero', perfil.numero)}
+            onChange={v => secaoEndereco.setCampo('numero', v)} disabled={!podeEditarDados} />
+          <CampoInline icon={<MapPin className="h-4 w-4" />} label="Complemento"
+            valor={secaoEndereco.valorDe('complemento', perfil.complemento)}
+            onChange={v => secaoEndereco.setCampo('complemento', v)} disabled={!podeEditarDados} />
+          <CampoInline icon={<MapPin className="h-4 w-4" />} label="Bairro"
+            valor={secaoEndereco.valorDe('bairro', perfil.bairro)}
+            onChange={v => secaoEndereco.setCampo('bairro', v)} disabled={!podeEditarDados} />
+          <CampoInline icon={<MapPin className="h-4 w-4" />} label="Cidade"
+            valor={secaoEndereco.valorDe('cidade', perfil.cidade)}
+            onChange={v => secaoEndereco.setCampo('cidade', v)} disabled={!podeEditarDados} />
+          {/* estado é VARCHAR(2) no banco — valida antes de bater na constraint. */}
+          <CampoInline icon={<MapPin className="h-4 w-4" />} label="Estado (UF)"
+            valor={secaoEndereco.valorDe('estado', perfil.estado)}
+            onChange={v => secaoEndereco.setCampo('estado', v.toUpperCase())}
+            validate={v => (v.length > 2 ? 'Use a sigla com 2 letras (ex.: PE)' : null)}
+            disabled={!podeEditarDados} />
+          <CampoInline icon={<MapPin className="h-4 w-4" />} label="CEP"
+            valor={secaoEndereco.valorDe('cep', perfil.cep)}
+            onChange={v => secaoEndereco.setCampo('cep', v)} disabled={!podeEditarDados} />
+        </div>
+        {podeEditarDados && (
+          <BarraSecaoEditavel qtd={secaoEndereco.qtd} salvando={secaoEndereco.salvando}
+            onSalvar={secaoEndereco.salvar} onCancelar={secaoEndereco.cancelar} />
+        )}
+      </Section>
 
-      {/* Ministério */}
-      {perfil.igreja_local && (
-        <Section title="Ministério" icon={<Church className="h-4 w-4" />}>
-          <InfoRow icon={<Church className="h-4 w-4" />} label="Igreja local" value={perfil.igreja_local} />
-        </Section>
-      )}
+      {/* Ministério — idem: sempre visível para permitir o preenchimento. */}
+      <Section title="Ministério" icon={<Church className="h-4 w-4" />}>
+        <CampoInline icon={<Church className="h-4 w-4" />} label="Igreja local"
+          valor={secaoMinisterio.valorDe('igreja_local', perfil.igreja_local)}
+          onChange={v => secaoMinisterio.setCampo('igreja_local', v)} disabled={!podeEditarDados} />
+        {podeEditarDados && (
+          <BarraSecaoEditavel qtd={secaoMinisterio.qtd} salvando={secaoMinisterio.salvando}
+            onSalvar={secaoMinisterio.salvar} onCancelar={secaoMinisterio.cancelar} />
+        )}
+      </Section>
 
       {/* Matrículas */}
       <Section title="Matrículas" icon={<GraduationCap className="h-4 w-4" />}>
@@ -781,13 +843,44 @@ function ModuloAccordion({ modulo }: { modulo: HistoricoAluno['modulos'][0] }) {
   );
 }
 
-function InfoRow({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
+// profiles.sexo tem CHECK (sexo IN ('masculino','feminino','outro')) — migration 021.
+// Os `value` batem EXATAMENTE com o CHECK; texto livre quebraria o insert (ERR-LOGIC-003).
+const SEXO_OPCOES = [
+  { value: 'masculino', label: 'Masculino' },
+  { value: 'feminino',  label: 'Feminino'  },
+  { value: 'outro',     label: 'Outro'     },
+];
+
+// Versão editável do InfoRow (SPEC-16 P1). Renderiza SEMPRE — mesmo vazio, onde
+// mostra "— clique para preencher". Antes os campos eram condicionais
+// (`{perfil.cpf && ...}`) e um CPF em branco simplesmente não aparecia,
+// tornando impossível preenchê-lo pela ficha.
+function CampoInline({
+  icon, label, valor, onChange, type, options, disabled, validate,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  valor: string;
+  onChange: (v: string) => void;
+  type?: 'text' | 'number' | 'date';
+  options?: { value: string; label: string }[];
+  disabled?: boolean;
+  validate?: (v: string) => string | null;
+}) {
   return (
     <div className="flex items-start gap-2 text-sm">
-      <span className="text-muted-foreground mt-0.5">{icon}</span>
-      <div>
+      <span className="text-muted-foreground mt-0.5 shrink-0">{icon}</span>
+      <div className="min-w-0 flex-1">
         <p className="text-xs text-muted-foreground">{label}</p>
-        <p className="text-foreground">{value}</p>
+        <InlineField
+          value={valor}
+          onSave={onChange}
+          type={type}
+          options={options}
+          disabled={disabled}
+          validate={validate}
+          label={label}
+        />
       </div>
     </div>
   );
