@@ -919,6 +919,30 @@ Razões:
 
 ---
 
+## 15. BUGS ABERTOS
+
+### 15.1 [BUG] 🔴 Data de nascimento exibe 1 dia a menos (fuso horário UTC-3)
+**Descrição**: Cadastra-se o aluno com 15/03/1990 e a ficha mostra **14/03/1990**.
+**Diagnóstico (2026-08-03 — concluído)**: o bug é **só de EXIBIÇÃO**; o dado no banco está **correto**.
+- **Coluna**: `profiles.data_nascimento` e `professores.data_nascimento` são **`DATE` puro** (migrations 021 e 009) — sem fuso. ✅
+- **Gravação — OK**: `<Input type="date">` entrega `'YYYY-MM-DD'`; `sanitizeDate` (`src/utils/sanitize.ts:3`) devolve a string **intacta** quando casa o regex ISO. Nenhum caminho de escrita usa `new Date()`/`toISOString()` (NovoAlunoModal:59, usuarios.service:218, ProfessorModal:71/92, NovaMatricula:154).
+- **Exibição — CAUSA**: `fmt()` em `FichaAluno.tsx:57-59` e `FichaProfessor.tsx:14-16` faz `new Date(iso).toLocaleDateString('pt-BR')`. Por ECMA-262, string **date-only** é interpretada como **UTC midnight**; em UTC-3 volta para o dia anterior → **-1 dia**.
+- **O padrão correto JÁ EXISTE no projeto** (~15 pontos): `new Date(iso + 'T12:00')` — meio-dia local, imune a fuso de ±12h. Ex.: `DayPanel:35`, `DossieAlunoPDF:65`, `FichaFinanceiraAluno:46`, `MeuFinanceiro:30`, `GestaoTurmas:32`, `FrequenciaChamada:37`. Os dois `fmt()` das fichas ficaram fora do padrão.
+
+**⚠️ O bug é MAIOR que data de nascimento**: o mesmo `fmt()` também formata **`data_vencimento` e `data_pagamento`** (`FichaAluno.tsx:591-592`) — que também são **`DATE`** (migration 012) → **vencimentos financeiros exibem 1 dia a menos**. Prova cruzada: o **mesmo campo** aparece **certo** em `FichaFinanceiraAluno` (usa `+T12:00`) e **errado** em `FichaAluno` — duas telas, dias diferentes.
+
+**Correção recomendada (NÃO aplicada)**: um helper único de formatação que **detecta date-only** e só então ancora ao meio-dia local:
+- se `/^\d{4}-\d{2}-\d{2}$/` → `new Date(iso + 'T12:00')`;
+- senão (timestamptz com hora/Z) → `new Date(iso)` **sem alteração**.
+⚠️ **Não** aplicar `+ 'T12:00'` cegamente: o mesmo `fmt()` também recebe **timestamps** (`created_at`, `criado_em`, `enviado_em`, `solicitado_em`), que hoje estão **corretos** e quebrariam. Centralizar num util compartilhado (ex.: `src/utils/date.ts`) e trocar os dois `fmt()` locais.
+**Extra (cosmético, sem -1 dia)**: `ContratoPDF.tsx:56` imprime `data_nascimento` **crua** (`1990-03-15`) em vez de `15/03/1990`.
+**Pontos que tocam `data_nascimento`**: NovoAlunoModal · Alunos (edição) · NovaMatricula · ProfessorModal · ContratoForm · ContratoPDF · FichaAluno · FichaProfessor · ficha-aluno.service · usuarios.service · professor.service · use-profile · relatorios.service (tipo).
+**Impacto**: dado exibido errado em ficha de aluno/professor **e em vencimentos financeiros**.
+**Prioridade**: 🔴 **ALTA** (dado errado na tela). **Esforço**: **P** (um util + 2 trocas).
+**Status**: Diagnosticado, **correção pendente** — reportado pelo Hélio (2026-08-03).
+
+---
+
 ## COMO USAR ESTE BACKLOG
 
 1. **Novas ideias**: Adicionar no final da categoria correspondente
