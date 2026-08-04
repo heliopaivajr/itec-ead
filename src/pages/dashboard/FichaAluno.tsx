@@ -3,7 +3,7 @@ import { useParams, useNavigate, useOutletContext } from 'react-router-dom';
 import {
   ArrowLeft, Loader2, User, Phone, Mail, MapPin,
   GraduationCap, FileText, CreditCard, Church, Home, Save, Printer, Camera,
-  ChevronDown, ChevronRight, BookOpen,
+  ChevronDown, ChevronRight, BookOpen, AlertTriangle,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -19,6 +19,10 @@ import type { Convalidacao } from '@/services/matricula-academica.service';
 import { updatePerfil, type UpdatePerfilPayload } from '@/services/usuarios.service';
 import { uploadAvatar } from '@/services/profile.service';
 import { getHistoricoAluno, type HistoricoAluno, type StatusHistorico } from '@/services/academico.service';
+import {
+  getAvaliacoesBatch, createAvaliacao, lancarNota,
+  type AvaliacoesPorDisciplina, type TipoNotaEditavel,
+} from '@/services/notas.service';
 import { aprovarMatricula } from '@/services/matriculas.service';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
@@ -91,6 +95,14 @@ export default function FichaAluno() {
   const [uploading,  setUploading]  = useState(false);
   const [historico,  setHistorico]  = useState<HistoricoAluno | null>(null);
   const [loadingHist, setLoadingHist] = useState(false);
+  // P2a — notas inline: ids das avaliações (lancarNota exige avaliacao_id) + turma do histórico
+  const [avaliacoes, setAvaliacoes] = useState<AvaliacoesPorDisciplina>(new Map());
+  const [turmaHist,  setTurmaHist]  = useState<string | null>(null);
+  // RN4: disciplina sem N1/N2 — não grava direto, pede para criar a avaliação
+  const [pedidoRN4, setPedidoRN4] = useState<
+    { disciplinaId: string; disciplinaNome: string; tipo: TipoNotaEditavel; nota: number; consolidado: boolean } | null
+  >(null);
+  const [criandoAvaliacao, setCriandoAvaliacao] = useState(false);
   const [aprovandoId, setAprovandoId] = useState<string | null>(null);
   const [confirmDialog, setConfirmDialog] = useState<{ matriculaId: string; turma: string } | null>(null);
   const [gerandoDossie, setGerandoDossie] = useState(false);   // 2i — dossiê nesta ficha
@@ -180,11 +192,93 @@ export default function FichaAluno() {
         ?? ficha.matriculas.find(m => m.turma_id);
       if (matriculaAtiva?.turma_id) {
         setLoadingHist(true);
+        setTurmaHist(matriculaAtiva.turma_id);
         const hist = await getHistoricoAluno(id, matriculaAtiva.turma_id);
         setHistorico(hist);
+        await carregarAvaliacoes(matriculaAtiva.turma_id, hist);
         setLoadingHist(false);
       }
     }
+  };
+
+  // ─── P2a: notas inline no histórico (LICAO-042 — escreve SÓ no bruto) ────────
+  const carregarAvaliacoes = async (turmaId: string, hist: HistoricoAluno | null) => {
+    if (!hist) { setAvaliacoes(new Map()); return; }
+    const ids = hist.modulos.flatMap(m => m.disciplinas.map(d => d.id));
+    setAvaliacoes(await getAvaliacoesBatch(turmaId, ids));
+  };
+
+  // Média/Freq/Status são DERIVADOS: quem recalcula é o trigger 065. Depois de
+  // gravar no bruto, relemos o histórico para refletir o que o banco decidiu —
+  // a ficha NUNCA calcula nem escreve consolidado (LICAO-042/043).
+  const recarregarHistorico = async (turmaId: string) => {
+    if (!alunoId) return;
+    const hist = await getHistoricoAluno(alunoId, turmaId);
+    setHistorico(hist);
+    await carregarAvaliacoes(turmaId, hist);
+  };
+
+  /** Grava a nota no BRUTO (notas_aluno). Lança em caso de erro para o InlineField
+   *  manter a célula em edição com o valor digitado (LICAO-027). */
+  const persistirNota = async (avaliacaoId: string, disciplinaId: string, nota: number) => {
+    if (!alunoId || !turmaHist) throw new Error('Aluno ou turma não identificados');
+    const { error } = await lancarNota(avaliacaoId, alunoId, disciplinaId, turmaHist, nota, adminProfile.id);
+    if (error) {
+      toast({ title: 'Erro ao lançar nota', description: error, variant: 'destructive' });
+      throw new Error(error);
+    }
+    await recarregarHistorico(turmaHist);
+    toast({ title: 'Nota lançada', description: 'Média, frequência e situação foram recalculadas pelo sistema.' });
+  };
+
+  const salvarNota = async (
+    disciplinaId: string, disciplinaNome: string,
+    tipo: TipoNotaEditavel, valor: string, consolidado: boolean,
+  ) => {
+    const nota = Number(valor.replace(',', '.'));
+    const avaliacaoId = avaliacoes.get(disciplinaId)?.[tipo];
+
+    // RN4: sem avaliação cadastrada, gravar no bruto faria o trigger zerar a média
+    // de um lançamento retroativo. Não grava direto — pede confirmação.
+    if (!avaliacaoId) {
+      setPedidoRN4({ disciplinaId, disciplinaNome, tipo, nota, consolidado });
+      return;
+    }
+    await persistirNota(avaliacaoId, disciplinaId, nota);
+  };
+
+  /** RN4 confirmado: cria a avaliação (peso 1.0, default do banco) e então lança. */
+  const confirmarCriarAvaliacao = async () => {
+    if (!pedidoRN4 || !turmaHist || !alunoId) return;
+    const { disciplinaId, tipo, nota } = pedidoRN4;
+    setCriandoAvaliacao(true);
+
+    // A tabela não tem UNIQUE(disciplina,turma,tipo): revalida para não duplicar
+    // se a avaliação tiver surgido entre o clique e a confirmação.
+    const atuais = await getAvaliacoesBatch(turmaHist, [disciplinaId]);
+    let avaliacaoId = atuais.get(disciplinaId)?.[tipo];
+
+    if (!avaliacaoId) {
+      const { data, error } = await createAvaliacao(
+        disciplinaId, turmaHist, tipo, adminProfile.id, `${tipo} — criada pela ficha do aluno`,
+      );
+      if (error || !data) {
+        setCriandoAvaliacao(false);
+        toast({ title: 'Erro ao criar avaliação', description: error ?? 'Falha desconhecida', variant: 'destructive' });
+        return;
+      }
+      avaliacaoId = data.id;
+    }
+
+    const { error } = await lancarNota(avaliacaoId, alunoId, disciplinaId, turmaHist, nota, adminProfile.id);
+    setCriandoAvaliacao(false);
+    if (error) {
+      toast({ title: 'Erro ao lançar nota', description: error, variant: 'destructive' });
+      return;
+    }
+    setPedidoRN4(null);
+    await recarregarHistorico(turmaHist);
+    toast({ title: 'Avaliação criada e nota lançada' });
   };
 
   const salvarObs = async () => {
@@ -509,7 +603,8 @@ export default function FichaAluno() {
           ) : (
             <div className="space-y-3">
               {historico.modulos.map(mod => (
-                <ModuloAccordion key={mod.id} modulo={mod} />
+                <ModuloAccordion key={mod.id} modulo={mod}
+                  editavel={podeLancar} onSalvarNota={salvarNota} />
               ))}
               {/* Rodapé */}
               <div className="flex flex-wrap gap-4 pt-3 border-t text-sm">
@@ -524,6 +619,42 @@ export default function FichaAluno() {
           )}
         </Section>
       )}
+
+      {/* RN4 — disciplina sem N1/N2: criar a avaliação no ato antes de lançar.
+          Sem isso, gravar no bruto faria o trigger 065 recalcular com uma nota só
+          e zerar (media=NULL) um lançamento retroativo — perda silenciosa. */}
+      <Dialog open={!!pedidoRN4} onOpenChange={o => { if (!o && !criandoAvaliacao) setPedidoRN4(null); }}>
+        <DialogContent className="max-w-md bg-card border-border">
+          <DialogHeader>
+            <DialogTitle className="font-merriweather text-foreground">Criar avaliação {pedidoRN4?.tipo}?</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 text-sm">
+            <p className="text-muted-foreground">
+              <strong className="text-foreground">{pedidoRN4?.disciplinaNome}</strong> ainda não tem{' '}
+              <strong className="text-foreground">{pedidoRN4?.tipo}</strong> cadastrada nesta turma.
+              Criar agora para lançar a nota <strong className="text-foreground">{pedidoRN4?.nota.toFixed(1)}</strong>?
+            </p>
+            {pedidoRN4?.consolidado && (
+              <p className="rounded-md border border-amber-500/40 bg-amber-500/10 p-2.5 text-xs text-amber-600 dark:text-amber-400">
+                <AlertTriangle className="inline h-3.5 w-3.5 mr-1" />
+                Esta disciplina tem <strong>lançamento retroativo</strong>. A partir de agora a média
+                passa a ser calculada pelas notas lançadas (N1 e N2), e não mais pelo valor lançado à mão.
+                Lance <strong>as duas notas</strong> para a média voltar a aparecer.
+              </p>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" size="sm" onClick={() => setPedidoRN4(null)} disabled={criandoAvaliacao}>
+              Cancelar
+            </Button>
+            <Button size="sm" onClick={confirmarCriarAvaliacao} disabled={criandoAvaliacao}>
+              {criandoAvaliacao
+                ? <><Loader2 className="h-4 w-4 animate-spin mr-1.5" /> Criando…</>
+                : 'Criar e lançar'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Lançamento Retroativo (R2) */}
       {podeLancar && (
@@ -787,7 +918,49 @@ function StatusHistBadge({ status }: { status: StatusHistorico }) {
   );
 }
 
-function ModuloAccordion({ modulo }: { modulo: HistoricoAluno['modulos'][0] }) {
+// Validação da nota (0–10, até 1 casa). Vazio é rejeitado de propósito: remover
+// nota é exclusão de lançamento, não faz parte do P2a.
+function validarNota(v: string): string | null {
+  const bruto = v.trim();
+  if (bruto === '') return 'Informe uma nota de 0 a 10';
+  const n = Number(bruto.replace(',', '.'));
+  if (Number.isNaN(n)) return 'Use um número (ex.: 7.5)';
+  if (n < 0 || n > 10) return 'A nota deve estar entre 0 e 10';
+  if (Math.round(n * 10) !== Math.round(n * 100) / 10) return 'Use no máximo 1 casa decimal';
+  return null;
+}
+
+/** Célula de nota: read-only para quem não lança; inline para a secretaria. */
+function CelulaNota({
+  valor, editavel, onSalvar,
+}: {
+  valor: number | null;
+  editavel: boolean;
+  onSalvar: (v: string) => Promise<void>;
+}) {
+  if (!editavel) return <>{valor?.toFixed(1) ?? '—'}</>;
+  return (
+    <InlineField
+      type="number"
+      value={valor != null ? String(valor) : ''}
+      placeholder="—"
+      validate={validarNota}
+      onSave={onSalvar}
+      label="Nota"
+    />
+  );
+}
+
+function ModuloAccordion({
+  modulo, editavel = false, onSalvarNota,
+}: {
+  modulo: HistoricoAluno['modulos'][0];
+  editavel?: boolean;
+  onSalvarNota?: (
+    disciplinaId: string, disciplinaNome: string,
+    tipo: TipoNotaEditavel, valor: string, consolidado: boolean,
+  ) => Promise<void>;
+}) {
   const [open, setOpen] = useState(true);
   const mediaCls = modulo.media_modulo === null ? 'text-muted-foreground'
     : modulo.media_modulo >= 7 ? 'text-green-400'
@@ -827,9 +1000,20 @@ function ModuloAccordion({ modulo }: { modulo: HistoricoAluno['modulos'][0] }) {
               {modulo.disciplinas.map(d => (
                 <tr key={d.id} className="hover:bg-muted/10">
                   <td className="px-4 py-2 font-medium">{d.nome}</td>
-                  <td className="px-2 py-2 text-center">{d.notas.n1?.toFixed(1) ?? '—'}</td>
-                  <td className="px-2 py-2 text-center">{d.notas.n2?.toFixed(1) ?? '—'}</td>
-                  <td className="px-2 py-2 text-center">{d.notas.recuperacao?.toFixed(1) ?? '—'}</td>
+                  {/* N1/N2/Rec: BRUTO (notas_aluno) — editáveis. */}
+                  <td className="px-2 py-2 text-center">
+                    <CelulaNota valor={d.notas.n1} editavel={editavel}
+                      onSalvar={v => onSalvarNota!(d.id, d.nome, 'N1', v, !!d.consolidado)} />
+                  </td>
+                  <td className="px-2 py-2 text-center">
+                    <CelulaNota valor={d.notas.n2} editavel={editavel}
+                      onSalvar={v => onSalvarNota!(d.id, d.nome, 'N2', v, !!d.consolidado)} />
+                  </td>
+                  <td className="px-2 py-2 text-center">
+                    <CelulaNota valor={d.notas.recuperacao} editavel={editavel}
+                      onSalvar={v => onSalvarNota!(d.id, d.nome, 'recuperacao', v, !!d.consolidado)} />
+                  </td>
+                  {/* Média/Freq/Status: DERIVADOS pelo trigger 065 — sempre read-only. */}
                   <td className="px-2 py-2 text-center font-semibold">{d.notas.media_final?.toFixed(1) ?? '—'}</td>
                   <td className="px-2 py-2 text-center">
                     <span className={d.frequencia.percentual < 75 ? 'text-red-400 font-semibold' : ''}>

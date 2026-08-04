@@ -101,6 +101,49 @@ export async function createAvaliacao(
   return { data: data as Avaliacao, error: null };
 }
 
+/** Tipos de avaliação editáveis inline na ficha (SPEC-16 P2a). */
+export type TipoNotaEditavel = 'N1' | 'N2' | 'recuperacao';
+
+/** disciplina_id → { N1: avaliacaoId, N2: …, recuperacao: … } (só o que existe). */
+export type AvaliacoesPorDisciplina = Map<string, Partial<Record<TipoNotaEditavel, string>>>;
+
+/**
+ * Ids das avaliações N1/N2/recuperação de VÁRIAS disciplinas de uma turma — 1 query.
+ * `lancarNota` exige `avaliacao_id`, e o histórico da ficha não o trazia.
+ *
+ * Deliberadamente SEPARADO de `getHistoricoAluno`: aquela função é consumida por 8
+ * telas (dashboards do aluno, MinhasNotas, MeuHistórico, R06, PDFs) e embutir mais
+ * uma query penalizaria todas por um dado que só a ficha da secretaria usa.
+ */
+export async function getAvaliacoesBatch(
+  turmaId: string,
+  disciplinaIds: string[]
+): Promise<AvaliacoesPorDisciplina> {
+  const result: AvaliacoesPorDisciplina = new Map();
+  if (disciplinaIds.length === 0) return result;
+
+  const { data, error } = await supabase
+    .from('avaliacoes')
+    .select('id, disciplina_id, tipo')
+    .eq('turma_id', turmaId)
+    .in('disciplina_id', disciplinaIds)
+    .in('tipo', ['N1', 'N2', 'recuperacao'])
+    .order('created_at', { ascending: true })
+    .limit(disciplinaIds.length * 5);
+
+  if (error) { console.error('[getAvaliacoesBatch]', error.message); return result; }
+
+  type Row = { id: string; disciplina_id: string; tipo: TipoNotaEditavel };
+  for (const r of ((data ?? []) as unknown as Row[])) {
+    const entry = result.get(r.disciplina_id) ?? {};
+    // A tabela NÃO tem UNIQUE(disciplina,turma,tipo): havendo duplicata, fixa a MAIS
+    // ANTIGA (ordenado por created_at) para não alternar de alvo entre lançamentos.
+    if (!entry[r.tipo]) entry[r.tipo] = r.id;
+    result.set(r.disciplina_id, entry);
+  }
+  return result;
+}
+
 export async function getAvaliacoesByDisciplina(
   disciplinaId: string,
   turmaId: string
