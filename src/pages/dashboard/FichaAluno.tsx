@@ -337,9 +337,13 @@ export default function FichaAluno() {
           <CampoInline icon={<User className="h-4 w-4" />} label="Nome completo"
             valor={secaoDados.valorDe('full_name', perfil.full_name)}
             onChange={v => secaoDados.setCampo('full_name', v)} disabled={!podeEditarDados} />
+          {/* profiles.email é o e-mail de CONTATO/EXIBIÇÃO. A credencial de login
+              vive em auth.users e NÃO é alterada aqui (cicatriz 2d79368 — não
+              tocamos em auth). O aviso evita a secretaria achar que trocou o acesso. */}
           <CampoInline icon={<Mail className="h-4 w-4" />} label="E-mail"
             valor={secaoDados.valorDe('email', perfil.email)}
-            onChange={v => secaoDados.setCampo('email', v)} disabled={!podeEditarDados} />
+            onChange={v => secaoDados.setCampo('email', v)} disabled={!podeEditarDados}
+            hint="E-mail de contato/exibição. NÃO altera o login do aluno." />
           <CampoInline icon={<Phone className="h-4 w-4" />} label="Telefone"
             valor={secaoDados.valorDe('telefone', perfil.telefone)}
             onChange={v => secaoDados.setCampo('telefone', v)} disabled={!podeEditarDados} />
@@ -856,7 +860,7 @@ const SEXO_OPCOES = [
 // (`{perfil.cpf && ...}`) e um CPF em branco simplesmente não aparecia,
 // tornando impossível preenchê-lo pela ficha.
 function CampoInline({
-  icon, label, valor, onChange, type, options, disabled, validate,
+  icon, label, valor, onChange, type, options, disabled, validate, hint,
 }: {
   icon: React.ReactNode;
   label: string;
@@ -866,6 +870,8 @@ function CampoInline({
   options?: { value: string; label: string }[];
   disabled?: boolean;
   validate?: (v: string) => string | null;
+  /** Texto de ajuda abaixo do campo — para avisar o que o campo NÃO faz. */
+  hint?: string;
 }) {
   return (
     <div className="flex items-start gap-2 text-sm">
@@ -881,6 +887,7 @@ function CampoInline({
           validate={validate}
           label={label}
         />
+        {hint && <p className="text-[11px] text-muted-foreground/80 mt-0.5">{hint}</p>}
       </div>
     </div>
   );
