@@ -14,12 +14,23 @@ import { formatDatePtBR } from '@/utils/date';
 // com o texto digitado e mostra a mensagem; quem chamou continua livre para
 // exibir o toast (o erro chegou até ele porque foi ele quem lançou).
 
+export interface InlineFieldOption {
+  value: string;
+  label: string;
+}
+
 export interface InlineFieldProps {
   /** Valor atual vindo do servidor. `date` espera 'YYYY-MM-DD'. */
   value: string | null | undefined;
   /** Persiste o novo valor. Lançar erro = falhou (mantém em edição). */
   onSave: (novo: string) => void | Promise<void>;
   type?: 'text' | 'number' | 'date';
+  /**
+   * Quando presente, o campo vira SELECT (enum). Obrigatório para colunas com
+   * CHECK constraint — texto livre violaria o banco (ERR-LOGIC-003).
+   * Os `value` devem bater exatamente com o CHECK da tabela.
+   */
+  options?: InlineFieldOption[];
   /** Texto do estado vazio — sempre clicável, o campo NUNCA some. */
   placeholder?: string;
   disabled?: boolean;
@@ -34,6 +45,7 @@ export function InlineField({
   value,
   onSave,
   type = 'text',
+  options,
   placeholder = '— clique para preencher',
   disabled = false,
   validate,
@@ -69,10 +81,11 @@ export function InlineField({
     setEditando(false);
   };
 
-  const confirmar = async () => {
+  const confirmar = async (valorExplicito?: string) => {
     if (cancelou.current || emCurso.current) return;
 
-    const novo = draft.trim();
+    // valorExplicito: o <select> confirma no onChange (não espera o estado assentar).
+    const novo = (valorExplicito ?? draft).trim();
     if (novo === atual) { setEditando(false); return; }   // nada mudou
 
     const msgValidacao = validate?.(novo) ?? null;
@@ -92,6 +105,27 @@ export function InlineField({
       setSalvando(false);
     }
   };
+
+  if (editando && options) {
+    return (
+      <span className={`inline-flex flex-col gap-1 ${className}`}>
+        <select
+          autoFocus
+          value={draft}
+          disabled={salvando}
+          aria-label={label}
+          onChange={e => { setDraft(e.target.value); void confirmar(e.target.value); }}
+          onBlur={() => setEditando(false)}
+          onKeyDown={e => { if (e.key === 'Escape') { e.preventDefault(); cancelar(); } }}
+          className="h-8 rounded-md border border-border bg-background px-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
+        >
+          <option value="">— não informado</option>
+          {options.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+        </select>
+        {erro && <span role="alert" className="text-xs text-red-500">{erro}</span>}
+      </span>
+    );
+  }
 
   if (editando) {
     return (
@@ -121,7 +155,9 @@ export function InlineField({
 
   const exibicao = !atual
     ? placeholder
-    : type === 'date' ? formatDatePtBR(atual) : atual;
+    : options    ? (options.find(o => o.value === atual)?.label ?? atual)
+    : type === 'date' ? formatDatePtBR(atual)
+    : atual;
 
   return (
     <button
