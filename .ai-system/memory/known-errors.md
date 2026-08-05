@@ -479,6 +479,53 @@ não substitui o gate — ele não faz type-check completo.
 
 ---
 
+## ERR-LOGIC-005 — `getResumoFrequenciaBatch` não ponderava meia-presença (FP)
+
+**Data:** 2026-08-05
+**Sprint:** 16 (P2b) · **Origem do defeito:** 079 / 2.13f (sprint da meia-presença)
+
+**Sintoma:**
+A meia-presença (FP) contava como **falta cheia** neste caminho. O mesmo aluno aparecia
+com percentuais diferentes conforme a tela:
+`7P + 2FP + 1F` em 10 aulas → **70%** no histórico da ficha (sem consolidado)
+vs **80%** na tela de Frequência e no consolidado.
+
+**Causa:**
+A função lia apenas o booleano `presente` e **ignorava `tipo_presenca`**:
+```ts
+.select('disciplina_id, presente, justificada')      // faltou tipo_presenca
+const presencas = rows.filter(r => r.presente).length;
+const percentual = Math.round((presencas / total) * 100);
+```
+Na 079 a régua mudou (P=1,0 · FP=0,5 · F=0) e **todas as irmãs do arquivo foram
+ponderadas — esta ficou para trás**. Padrão do erro: *uma função não acompanhou a
+mudança da regra* — mesmo padrão de ERR-LOGIC-004 e ERR-TEST-001.
+
+**Atenuante:** `getHistoricoAluno` prefere o consolidado quando existe (regra G4), então
+o número errado só aparecia quando **não havia** consolidado. Mas o caminho ficava
+inconsistente com o trigger 065 e com o resto do `frequencia.service.ts`.
+
+**Correção (Sprint 16 P2b):**
+Passou a usar o helper `pesoRegistro` (P=1,0 · FP=0,5 · F=0), espelhando
+`getResumoFrequencia` e o trigger 065. `tipo_presenca` entrou no `select`.
+Não é regra nova — é **aplicar a regra que já valia**.
+
+**Trava de regressão (obrigatória):** 5 testes automatizados, incluindo o cenário
+canônico **`7P + 2FP + 1F → 80%` e faltas `2,0`**, além de: só P → 100% · com F
+desconta · só FP → 50% · compatibilidade de linha antiga sem `tipo_presenca`.
+
+**Consumidores validados (ERR-LOGIC-004):** `getHistoricoAluno` (→ ficha, MinhasNotas,
+MeuHistórico, R06, PDFs) e `useMeusCursos`. Ambos passam a ver o número **correto** —
+nenhum dependia do valor antigo.
+
+**Lição:** ao mudar uma régua de cálculo, varrer **todas** as funções do módulo que a
+aplicam — não só as que a tela do sprint usa. Um `grep` pelo campo novo (`tipo_presenca`)
+teria exposto a função esquecida na hora.
+
+**Status:** corrigido no Sprint 16 P2b (com teste travando a regressão)
+
+---
+
 ## ERR-DEBT-001 — Código morto em Alunos.tsx após substituição por InlineStatusSelect
 
 **Data:** 2026-06-01
