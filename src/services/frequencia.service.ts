@@ -398,9 +398,12 @@ export async function getResumoFrequenciaBatch(
 ): Promise<Map<string, ResumoFrequencia>> {
   if (disciplinaIds.length === 0) return new Map();
 
+  // ⚠️ tipo_presenca É OBRIGATÓRIO no select: sem ele a meia-presença (FP) seria
+  // contada como falta cheia. Esta função ficou de fora da ponderação da 079/2.13f
+  // enquanto as irmãs do arquivo já ponderavam — ver ERR-LOGIC-005.
   const { data, error } = await supabase
     .from('frequencia')
-    .select('disciplina_id, presente, justificada')
+    .select('disciplina_id, presente, tipo_presenca, justificada')
     .eq('aluno_id', alunoId)
     .in('disciplina_id', disciplinaIds)
     .limit(disciplinaIds.length * 60);
@@ -408,7 +411,12 @@ export async function getResumoFrequenciaBatch(
   const result = new Map<string, ResumoFrequencia>();
   if (error || !data) return result;
 
-  type RawRow = { disciplina_id: string; presente: boolean; justificada: boolean };
+  type RawRow = {
+    disciplina_id: string;
+    presente: boolean;
+    tipo_presenca?: TipoPresenca | null;
+    justificada: boolean;
+  };
   const byDisc = new Map<string, RawRow[]>();
   for (const r of data as RawRow[]) {
     const arr = byDisc.get(r.disciplina_id) ?? [];
@@ -418,11 +426,13 @@ export async function getResumoFrequenciaBatch(
 
   for (const id of disciplinaIds) {
     const rows = byDisc.get(id) ?? [];
+    // Mesma régua do trigger 065 e de getResumoFrequencia: P=1,0 · FP=0,5 · F=0.
     const total      = rows.length;
-    const presencas  = rows.filter(r => r.presente).length;
-    const faltas     = total - presencas;
+    const peso       = rows.reduce((s, r) => s + pesoRegistro(r), 0);
+    const presencas  = rows.filter(r => (r.tipo_presenca ?? (r.presente ? 'presente' : 'falta')) === 'presente').length;
+    const faltas     = Math.round((total - peso) * 10) / 10;   // ponderado (falta + 0,5·meia)
     const justificadas = rows.filter(r => !r.presente && r.justificada).length;
-    const percentual = total > 0 ? Math.round((presencas / total) * 100) : 100;
+    const percentual = total > 0 ? Math.round((peso / total) * 100) : 100;
     result.set(id, {
       total_aulas: total, presencas, faltas,
       faltas_justificadas: justificadas,
