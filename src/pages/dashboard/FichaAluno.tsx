@@ -38,6 +38,7 @@ import { formatDatePtBR } from '@/utils/date';
 import { sanitizeDate } from '@/utils/sanitize';
 import { InlineField } from '@/components/dashboard/InlineField';
 import { BarraSecaoEditavel } from '@/components/dashboard/BarraSecaoEditavel';
+import { ChamadaInlineDisciplina } from '@/components/dashboard/ChamadaInlineDisciplina';
 import { useSecaoEditavel, type PayloadSecao } from '@/hooks/use-secao-editavel';
 import type { DashboardContext } from '../Dashboard';
 
@@ -604,7 +605,13 @@ export default function FichaAluno() {
             <div className="space-y-3">
               {historico.modulos.map(mod => (
                 <ModuloAccordion key={mod.id} modulo={mod}
-                  editavel={podeLancar} onSalvarNota={salvarNota} />
+                  editavel={podeLancar} onSalvarNota={salvarNota}
+                  chamadaProps={podeLancar && alunoId && turmaHist ? {
+                    alunoId, turmaId: turmaHist, registradoPor: adminProfile.id,
+                    onSalvo: () => recarregarHistorico(turmaHist),
+                    onAbrirFrequencia: (disciplinaId: string) =>
+                      navigate(`/dashboard/frequencia/${turmaHist}/${disciplinaId}`),
+                  } : null} />
               ))}
               {/* Rodapé */}
               <div className="flex flex-wrap gap-4 pt-3 border-t text-sm">
@@ -930,6 +937,34 @@ function validarNota(v: string): string | null {
   return null;
 }
 
+// Selo de ORIGEM do número (SPEC-16 P2b · transparência da RN4).
+// ⚠️ Não dá para usar `d.consolidado` sozinho: ele fica true tanto no lançamento
+// retroativo à mão QUANTO depois que o trigger 065 consolida a partir do bruto.
+// A origem real é detectada pela presença de dado BRUTO (nota lançada ou chamada).
+function origemDisciplina(d: HistoricoAluno['modulos'][0]['disciplinas'][0]) {
+  const temBruto = d.notas.n1 != null || d.notas.n2 != null || d.notas.recuperacao != null
+    || d.frequencia.total_aulas > 0;
+  if (temBruto) {
+    return { texto: 'lançado', cls: 'text-muted-foreground',
+      dica: 'Números calculados pelo sistema a partir das notas e da chamada lançadas.' };
+  }
+  if (d.consolidado) {
+    return { texto: 'retroativo', cls: 'text-amber-600 dark:text-amber-400',
+      dica: 'Lançado à mão (retroativo), sem notas/chamada no sistema. Ao lançar nota ou chamada, o cálculo passa a vir desses lançamentos.' };
+  }
+  return { texto: 'sem lançamento', cls: 'text-muted-foreground/60',
+    dica: 'Nenhuma nota ou chamada lançada nesta disciplina.' };
+}
+
+function SeloOrigem({ disciplina }: { disciplina: HistoricoAluno['modulos'][0]['disciplinas'][0] }) {
+  const o = origemDisciplina(disciplina);
+  return (
+    <span className={`ml-1.5 text-[10px] font-normal ${o.cls}`} title={o.dica}>
+      ● {o.texto}
+    </span>
+  );
+}
+
 /** Célula de nota: read-only para quem não lança; inline para a secretaria. */
 function CelulaNota({
   valor, editavel, onSalvar,
@@ -952,7 +987,7 @@ function CelulaNota({
 }
 
 function ModuloAccordion({
-  modulo, editavel = false, onSalvarNota,
+  modulo, editavel = false, onSalvarNota, chamadaProps,
 }: {
   modulo: HistoricoAluno['modulos'][0];
   editavel?: boolean;
@@ -960,8 +995,16 @@ function ModuloAccordion({
     disciplinaId: string, disciplinaNome: string,
     tipo: TipoNotaEditavel, valor: string, consolidado: boolean,
   ) => Promise<void>;
+  /** P2b — dados para a chamada inline (null quando não há turma/permissão). */
+  chamadaProps?: {
+    alunoId: string; turmaId: string; registradoPor: string;
+    onSalvo: () => Promise<void>;
+    onAbrirFrequencia: (disciplinaId: string) => void;
+  } | null;
 }) {
   const [open, setOpen] = useState(true);
+  // Qual disciplina está com a chamada aberta (uma por vez — não polui a tabela).
+  const [chamadaAberta, setChamadaAberta] = useState<string | null>(null);
   const mediaCls = modulo.media_modulo === null ? 'text-muted-foreground'
     : modulo.media_modulo >= 7 ? 'text-green-400'
     : modulo.media_modulo >= 5 ? 'text-yellow-400'
@@ -998,8 +1041,12 @@ function ModuloAccordion({
             </thead>
             <tbody className="divide-y">
               {modulo.disciplinas.map(d => (
-                <tr key={d.id} className="hover:bg-muted/10">
-                  <td className="px-4 py-2 font-medium">{d.nome}</td>
+                <React.Fragment key={d.id}>
+                <tr className="hover:bg-muted/10">
+                  <td className="px-4 py-2 font-medium">
+                    {d.nome}
+                    <SeloOrigem disciplina={d} />
+                  </td>
                   {/* N1/N2/Rec: BRUTO (notas_aluno) — editáveis. */}
                   <td className="px-2 py-2 text-center">
                     <CelulaNota valor={d.notas.n1} editavel={editavel}
@@ -1015,13 +1062,46 @@ function ModuloAccordion({
                   </td>
                   {/* Média/Freq/Status: DERIVADOS pelo trigger 065 — sempre read-only. */}
                   <td className="px-2 py-2 text-center font-semibold">{d.notas.media_final?.toFixed(1) ?? '—'}</td>
+                  {/* Freq %: valor DERIVADO (trigger 065) — read-only. O clique abre a
+                      chamada por data, onde a edição acontece no BRUTO. */}
                   <td className="px-2 py-2 text-center">
-                    <span className={d.frequencia.percentual < 75 ? 'text-red-400 font-semibold' : ''}>
-                      {d.frequencia.total_aulas > 0 ? `${d.frequencia.percentual}%` : '—'}
-                    </span>
+                    {chamadaProps ? (
+                      <button
+                        type="button"
+                        onClick={() => setChamadaAberta(a => (a === d.id ? null : d.id))}
+                        aria-expanded={chamadaAberta === d.id}
+                        aria-label={`Chamada de ${d.nome}`}
+                        title="Clique para lançar/ajustar a chamada por data"
+                        className={`rounded px-1.5 py-0.5 hover:bg-muted transition-colors ${
+                          d.frequencia.percentual < 75 && d.frequencia.total_aulas > 0 ? 'text-red-400 font-semibold' : ''}`}
+                      >
+                        {d.frequencia.total_aulas > 0 ? `${d.frequencia.percentual}%` : '—'}
+                        <ChevronDown className={`inline h-3 w-3 ml-0.5 transition-transform ${chamadaAberta === d.id ? 'rotate-180' : ''}`} />
+                      </button>
+                    ) : (
+                      <span className={d.frequencia.percentual < 75 ? 'text-red-400 font-semibold' : ''}>
+                        {d.frequencia.total_aulas > 0 ? `${d.frequencia.percentual}%` : '—'}
+                      </span>
+                    )}
                   </td>
                   <td className="px-4 py-2"><StatusHistBadge status={d.status} /></td>
                 </tr>
+
+                {chamadaProps && chamadaAberta === d.id && (
+                  <tr className="bg-muted/20">
+                    <td colSpan={7} className="px-4 py-2">
+                      <ChamadaInlineDisciplina
+                        alunoId={chamadaProps.alunoId}
+                        disciplinaId={d.id}
+                        turmaId={chamadaProps.turmaId}
+                        registradoPor={chamadaProps.registradoPor}
+                        onSalvo={chamadaProps.onSalvo}
+                        onAbrirFrequencia={() => chamadaProps.onAbrirFrequencia(d.id)}
+                      />
+                    </td>
+                  </tr>
+                )}
+                </React.Fragment>
               ))}
             </tbody>
           </table>

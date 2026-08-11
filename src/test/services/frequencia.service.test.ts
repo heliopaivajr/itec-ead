@@ -225,12 +225,12 @@ describe('frequencia.service', () => {
   describe('calcularResumosPorAluno', () => {
     it('calcula resumos corretos para múltiplos alunos sem queries', () => {
       const registros: RegistroFrequencia[] = [
-        { id: 'f1', disciplina_id: 'd1', aluno_id: 'a1', professor_id: 'p1', data_aula: '2026-05-01', presente: true,  justificada: false, documento_url: null, observacao: null, registrado_em: '' },
-        { id: 'f2', disciplina_id: 'd1', aluno_id: 'a1', professor_id: 'p1', data_aula: '2026-05-08', presente: true,  justificada: false, documento_url: null, observacao: null, registrado_em: '' },
-        { id: 'f3', disciplina_id: 'd1', aluno_id: 'a1', professor_id: 'p1', data_aula: '2026-05-15', presente: false, justificada: true,  documento_url: null, observacao: null, registrado_em: '' },
-        { id: 'f4', disciplina_id: 'd1', aluno_id: 'a1', professor_id: 'p1', data_aula: '2026-05-22', presente: false, justificada: false, documento_url: null, observacao: null, registrado_em: '' },
-        { id: 'f5', disciplina_id: 'd1', aluno_id: 'a2', professor_id: 'p1', data_aula: '2026-05-01', presente: true,  justificada: false, documento_url: null, observacao: null, registrado_em: '' },
-        { id: 'f6', disciplina_id: 'd1', aluno_id: 'a2', professor_id: 'p1', data_aula: '2026-05-08', presente: true,  justificada: false, documento_url: null, observacao: null, registrado_em: '' },
+        { id: 'f1', disciplina_id: 'd1', aluno_id: 'a1', professor_id: 'p1', data_aula: '2026-05-01', presente: true, tipo_presenca: 'presente',  justificada: false, documento_url: null, observacao: null, registrado_em: '' },
+        { id: 'f2', disciplina_id: 'd1', aluno_id: 'a1', professor_id: 'p1', data_aula: '2026-05-08', presente: true, tipo_presenca: 'presente',  justificada: false, documento_url: null, observacao: null, registrado_em: '' },
+        { id: 'f3', disciplina_id: 'd1', aluno_id: 'a1', professor_id: 'p1', data_aula: '2026-05-15', presente: false, tipo_presenca: 'falta', justificada: true,  documento_url: null, observacao: null, registrado_em: '' },
+        { id: 'f4', disciplina_id: 'd1', aluno_id: 'a1', professor_id: 'p1', data_aula: '2026-05-22', presente: false, tipo_presenca: 'falta', justificada: false, documento_url: null, observacao: null, registrado_em: '' },
+        { id: 'f5', disciplina_id: 'd1', aluno_id: 'a2', professor_id: 'p1', data_aula: '2026-05-01', presente: true, tipo_presenca: 'presente',  justificada: false, documento_url: null, observacao: null, registrado_em: '' },
+        { id: 'f6', disciplina_id: 'd1', aluno_id: 'a2', professor_id: 'p1', data_aula: '2026-05-08', presente: true, tipo_presenca: 'presente',  justificada: false, documento_url: null, observacao: null, registrado_em: '' },
       ];
 
       const resultado = calcularResumosPorAluno(registros);
@@ -257,7 +257,7 @@ describe('frequencia.service', () => {
 
     it('retorna percentual=100 e status=ok quando aluno não tem faltas', () => {
       const registros: RegistroFrequencia[] = [
-        { id: 'f1', disciplina_id: 'd1', aluno_id: 'a1', professor_id: 'p1', data_aula: '2026-05-01', presente: true, justificada: false, documento_url: null, observacao: null, registrado_em: '' },
+        { id: 'f1', disciplina_id: 'd1', aluno_id: 'a1', professor_id: 'p1', data_aula: '2026-05-01', presente: true, tipo_presenca: 'presente', justificada: false, documento_url: null, observacao: null, registrado_em: '' },
       ];
       const resultado = calcularResumosPorAluno(registros);
       expect(resultado.get('a1')?.status).toBe('ok');
@@ -317,6 +317,75 @@ describe('frequencia.service', () => {
       const resultado = await getResumoFrequenciaBatch('aluno-1', ['d1']);
 
       expect(resultado.size).toBe(0);
+    });
+
+    // ─── ERR-LOGIC-005: esta função ficou fora da ponderação FP da 079/2.13f ──
+    // Regressão que estes testes travam: FP contava como falta cheia (70% em vez de 80%).
+    function mockBatch(data: unknown[]) {
+      vi.mocked(supabase.from).mockReset();
+      vi.mocked(supabase.from).mockReturnValue({
+        select: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            in: vi.fn().mockReturnValue({
+              limit: vi.fn().mockResolvedValue({ data, error: null }),
+            }),
+          }),
+        }),
+      } as any);
+    }
+
+    const linhas = (disc: string, tipo: string, n: number) =>
+      Array.from({ length: n }, () => ({
+        disciplina_id: disc,
+        tipo_presenca: tipo,
+        presente: tipo === 'presente',
+        justificada: false,
+      }));
+
+    it('FP ponderado: 7P + 2FP + 1F em 10 → 80% (não 70%) e faltas 2,0', async () => {
+      mockBatch([
+        ...linhas('d1', 'presente', 7),
+        ...linhas('d1', 'meia', 2),
+        ...linhas('d1', 'falta', 1),
+      ]);
+
+      const r = await getResumoFrequenciaBatch('aluno-1', ['d1']);
+
+      expect(r.get('d1')?.total_aulas).toBe(10);
+      expect(r.get('d1')?.presencas).toBe(7);              // só presenças cheias
+      expect(r.get('d1')?.percentual_presenca).toBe(80);   // (7·1 + 2·0,5)/10 → 80
+      expect(r.get('d1')?.faltas).toBe(2);                 // 1 falta + 2·0,5
+      expect(r.get('d1')?.status).toBe('ok');
+    });
+
+    it('só presenças → 100%', async () => {
+      mockBatch(linhas('d1', 'presente', 5));
+      const r = await getResumoFrequenciaBatch('aluno-1', ['d1']);
+      expect(r.get('d1')?.percentual_presenca).toBe(100);
+      expect(r.get('d1')?.faltas).toBe(0);
+    });
+
+    it('faltas descontam: 6P + 4F em 10 → 60%', async () => {
+      mockBatch([...linhas('d1', 'presente', 6), ...linhas('d1', 'falta', 4)]);
+      const r = await getResumoFrequenciaBatch('aluno-1', ['d1']);
+      expect(r.get('d1')?.percentual_presenca).toBe(60);
+      expect(r.get('d1')?.faltas).toBe(4);
+    });
+
+    it('só meia-presença → 50% (FP vale metade, não zero)', async () => {
+      mockBatch(linhas('d1', 'meia', 4));
+      const r = await getResumoFrequenciaBatch('aluno-1', ['d1']);
+      expect(r.get('d1')?.percentual_presenca).toBe(50);
+      expect(r.get('d1')?.faltas).toBe(2);                 // 4 × 0,5
+    });
+
+    it('compat: linha antiga sem tipo_presenca cai no booleano `presente`', async () => {
+      mockBatch([
+        { disciplina_id: 'd1', presente: true,  justificada: false },
+        { disciplina_id: 'd1', presente: false, justificada: false },
+      ]);
+      const r = await getResumoFrequenciaBatch('aluno-1', ['d1']);
+      expect(r.get('d1')?.percentual_presenca).toBe(50);
     });
   });
 
