@@ -1016,4 +1016,42 @@ arquivo**. Número isolado, sem quebra, não é evidência.
 
 ---
 
+## LICAO-045 — Migração órfã: aplicada no banco, nunca versionada em `main` (repetiu: 051, 081)
+
+**Contexto:** limpeza de branches pós-Sprint 16. O `git branch -d` avisou *"merged to
+`origin/…`, but not yet merged to HEAD"* — investiguei e a migração **081** estava
+**aplicada em produção** (validada: 36 disciplinas/turma) com o `.sql` **ausente do `main`**.
+Segunda ocorrência: a **051** teve o mesmo problema (achado da auditoria 2026-07-05).
+
+**Causa (o padrão):** adicionar um `.sql` a um branch **depois** que o PR dele já foi
+mergeado. Sequência real do 081:
+1. branch com o **080** → PR aberto → **mergeado** (080 entra em `main`);
+2. commito o **081** **no mesmo branch** e dou push;
+3. esse segundo push **nunca vira um novo PR** → o arquivo fica órfão no branch remoto.
+O branch "parece" fechado (o PR está verde), mas carrega commit que nunca chegou ao `main`.
+
+**Sintoma:** **repo ≠ produção** — o banco tem estrutura que o código não descreve. É dívida
+**invisível**: nada quebra hoje; quebra quando alguém reconstrói o ambiente, audita o schema
+ou tenta entender de onde veio um objeto que não existe em migração nenhuma.
+
+**Regras:**
+1. **Migração fechada = aplicada no banco E versionada em `main`.** O ledger passou a
+   rastrear os dois eixos, com comando de auditoria — ver `migracoes-aplicadas.md`.
+2. **Nunca adicionar migração a um branch cujo PR já foi mergeado.** Branch com PR mergeado
+   está encerrado: abrir **branch novo** para o próximo `.sql`.
+3. **Ao deletar branch, se o git avisar *"not fully merged to HEAD"*, PARAR e investigar**
+   o que ficou de fora antes de seguir. Foi exatamente esse aviso que expôs a 081 — passar
+   batido por ele teria deixado o arquivo perdido (o branch local já estava apagado).
+
+**Recuperação:** via **PR** do branch remoto (não cherry-pick — LICAO-038 vale também aqui),
+trazendo só o `.sql`. ⚠️ **Não reexecutar** a migração: ela já está aplicada; o PR é de
+**repositório**, não de banco.
+
+**Como aplicar no futuro:** ao fechar todo sprint que teve migração, rodar a auditoria de
+versionamento do ledger. O aviso do `git branch -d` é um **sinal**, não ruído.
+**Agentes impactados:** 04-db-architect, 05-backend-engineer, 14-auditor, 18-doc-writer
+**Status:** aplicado (2026-08-13) — ledger blindado; 081 em PR de versionamento.
+
+---
+
 *Mantido pelo agente-Osabio · ITEC-EAD · 2025*
