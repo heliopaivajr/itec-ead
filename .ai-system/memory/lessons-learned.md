@@ -977,4 +977,43 @@ A ponte entre os mundos é `professores.user_id = auth.uid()` (é o que `profess
 
 ---
 
+## LICAO-044 — Medir o gate exige padrão ANCORADO: contagem via pipe com `head` mente
+
+**Contexto:** Sprint 16 P3. O gate de tipos (ERR-INFRA-002) reportou **"Total: 1"** e, na
+tentativa seguinte, **"12"** — ambos impossíveis para um baseline de 28.
+
+**O que aconteceu:** não foi o código. Foram dois defeitos de **medição**:
+1. **Truncamento de pipeline** — `tsc ... | tee arquivo | head -20`: o `head` fecha o stream
+   e o `tee` morre por SIGPIPE, gravando um arquivo **parcial**. O `grep -c` seguinte contou
+   o pedaço, não o todo. O mesmo vale para `Select-String | Select-Object -First N`.
+2. **Padrão frouxo** — contar por `"error TS"` também casa as **linhas de continuação** da
+   mensagem do TypeScript (o "Type X is not assignable…" indentado), inflando ou deslocando
+   o número conforme o formato do erro.
+
+**Regra:** contar erros do gate **sempre** com padrão **ancorado no início da linha**, que
+só casa a linha-cabeçalho `arquivo(linha,coluna): error TS…`:
+```bash
+pnpm exec tsc -p tsconfig.app.json --noEmit 2>&1 | grep -E "^[^ ].*\): error TS" > /tmp/gate.txt
+wc -l < /tmp/gate.txt                      # total
+sed 's/(.*//' /tmp/gate.txt | sort | uniq -c   # por arquivo → prova "0 nos que toquei"
+```
+**Nunca** encadear `head`/`-First` antes de contar. Redirecionar para arquivo **primeiro**,
+contar depois.
+
+**Por que importa:** o gate do projeto é comparativo (*"não aumentar o baseline"*). Uma
+contagem truncada dá **falso verde** — o número cai e parece melhora. Foi exatamente o que
+quase aconteceu aqui: "1" seria lido como "limpei 27 erros", quando o real era 28 = baseline.
+Um gate mal medido é pior que não ter gate: dá confiança sem verificação (irmão de ERR-INFRA-002,
+onde o gate rodava sem checar nada).
+
+**Bônus:** a quebra por arquivo (`uniq -c`) é o que **prova** o segundo critério do gate —
+"0 erros nos arquivos que toquei" — em vez de afirmá-lo por dedução.
+
+**Agentes impactados:** 06-frontend, 05-backend, 10-test-engineer, 14-auditor
+**Como aplicar no futuro:** ao reportar qualquer gate, colar o **total** e a **quebra por
+arquivo**. Número isolado, sem quebra, não é evidência.
+**Status:** aplicado (Sprint 16 P3, 2026-08-13). Ver **ERR-INFRA-002** para a regra do gate.
+
+---
+
 *Mantido pelo agente-Osabio · ITEC-EAD · 2025*

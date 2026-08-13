@@ -468,6 +468,10 @@ Um passo só passa se:
 **Nunca** usar o `tsconfig.json` da raiz como gate. `pnpm build` isoladamente também
 não substitui o gate — ele não faz type-check completo.
 
+⚠️ **Como CONTAR os erros:** use padrão **ancorado** (`^arquivo(linha,col): error TS`) e
+redirecione para arquivo **antes** de contar — encadear `head`/`Select-Object -First`
+trunca o stream e produz número falso (já deu "1" onde o real era 28). Ver **LICAO-044**.
+
 **Backlog vinculado:**
 - (a) Limpar os **35 erros pré-existentes** num passo próprio (mocks vitest + `R04_PDF:220`)
   — enquanto existirem, o baseline precisa ser conferido a cada passo.
