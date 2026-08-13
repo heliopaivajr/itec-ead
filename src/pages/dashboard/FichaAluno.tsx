@@ -30,6 +30,10 @@ import {
 import { PDFDownloadLink, pdf } from '@react-pdf/renderer';
 import { DeclaracaoMatriculaPDF } from '@/components/dashboard/DeclaracaoMatriculaPDF';
 import { DossieAlunoPDF } from '@/components/dashboard/DossieAlunoPDF';
+import { ExtratoFinanceiroPDF } from '@/components/dashboard/ExtratoFinanceiroPDF';
+import { R06_PDF } from '@/components/dashboard/relatorios/pdf/R06_PDF';
+import { getHistoricoAcademicoR06 } from '@/services/relatorios.service';
+import { resumoExtrato } from '@/utils/extrato';
 import { getMensalidadesVw } from '@/services/financeiro.service';
 import LancamentoRetroativo from '@/components/dashboard/LancamentoRetroativo';
 import { ValoresMatriculaPanel } from '@/components/dashboard/ValoresMatriculaPanel';
@@ -107,6 +111,7 @@ export default function FichaAluno() {
   const [aprovandoId, setAprovandoId] = useState<string | null>(null);
   const [confirmDialog, setConfirmDialog] = useState<{ matriculaId: string; turma: string } | null>(null);
   const [gerandoDossie, setGerandoDossie] = useState(false);   // 2i — dossiê nesta ficha
+  const [gerandoDoc, setGerandoDoc] = useState<'extrato' | 'r06' | null>(null);  // P3
   const { toast } = useToast();
 
   // 2i: dossiê completo (dados + financeiro + acadêmico) direto da ficha da secretaria.
@@ -145,6 +150,66 @@ export default function FichaAluno() {
       toast({ title: 'Erro ao gerar o dossiê', variant: 'destructive' });
     } finally {
       setGerandoDossie(false);
+    }
+  };
+
+  // ─── P3: documentos gerados na própria ficha (reúso puro dos PDFs existentes) ──
+  const baixarBlob = (blob: Blob, nome: string) => {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = nome;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  const arquivoDoAluno = (prefixo: string) =>
+    `${prefixo}-${(perfil?.full_name ?? 'aluno').replace(/\s+/g, '-').toLowerCase()}-${new Date().toISOString().split('T')[0]}.pdf`;
+
+  /** Situação Financeira → ExtratoFinanceiroPDF (mesmo doc da Ficha Financeira). */
+  const gerarExtrato = async () => {
+    if (!perfil) return;
+    setGerandoDoc('extrato');
+    try {
+      const matAtiva = matriculas.find(m => m.status === 'ativa' && m.turma_id) ?? matriculas.find(m => m.turma_id) ?? matriculas[0];
+      const ms = await getMensalidadesVw(perfil.id);
+      const blob = await pdf(
+        <ExtratoFinanceiroPDF
+          aluno={{
+            nome: perfil.full_name, codigo_itec: perfil.codigo_itec,
+            curso_nome: (matAtiva?.turma as { cursos?: { nome?: string } } | undefined)?.cursos?.nome ?? null,
+            turma_nome: matAtiva?.turma?.nome ?? matAtiva?.turma?.codigo ?? null,
+            email: perfil.email, telefone: perfil.telefone,
+          }}
+          mensalidades={ms}
+          resumo={resumoExtrato(ms)}
+        />,
+      ).toBlob();
+      baixarBlob(blob, arquivoDoAluno('situacao-financeira'));
+    } catch (e) {
+      console.error('[gerarExtrato]', e);
+      toast({ title: 'Erro ao gerar a situação financeira', variant: 'destructive' });
+    } finally {
+      setGerandoDoc(null);
+    }
+  };
+
+  /** Histórico Acadêmico → R06_PDF (o mesmo relatório R06 da Central). Exige turma. */
+  const gerarHistoricoPDF = async () => {
+    if (!alunoId || !turmaHist) return;
+    setGerandoDoc('r06');
+    try {
+      const dados = await getHistoricoAcademicoR06({ alunoId, turmaId: turmaHist });
+      if (!dados) {
+        toast({ title: 'Não foi possível montar o histórico', description: 'Aluno sem dados na turma.', variant: 'destructive' });
+        return;
+      }
+      const blob = await pdf(<R06_PDF dados={dados} />).toBlob();
+      baixarBlob(blob, arquivoDoAluno('historico-academico'));
+    } catch (e) {
+      console.error('[gerarHistoricoPDF]', e);
+      toast({ title: 'Erro ao gerar o histórico acadêmico', variant: 'destructive' });
+    } finally {
+      setGerandoDoc(null);
     }
   };
 
@@ -866,20 +931,48 @@ export default function FichaAluno() {
               );
             })()}
 
-            {/* Demais documentos — Sprint P */}
-            {['Boletim de Notas', 'Situação Financeira', 'Certificado de Conclusão', 'Relatório Final do Aluno'].map(doc => (
-              <div key={doc} title="Disponível em Sprint P">
+            {/* Situação Financeira — ExtratoFinanceiroPDF (mesmo doc da Ficha Financeira) */}
+            <Button variant="outline" onClick={gerarExtrato} disabled={gerandoDoc !== null}
+              className="w-full justify-between text-left">
+              <span className="flex items-center gap-2">
+                <CreditCard className="h-4 w-4 shrink-0 text-muted-foreground" />
+                Situação Financeira
+              </span>
+              <span className="ml-3 shrink-0 rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-800">
+                {gerandoDoc === 'extrato' ? 'Gerando…' : 'Baixar PDF'}
+              </span>
+            </Button>
+
+            {/* Histórico Acadêmico — R06_PDF. Exige turma (o R06 é por aluno×turma). */}
+            {turmaHist ? (
+              <Button variant="outline" onClick={gerarHistoricoPDF} disabled={gerandoDoc !== null}
+                className="w-full justify-between text-left">
+                <span className="flex items-center gap-2">
+                  <BookOpen className="h-4 w-4 shrink-0 text-muted-foreground" />
+                  Histórico Acadêmico
+                </span>
+                <span className="ml-3 shrink-0 rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-800">
+                  {gerandoDoc === 'r06' ? 'Gerando…' : 'Baixar PDF'}
+                </span>
+              </Button>
+            ) : (
+              <div title="O histórico é emitido por turma — o aluno precisa de matrícula ativa com turma">
                 <Button variant="outline" disabled className="w-full justify-between text-left">
                   <span className="flex items-center gap-2">
-                    <FileText className="h-4 w-4 shrink-0 text-muted-foreground" />
-                    {doc}
+                    <BookOpen className="h-4 w-4 shrink-0 text-muted-foreground" />
+                    Histórico Acadêmico
                   </span>
                   <span className="ml-3 shrink-0 rounded-full bg-yellow-100 px-2 py-0.5 text-xs font-medium text-yellow-800">
-                    Em breve
+                    Sem matrícula ativa
                   </span>
                 </Button>
               </div>
-            ))}
+            )}
+
+            {/* Certificado de Conclusão e Relatório Final do Aluno foram REMOVIDOS
+                daqui (SPEC-16 P3): não existem e ficavam como botão morto "Em breve".
+                Certificado depende de assinaturas PNG + mockup aprovado; Relatório
+                Final ainda não foi construído. Ambos no backlog. */}
           </div>
         </Section>
       )}

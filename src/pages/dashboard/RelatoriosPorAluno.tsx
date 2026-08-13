@@ -14,6 +14,7 @@ import { getFichaAluno } from '@/services/ficha-aluno.service';
 import { DossieAlunoPDF } from '@/components/dashboard/DossieAlunoPDF';
 import { ExtratoFinanceiroPDF } from '@/components/dashboard/ExtratoFinanceiroPDF';
 import { DeclaracaoMatriculaPDF } from '@/components/dashboard/DeclaracaoMatriculaPDF';
+import { resumoExtrato } from '@/utils/extrato';
 import type { DashboardContext } from '../Dashboard';
 
 // Central de Relatórios (Fase A) — "por aluno": traz para a central os geradores
@@ -30,21 +31,6 @@ function baixar(blob: Blob, nome: string) {
   a.href = url; a.download = nome;
   document.body.appendChild(a); a.click(); document.body.removeChild(a);
   URL.revokeObjectURL(url);
-}
-
-function resumoExtrato(ms: MensalidadeVw[]) {
-  let total_pago = 0, total_devido = 0, maior = 0;
-  for (const m of ms) {
-    if (m.status_efetivo === 'pago') total_pago += (m.valor_pago ?? m.valor);
-    if (m.status_efetivo === 'pendente' || m.status_efetivo === 'atrasado') {
-      total_devido += m.valor;
-      if (m.status_efetivo === 'atrasado') {
-        const d = Math.round((new Date(HOJE + 'T12:00').getTime() - new Date(m.data_vencimento + 'T12:00').getTime()) / 86_400_000);
-        maior = Math.max(maior, d);
-      }
-    }
-  }
-  return { total_pago: Math.round(total_pago * 100) / 100, total_devido: Math.round(total_devido * 100) / 100, maior_atraso_dias: maior };
 }
 
 export default function RelatoriosPorAluno() {
