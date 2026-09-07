@@ -1016,7 +1016,7 @@ arquivo**. Número isolado, sem quebra, não é evidência.
 
 ---
 
-## LICAO-045 — Migração órfã: aplicada no banco, nunca versionada em `main` (repetiu: 051, 081)
+## LICAO-045 — Trabalho que PARECE mergeado mas não está (órfão em `main`) — repetiu 3×: 051, 081, PR do N1
 
 **Contexto:** limpeza de branches pós-Sprint 16. O `git branch -d` avisou *"merged to
 `origin/…`, but not yet merged to HEAD"* — investiguei e a migração **081** estava
@@ -1047,10 +1047,38 @@ ou tenta entender de onde veio um objeto que não existe em migração nenhuma.
 trazendo só o `.sql`. ⚠️ **Não reexecutar** a migração: ela já está aplicada; o PR é de
 **repositório**, não de banco.
 
+---
+
+### 2ª ocorrência confirmada (2026-09-07) — não era migração: era um PR inteiro
+
+O padrão **não é exclusivo de migração**. No Sprint 17, o **PR do N1** (notas em lote)
+**não foi mergeado** — e quase foi dado como fechado:
+
+- Havia **dois PRs abertos ao mesmo tempo** (N0 `#87` e N1). Mergeou-se o **N0 achando que era o N1**.
+- No pós-merge, o `git pull` respondeu **"Already up to date"** — o que *soa* como "já está tudo lá",
+  mas significa apenas "não há nada novo no remoto para trazer". **Mascarou** a ausência do N1.
+- De novo foi o aviso do `git branch -d` (*"merged to origin/…, but not yet merged to HEAD"*)
+  que expôs. Confirmado com `grep lancarNotasBatch src/` → **ausente de `main`**.
+- Nada se perdeu: só o branch **local** havia sido apagado; o remoto ainda tinha o commit.
+
+**REGRA REFORÇADA — o pós-merge VALIDA CONTEÚDO, não output de comando:**
+1. Depois de `git pull`, **procurar o símbolo esperado** no código:
+   `grep -rn "<funcao/arquivo que o PR entrega>" src/ | grep -v "\.test\."`
+   e conferir o merge no log: `git log --oneline --merges -3`.
+   **"Already up to date" NÃO é prova de que o trabalho chegou.**
+2. **Só apagar branch (local e remoto) depois** que o conteúdo foi confirmado em `main`.
+3. **Com mais de um PR aberto, conferir qual está sendo mergeado** (título + branch de origem).
+   Não mergear no piloto automático — dois PRs do mesmo sprint têm títulos parecidos.
+4. O aviso `not fully merged to HEAD` é **sinal**, nunca ruído (vale para os 3 casos).
+
+---
+
 **Como aplicar no futuro:** ao fechar todo sprint que teve migração, rodar a auditoria de
-versionamento do ledger. O aviso do `git branch -d` é um **sinal**, não ruído.
-**Agentes impactados:** 04-db-architect, 05-backend-engineer, 14-auditor, 18-doc-writer
-**Status:** aplicado (2026-08-13) — ledger blindado; 081 em PR de versionamento.
+versionamento do ledger. Em **todo** pós-merge (com ou sem migração), validar o **conteúdo**
+em `main` antes de declarar fechado e antes de apagar qualquer branch.
+**Agentes impactados:** 04-db-architect, 05-backend-engineer, 06-frontend, 14-auditor, 18-doc-writer
+**Status:** aplicado — ledger blindado e 081 versionada (2026-08-13); regra de validação por
+conteúdo em vigor desde a 2ª ocorrência (2026-09-07).
 
 ---
 
