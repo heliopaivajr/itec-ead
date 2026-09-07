@@ -42,6 +42,7 @@ export default function PainelAcademicoTurma() {
   const [turmas, setTurmas]         = useState<Turma[]>([]);
   const [turmaId, setTurmaId]       = useState(params.turmaId ?? '');
   const [disciplinas, setDisciplinas] = useState<DisciplinaTurma[]>([]);
+  const [moduloFiltro, setModuloFiltro] = useState<string>('');   // '' = Todos | '1'..'6'
   const [disciplinaId, setDisciplinaId] = useState(params.disciplinaId ?? '');
 
   const [rows, setRows]         = useState<ConsolidadoAluno[]>([]);
@@ -69,6 +70,21 @@ export default function PainelAcademicoTurma() {
   }, []);
 
   useEffect(() => { if (turmaId) carregarDisciplinas(turmaId); }, [turmaId, carregarDisciplinas]);
+
+  // Filtro por MÓDULO (N0): depois do 081 a turma tem 36 disciplinas — sem isso o
+  // dropdown vem embaralhado. getDisciplinasDaTurma já entrega `modulo_ordem`.
+  const disciplinasFiltradas = useMemo(() => {
+    if (!moduloFiltro) return disciplinas;
+    const ord = Number(moduloFiltro);
+    return disciplinas.filter(d => d.modulo_ordem === ord);
+  }, [disciplinas, moduloFiltro]);
+
+  // Se a disciplina selecionada sair do filtro, limpa a seleção (não fica grade órfã).
+  useEffect(() => {
+    if (disciplinaId && !disciplinasFiltradas.some(d => d.id === disciplinaId)) {
+      setDisciplinaId('');
+    }
+  }, [disciplinasFiltradas, disciplinaId]);
 
   const carregarGrade = useCallback(async () => {
     if (!turmaId || !disciplinaId) { setRows([]); return; }
@@ -207,21 +223,33 @@ export default function PainelAcademicoTurma() {
       </div>
 
       {/* Seletores + filtro */}
-      <div className="bg-card border border-border rounded-xl p-4 grid sm:grid-cols-3 gap-3">
+      <div className="bg-card border border-border rounded-xl p-4 grid sm:grid-cols-4 gap-3">
         <div>
           <label className="text-xs text-muted-foreground mb-1 block">Turma</label>
-          <select value={turmaId} onChange={e => { setTurmaId(e.target.value); setDisciplinaId(''); }}
+          <select value={turmaId} onChange={e => { setTurmaId(e.target.value); setDisciplinaId(''); setModuloFiltro(''); }}
             className="w-full bg-background border border-border rounded-md px-3 py-2 text-sm h-10">
             <option value="">Selecione…</option>
             {turmas.map(t => <option key={t.id} value={t.id}>{t.codigo} — {t.nome}</option>)}
           </select>
         </div>
         <div>
+          <label className="text-xs text-muted-foreground mb-1 block">Módulo</label>
+          <select value={moduloFiltro} onChange={e => setModuloFiltro(e.target.value)} disabled={!turmaId}
+            className="w-full bg-background border border-border rounded-md px-3 py-2 text-sm h-10 disabled:opacity-50">
+            <option value="">Todos</option>
+            {[1, 2, 3, 4, 5, 6].map(n => <option key={n} value={n}>Módulo {n}</option>)}
+          </select>
+        </div>
+        <div>
           <label className="text-xs text-muted-foreground mb-1 block">Disciplina (a grade é por disciplina)</label>
           <select value={disciplinaId} onChange={e => setDisciplinaId(e.target.value)} disabled={!turmaId}
             className="w-full bg-background border border-border rounded-md px-3 py-2 text-sm h-10 disabled:opacity-50">
-            <option value="">{turmaId ? 'Selecione…' : 'Escolha a turma'}</option>
-            {disciplinas.map(d => <option key={d.id} value={d.id}>{d.codigo ? `${d.codigo} — ` : ''}{d.nome}</option>)}
+            <option value="">{turmaId ? `Selecione… (${disciplinasFiltradas.length})` : 'Escolha a turma'}</option>
+            {disciplinasFiltradas.map(d => (
+              <option key={d.id} value={d.id}>
+                {d.modulo_ordem ? `M${d.modulo_ordem} · ` : ''}{d.codigo ? `${d.codigo} — ` : ''}{d.nome}
+              </option>
+            ))}
           </select>
         </div>
         <div>
