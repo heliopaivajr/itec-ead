@@ -181,6 +181,65 @@ export async function lancarNota(
   return { error: null };
 }
 
+/** Uma nota do lote (SPEC-17 N1). */
+export interface NotaLote {
+  avaliacaoId: string;
+  alunoId: string;
+  disciplinaId: string;
+  turmaId: string;
+  nota: number;
+  lancadoPor: string;
+}
+
+/** Faixa aceita para nota — espelha a régua do banco/UI (0 a 10, 1 casa). */
+export function notaForaDaFaixa(nota: number): boolean {
+  return Number.isNaN(nota) || nota < 0 || nota > 10;
+}
+
+/**
+ * Lança VÁRIAS notas em UMA requisição (SPEC-17 N1).
+ *
+ * Por que existe: o Painel gravava 1 `lancarNota` + 1 recarga do consolidado POR CÉLULA —
+ * com 30 alunos a turma inteira recarregava a cada nota. Aqui é 1 upsert com N linhas,
+ * espelhando `lancarFrequencia` (que já resolveu o mesmo gargalo na chamada).
+ *
+ * LICAO-042: escreve só no BRUTO (`notas_aluno`); o trigger 065 recalcula
+ * `matriculas_disciplina` (média/faltas/frequência/status). NUNCA grava no consolidado.
+ *
+ * Valida a faixa ANTES de enviar e falha por inteiro (nenhuma linha gravada) — melhor
+ * recusar o lote do que gravar metade e deixar o consolidado meio-recalculado.
+ * `lancarNota` (singular) segue existindo e intocado — esta função é ADITIVA.
+ */
+export async function lancarNotasBatch(
+  registros: NotaLote[]
+): Promise<{ error: string | null }> {
+  if (registros.length === 0) return { error: null };
+
+  const invalidas = registros.filter(r => notaForaDaFaixa(r.nota));
+  if (invalidas.length > 0) {
+    return { error: `${invalidas.length} nota(s) fora da faixa 0–10 — nada foi salvo.` };
+  }
+
+  const agora = new Date().toISOString();
+  const { error } = await supabase
+    .from('notas_aluno')
+    .upsert(
+      registros.map(r => ({
+        avaliacao_id: r.avaliacaoId,
+        aluno_id:     r.alunoId,
+        disciplina_id: r.disciplinaId,
+        turma_id:     r.turmaId,
+        nota:         r.nota,
+        lancado_por:  r.lancadoPor,
+        updated_at:   agora,
+      })),
+      { onConflict: 'avaliacao_id,aluno_id' },
+    );
+
+  if (error) return { error: error.message };
+  return { error: null };
+}
+
 export async function atualizarNota(
   notaId: string,
   nota: number,
