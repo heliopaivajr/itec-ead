@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { supabase } from '@/lib/supabase';
-import { calcularStatus, getConsolidadoTurma, getAvaliacoesBatch } from '@/services/notas.service';
+import { calcularStatus, getConsolidadoTurma, getAvaliacoesBatch, lancarNotasBatch, notaForaDaFaixa } from '@/services/notas.service';
 import { getAlunosOperacional } from '@/services/professor.service';
 import { getResumoFrequenciaPorTurma } from '@/services/frequencia.service';
 
@@ -207,5 +207,81 @@ describe('getAvaliacoesBatch — ids de avaliação para lançar nota no bruto',
     mockAvaliacoesQuery(null as unknown as unknown[], { message: 'rls blocked' });
     const r = await getAvaliacoesBatch('t1', ['d1']);
     expect(r.size).toBe(0);
+  });
+});
+
+// ─── lancarNotasBatch (SPEC-17 N1) ───────────────────────────────────────────
+// Trava o gargalo que motivou a função: o Painel gravava 1 requisição POR CÉLULA.
+describe('lancarNotasBatch — 1 upsert para N notas', () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  const reg = (alunoId: string, nota: number) => ({
+    avaliacaoId: 'av1', alunoId, disciplinaId: 'd1', turmaId: 't1', nota, lancadoPor: 'staff1',
+  });
+
+  function mockUpsert(error: unknown = null) {
+    vi.mocked(supabase.from).mockReset();
+    const upsertFn = vi.fn().mockResolvedValue({ error });
+    vi.mocked(supabase.from).mockReturnValue({ upsert: upsertFn } as any);
+    return upsertFn;
+  }
+
+  it('grava N notas em UMA única chamada (não N round-trips)', async () => {
+    const upsertFn = mockUpsert();
+
+    const r = await lancarNotasBatch([reg('a1', 8), reg('a2', 7.5), reg('a3', 10)]);
+
+    expect(r.error).toBeNull();
+    expect(upsertFn).toHaveBeenCalledTimes(1);            // ← o ponto do N1
+    const [linhas, opts] = upsertFn.mock.calls[0];
+    expect(linhas).toHaveLength(3);
+    expect(opts).toEqual({ onConflict: 'avaliacao_id,aluno_id' });   // atualiza nota existente
+  });
+
+  it('mapeia para as colunas do banco (snake_case) com autoria e updated_at', async () => {
+    const upsertFn = mockUpsert();
+    await lancarNotasBatch([reg('a1', 9)]);
+
+    const linha = upsertFn.mock.calls[0][0][0];
+    expect(linha).toMatchObject({
+      avaliacao_id: 'av1', aluno_id: 'a1', disciplina_id: 'd1',
+      turma_id: 't1', nota: 9, lancado_por: 'staff1',
+    });
+    expect(typeof linha.updated_at).toBe('string');
+  });
+
+  it('lista vazia → no-op, sem tocar no banco', async () => {
+    vi.mocked(supabase.from).mockReset();
+    const r = await lancarNotasBatch([]);
+    expect(r.error).toBeNull();
+    expect(supabase.from).not.toHaveBeenCalled();
+  });
+
+  it('nota fora da faixa 0–10 → recusa o LOTE INTEIRO (não grava metade)', async () => {
+    const upsertFn = mockUpsert();
+
+    const r = await lancarNotasBatch([reg('a1', 8), reg('a2', 11)]);
+
+    expect(r.error).toContain('fora da faixa');
+    expect(upsertFn).not.toHaveBeenCalled();   // nada gravado — consolidado não fica meio-recalculado
+  });
+
+  it('propaga o erro real do Supabase (LICAO-027)', async () => {
+    mockUpsert({ message: 'rls blocked' });
+    const r = await lancarNotasBatch([reg('a1', 8)]);
+    expect(r.error).toBe('rls blocked');
+  });
+});
+
+describe('notaForaDaFaixa', () => {
+  it('aceita 0, 7.5 e 10', () => {
+    expect(notaForaDaFaixa(0)).toBe(false);
+    expect(notaForaDaFaixa(7.5)).toBe(false);
+    expect(notaForaDaFaixa(10)).toBe(false);
+  });
+  it('recusa negativa, >10 e NaN', () => {
+    expect(notaForaDaFaixa(-1)).toBe(true);
+    expect(notaForaDaFaixa(10.1)).toBe(true);
+    expect(notaForaDaFaixa(NaN)).toBe(true);
   });
 });

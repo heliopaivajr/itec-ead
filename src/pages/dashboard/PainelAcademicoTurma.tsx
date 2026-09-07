@@ -8,8 +8,8 @@ import { useToast } from '@/hooks/use-toast';
 import { getTurmasAtivas, type Turma } from '@/services/turmas.service';
 import { getDisciplinasDaTurma, type DisciplinaTurma } from '@/services/turmas.service';
 import {
-  getConsolidadoTurma, getAvaliacoesByDisciplina, createAvaliacao, lancarNota,
-  type ConsolidadoAluno, type Avaliacao,
+  getConsolidadoTurma, getAvaliacoesByDisciplina, createAvaliacao, lancarNotasBatch,
+  type ConsolidadoAluno, type Avaliacao, type NotaLote,
 } from '@/services/notas.service';
 import {
   getAlunosEmRiscoByTurma, getFrequenciaByDisciplina, lancarFrequencia,
@@ -55,6 +55,9 @@ export default function PainelAcademicoTurma() {
   const [cell, setCell]     = useState<{ aluno: string; tipo: 'N1' | 'N2' } | null>(null);
   const [cellVal, setCellVal] = useState('');
   const [salvando, setSalvando] = useState(false);
+  // N1: alterações ficam SÓ na tela até "Salvar" (chave "alunoId|N1"). Antes cada
+  // célula disparava 1 lancarNota + 1 recarga da turma inteira.
+  const [pendentes, setPendentes] = useState<Map<string, string>>(new Map());
 
   // 2.13b — aba Chamada (frequência aluno × data)
   const [aba, setAba] = useState<'notas' | 'chamada'>('notas');
@@ -171,26 +174,105 @@ export default function PainelAcademicoTurma() {
 
   const abrirCelula = (aluno: string, tipo: 'N1' | 'N2', atual: number | null) => {
     setCell({ aluno, tipo });
-    setCellVal(atual !== null && atual !== undefined ? String(atual) : '');
+    const pend = pendentes.get(`${aluno}|${tipo}`);
+    setCellVal(pend ?? (atual !== null && atual !== undefined ? String(atual) : ''));
   };
 
-  const salvarCelula = async () => {
+  /** Valor a exibir na célula: o pendente (se houver) senão o do banco. */
+  const valorCelula = (alunoId: string, tipo: 'N1' | 'N2', doBanco: number | null) => {
+    const pend = pendentes.get(`${alunoId}|${tipo}`);
+    if (pend === undefined) return num(doBanco);
+    return pend === '' ? '—' : pend;
+  };
+
+  /** Confirma a célula APENAS na tela (não vai ao servidor) — o lote é no "Salvar". */
+  const confirmarCelula = () => {
     if (!cell) return;
     const t = cellVal.trim().replace(',', '.');
-    if (t === '') { setCell(null); return; }         // vazio = não altera
-    const nota = parseFloat(t);
-    if (isNaN(nota) || nota < 0 || nota > 10) { toast({ title: 'Nota inválida (0–10)', variant: 'destructive' }); return; }
-    setSalvando(true);
-    const av = await ensureAvaliacao(cell.tipo);
-    if (!av) { setSalvando(false); return; }
-    // BRUTO: lancarNota → notas_aluno; o trigger 065 recalcula o consolidado.
-    const { error } = await lancarNota(av.id, cell.aluno, disciplinaId, turmaId, nota, profile.id);
-    if (error) { setSalvando(false); toast({ title: 'Erro ao salvar nota', description: error, variant: 'destructive' }); return; }
-    // RE-LER o consolidado (média/status/freq já recalculados pelo trigger)
-    setRows(await getConsolidadoTurma(turmaId, disciplinaId));
-    setSalvando(false);
+    if (t !== '') {
+      const nota = parseFloat(t);
+      if (isNaN(nota) || nota < 0 || nota > 10) {
+        toast({ title: 'Nota inválida (0–10)', variant: 'destructive' });
+        return;   // mantém em edição — não perde o digitado
+      }
+    }
+    const atual = rows.find(r => r.aluno_id === cell.aluno);
+    const doBanco = atual ? (cell.tipo === 'N1' ? atual.n1 : atual.n2) : null;
+    const igual = t === '' ? doBanco === null : parseFloat(t) === doBanco;
+
+    setPendentes(prev => {
+      const next = new Map(prev);
+      const key = `${cell.aluno}|${cell.tipo}`;
+      if (igual) next.delete(key);        // voltou ao valor do banco → deixa de ser pendência
+      else next.set(key, t);
+      return next;
+    });
     setCell(null);
-    toast({ title: `${cell.tipo} salva`, description: 'Média e situação recalculadas.' });
+  };
+
+  const cancelarPendencias = () => { setPendentes(new Map()); setCell(null); };
+
+  /** Trocar de turma/disciplina com pendências perderia o digitado — pergunta antes. */
+  const confirmarDescarte = () => {
+    if (pendentes.size === 0) return true;
+    const ok = window.confirm(`Há ${pendentes.size} alteração(ões) de nota não salva(s). Descartar?`);
+    if (ok) cancelarPendencias();
+    return ok;
+  };
+
+  // Resolve (ou cria) a avaliação do tipo — mesma lógica do LancarNotas (não duplica regra).
+  // Decisão 2 da SPEC-17: SILENCIOSO no Painel (contexto de turma). A Ficha (P2a/RN4) pede
+  // confirmação de propósito — lá o contexto é corrigir histórico, não lançar a prova da turma.
+  const ensureAvaliacaoLote = async (
+    tipo: 'N1' | 'N2',
+    cache: Map<string, Avaliacao>,
+  ): Promise<Avaliacao | null> => {
+    const emCache = cache.get(tipo);
+    if (emCache) return emCache;
+    const existente = avaliacoes.find(a => a.tipo === tipo);
+    if (existente) { cache.set(tipo, existente); return existente; }
+    const { data, error } = await createAvaliacao(disciplinaId, turmaId, tipo, profile.id);
+    if (error || !data) { toast({ title: 'Erro ao criar avaliação', description: error ?? '', variant: 'destructive' }); return null; }
+    setAvaliacoes(prev => [...prev, data]);
+    cache.set(tipo, data);
+    return data;
+  };
+
+  /** Salva TODAS as pendências em 1 upsert + 1 recarga (antes: 1 por célula). */
+  const salvarLote = async () => {
+    if (pendentes.size === 0) return;
+    setSalvando(true);
+
+    // As avaliações que faltam são criadas UMA vez por tipo (não por célula).
+    const cache = new Map<string, Avaliacao>();
+    const lote: NotaLote[] = [];
+    for (const [key, valor] of pendentes) {
+      const [alunoId, tipo] = key.split('|') as [string, 'N1' | 'N2'];
+      if (valor.trim() === '') continue;         // limpar nota é exclusão — fora do N1
+      const av = await ensureAvaliacaoLote(tipo, cache);
+      if (!av) { setSalvando(false); return; }   // erro já reportado
+      lote.push({
+        avaliacaoId: av.id, alunoId, disciplinaId, turmaId,
+        nota: parseFloat(valor), lancadoPor: profile.id,
+      });
+    }
+
+    if (lote.length === 0) { setSalvando(false); setPendentes(new Map()); return; }
+
+    // BRUTO: 1 upsert com N linhas → notas_aluno; o trigger 065 recalcula o consolidado.
+    const { error } = await lancarNotasBatch(lote);
+    if (error) {
+      setSalvando(false);
+      // LICAO-027: motivo real + pendências PRESERVADAS (nada digitado se perde).
+      toast({ title: 'Erro ao salvar notas', description: error, variant: 'destructive' });
+      return;
+    }
+
+    // UMA recarga do consolidado (média/status/freq já recalculados pelo trigger).
+    setRows(await getConsolidadoTurma(turmaId, disciplinaId));
+    setPendentes(new Map());
+    setSalvando(false);
+    toast({ title: `${lote.length} nota(s) salva(s)`, description: 'Médias e situações recalculadas.' });
   };
 
   const filtrados = useMemo(() => rows.filter(r => {
@@ -226,7 +308,7 @@ export default function PainelAcademicoTurma() {
       <div className="bg-card border border-border rounded-xl p-4 grid sm:grid-cols-4 gap-3">
         <div>
           <label className="text-xs text-muted-foreground mb-1 block">Turma</label>
-          <select value={turmaId} onChange={e => { setTurmaId(e.target.value); setDisciplinaId(''); setModuloFiltro(''); }}
+          <select value={turmaId} onChange={e => { if (!confirmarDescarte()) return; setTurmaId(e.target.value); setDisciplinaId(''); setModuloFiltro(''); }}
             className="w-full bg-background border border-border rounded-md px-3 py-2 text-sm h-10">
             <option value="">Selecione…</option>
             {turmas.map(t => <option key={t.id} value={t.id}>{t.codigo} — {t.nome}</option>)}
@@ -242,7 +324,7 @@ export default function PainelAcademicoTurma() {
         </div>
         <div>
           <label className="text-xs text-muted-foreground mb-1 block">Disciplina (a grade é por disciplina)</label>
-          <select value={disciplinaId} onChange={e => setDisciplinaId(e.target.value)} disabled={!turmaId}
+          <select value={disciplinaId} onChange={e => { if (!confirmarDescarte()) return; setDisciplinaId(e.target.value); }} disabled={!turmaId}
             className="w-full bg-background border border-border rounded-md px-3 py-2 text-sm h-10 disabled:opacity-50">
             <option value="">{turmaId ? `Selecione… (${disciplinasFiltradas.length})` : 'Escolha a turma'}</option>
             {disciplinasFiltradas.map(d => (
@@ -304,9 +386,29 @@ export default function PainelAcademicoTurma() {
         </div>
       ) : aba === 'notas' ? (
         <>
-          <p className="text-xs text-muted-foreground">
-            {discSel?.nome} · {turmaSel?.codigo} — {filtrados.length} de {rows.length} aluno(s). Clique em N1/N2 para editar (Enter salva).
-          </p>
+          <div className="flex items-center justify-between gap-3 flex-wrap">
+            <p className="text-xs text-muted-foreground">
+              {discSel?.nome} · {turmaSel?.codigo} — {filtrados.length} de {rows.length} aluno(s).
+              Clique em N1/N2 para editar (Enter confirma) e depois <strong>Salvar</strong>.
+            </p>
+            {/* N1: barra de lote — as notas ficam pendentes até aqui (1 upsert, não 1 por célula). */}
+            {pendentes.size > 0 && (
+              <div className="flex items-center gap-2 print:hidden">
+                <span className="text-xs text-primary font-medium">
+                  ● {pendentes.size} {pendentes.size === 1 ? 'alteração pendente' : 'alterações pendentes'}
+                </span>
+                <Button variant="outline" size="sm" onClick={cancelarPendencias} disabled={salvando}
+                  className="h-8 border-border text-xs">
+                  Cancelar
+                </Button>
+                <Button size="sm" onClick={salvarLote} disabled={salvando} className="h-8 text-xs">
+                  {salvando
+                    ? <><Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> Salvando…</>
+                    : <><Check className="h-3.5 w-3.5 mr-1" /> Salvar notas</>}
+                </Button>
+              </div>
+            )}
+          </div>
           <div className="bg-card border border-border rounded-xl overflow-x-auto">
             <table className="w-full text-sm min-w-[40rem]">
               <thead>
@@ -337,14 +439,16 @@ export default function PainelAcademicoTurma() {
                             {emEd ? (
                               <Input autoFocus inputMode="decimal" value={cellVal}
                                 onChange={e => setCellVal(e.target.value)}
-                                onBlur={salvarCelula}
-                                onKeyDown={e => { if (e.key === 'Enter') salvarCelula(); if (e.key === 'Escape') setCell(null); }}
+                                onBlur={confirmarCelula}
+                                onKeyDown={e => { if (e.key === 'Enter') confirmarCelula(); if (e.key === 'Escape') setCell(null); }}
                                 disabled={salvando}
                                 className="h-8 w-16 text-center bg-background mx-auto" />
                             ) : (
                               <button onClick={() => abrirCelula(r.aluno_id, tipo, valor)}
-                                className="w-16 h-8 rounded-md hover:bg-primary/10 hover:text-primary transition-colors tabular-nums font-medium">
-                                {num(valor)}
+                                title={pendentes.has(`${r.aluno_id}|${tipo}`) ? 'Alteração pendente — clique em Salvar' : undefined}
+                                className={`w-16 h-8 rounded-md hover:bg-primary/10 hover:text-primary transition-colors tabular-nums font-medium ${
+                                  pendentes.has(`${r.aluno_id}|${tipo}`) ? 'ring-2 ring-primary/60 text-primary' : ''}`}>
+                                {valorCelula(r.aluno_id, tipo, valor)}
                               </button>
                             )}
                           </td>
